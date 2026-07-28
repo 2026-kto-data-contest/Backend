@@ -1,0 +1,32 @@
+{
+  "collected_at": "2026-07-27T17:01:02Z",
+  "api_base": "https://api.odcloud.kr/api",
+  "datasets": [
+    {
+      "name": "찾아가는양조장정보",
+      "dataset_id": "15048756",
+      "uddi": "60ae9d09-1e96-4636-b735-9346089d3160",
+      "totalCount": 59,
+      "actual_rows": 59,
+      "perPage": 100,
+      "pages": 1,
+      "page_match": true,
+      "raw_file": "20260728_brewery_raw.json",
+      "sha256": "078399fe9d856523b09d24bebb45a830c28acc850a345e8fe62e3097613635a2"
+    },
+    {
+      "name": "전통주정보",
+      "dataset_id": "15048755",
+      "uddi": "f60051e9-9730-4686-b4df-a45a84e8a849",
+      "totalCount": 1215,
+      "actual_rows": 1215,
+      "perPage": 1000,
+      "pages": 2,
+      "page_overlap_fullrow": 0,
+      "page_match": true,
+      "raw_file": "20260728_product_raw.json",
+      "sha256": "9e796233bd98b2897e3c4eaeee90521738c1e26740524ba233c41708edeb2de4"
+    }
+  ],
+  "note": "serviceKey는 어떤 파일에도 미기재. null과 빈문자열 구분 JSON 보존. CSV 변환 없음."
+}
