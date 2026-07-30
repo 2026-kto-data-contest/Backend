@@ -9,6 +9,7 @@ import com.jeontongjuro.backend.pipeline.collect.RawDataset;
 import com.jeontongjuro.backend.pipeline.collect.raw.BreweryRaw;
 import com.jeontongjuro.backend.pipeline.collect.source.FixtureRawSnapshotSource;
 import com.jeontongjuro.backend.pipeline.collect.source.RawSnapshot;
+import com.jeontongjuro.backend.product.ProductBreweryLinkRepository;
 import java.io.IOException;
 import java.io.InputStream;
 import java.text.Normalizer;
@@ -49,13 +50,16 @@ class BreweryMasterLoadConsistencyTest {
     @Autowired
     private ManualOverrideRepository overrideRepository;
     @Autowired
+    private ProductBreweryLinkRepository linkRepository;
+    @Autowired
     private ObjectMapper objectMapper;
 
     private BreweryMasterLoadService.LoadResult firstResult;
 
     @BeforeEach
     void loadBreweryMaster() {
-        // override가 brewery를 FK 참조하므로 override 먼저 비운 뒤 brewery 비우고 재적재
+        // FK 자식(product_brewery_link·override)이 brewery를 참조하므로 자식 먼저 비운 뒤 brewery 비우고 재적재
+        linkRepository.deleteAll();
         overrideRepository.deleteAll();
         breweryRepository.deleteAll();
         firstResult = loadService.load(goldenBreweryAttributeRows());

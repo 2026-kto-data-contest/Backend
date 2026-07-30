@@ -11,6 +11,7 @@ import com.jeontongjuro.backend.pipeline.collect.RawDataset;
 import com.jeontongjuro.backend.pipeline.collect.raw.BreweryRaw;
 import com.jeontongjuro.backend.pipeline.collect.source.FixtureRawSnapshotSource;
 import com.jeontongjuro.backend.pipeline.collect.source.RawSnapshot;
+import com.jeontongjuro.backend.product.ProductBreweryLinkRepository;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -49,12 +50,16 @@ class ManualOverrideSeedLoadTest {
     @Autowired
     private BreweryRepository breweryRepository;
     @Autowired
+    private ProductBreweryLinkRepository linkRepository;
+    @Autowired
     private ObjectMapper objectMapper;
 
     private ManualOverrideSeedLoadService.LoadResult firstResult;
 
     @BeforeEach
     void loadBreweryThenOverride() {
+        // FK 자식(product_brewery_link)이 brewery를 참조하므로 자식 먼저 비운 뒤 override·brewery 비우고 재적재
+        linkRepository.deleteAll();
         overrideRepository.deleteAll();
         breweryRepository.deleteAll();
         breweryLoadService.load(goldenBreweryAttributeRows());   // FK 대상 선적재
@@ -119,6 +124,7 @@ class ManualOverrideSeedLoadTest {
     @Test
     @DisplayName("FK 미충족 시 멈춤: brewery 비운 뒤 적재 시도 → 예외(누락 BRW 보고)")
     void stopsWhenBreweryMissing() {
+        linkRepository.deleteAll();
         overrideRepository.deleteAll();
         breweryRepository.deleteAll();
         assertThatThrownBy(() -> overrideLoadService.load())
