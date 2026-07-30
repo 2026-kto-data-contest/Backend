@@ -1,0 +1,35 @@
+# 파이프라인 RAW 적재층 설정. DB는 PostgreSQL 단일(H2 미사용).
+# 이 파일은 파이프라인 raw 테이블 관련 설정만 담는다(user/auth 등 타 도메인 설정 없음).
+spring:
+  application:
+    name: backend
+  datasource:
+    url: jdbc:postgresql://localhost:5432/jeontongjuro
+    username: jeontongjuro
+    password: jeontongjuro
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    # 스키마의 단일 진실은 schema.sql(BIGSERIAL·UNIQUE 제약 명시). Hibernate는 검증만 수행.
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+  sql:
+    init:
+      # schema.sql은 CREATE TABLE IF NOT EXISTS 라 재기동 시에도 멱등.
+      mode: always
+
+pipeline:
+  collect:
+    api-base: https://api.odcloud.kr/api
+    # serviceKey는 환경변수 AT_SERVICE_KEY 로만 주입한다. 키 문자열을 코드·yml·로그에 기재하지 않는다.
+    service-key: ${AT_SERVICE_KEY:}
+    # snapshot-date(선택): 논리 스냅샷 라벨. 실행 시 --pipeline.collect.snapshot-date=2026-07-28 처럼 주입.
+    # 미주입 시 collected_at의 UTC 날짜가 라벨이 된다(KST 등 로컬 타임존 파생 금지).
+    brewery:
+      dataset-id: "15048756"
+      uddi: "60ae9d09-1e96-4636-b735-9346089d3160"
+      per-page: 100
+    product:
+      dataset-id: "15048755"
+      uddi: "f60051e9-9730-4686-b4df-a45a84e8a849"
+      per-page: 1000

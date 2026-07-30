@@ -1,0 +1,25 @@
+# 파이프라인 RAW 적재층 전용 로컬 PostgreSQL.
+# 이 compose는 파이프라인 raw 테이블(brewery_raw/product_raw)만을 위한 DB를 띄운다.
+# user/auth 등 다른 도메인 스키마·서비스는 정의하지 않는다.
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: jeontongjuro-postgres
+    environment:
+      POSTGRES_DB: jeontongjuro
+      POSTGRES_USER: jeontongjuro
+      POSTGRES_PASSWORD: jeontongjuro
+    ports:
+      - "5432:5432"
+    volumes:
+      # 최초 기동 시 verify 테스트용 별도 DB(jeontongjuro_test) 생성
+      - ./docker/postgres-init:/docker-entrypoint-initdb.d:ro
+      - jeontongjuro-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U jeontongjuro -d jeontongjuro"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  jeontongjuro-pgdata:
