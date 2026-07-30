@@ -1,0 +1,433 @@
+{
+  "_meta": {
+    "purpose": "brewery 서비스 마스터 채번원장(불변 리소스). BRW-xxx ↔ 자연키(상호명) 봉인 매핑.",
+    "created_at": "2026-07-30",
+    "source_fixture": "src/test/resources/golden/20260728_brewery_raw.json (dataset 15048756, totalCount 59)",
+    "row_count": 59,
+    "natural_key_type": "business_name",
+    "natural_key_reason": "사업자등록번호(또는 유사 불변식별자) 필드가 brewery raw 7필드에 존재하지 않음(조건 a 실패). 따라서 3조건 중 (a)필드존재 불충족 → 대체 자연키로 상호명 채택. 상호명은 59/59 non-null·유니크 확인(20260729_raw_field_mapping.md '파생층 조인의 brewery 측 축'과 일치).",
+    "sort_basis": "골든 20260728 brewery raw 상호명 원문을 NFC 정규화한 뒤 유니코드 코드포인트 오름차순(한글 완성형 가나다순, Java String.compareTo 동치)으로 정렬해 BRW-001~059 부여. 현재 데이터가 아니라 골든 시점 고정 — 재현성.",
+    "policy": {
+      "number_semantics": "BRW 번호 순서에 의미 없음(단순 식별자).",
+      "new_brewery": "신규 양조장은 정렬 무시하고 BRW-060~ append. 기존 BRW-001~059는 절대 불변.",
+      "immutability": "append-only 봉인(골든과 동급). 파일이 이미 존재하면 재생성 절대 금지 — 로드해 검증만."
+    },
+    "normalizer": "com.jeontongjuro.backend.pipeline.normalize.BusinessNameNormalizer (NFC→공백제거→법인격제거→말미접미어 최장일치 1회 제거)",
+    "scope_note": "3b 경계: 채번 정의를 파일로 확정. brewery JPA 엔티티·DB 테이블·DB 적재는 3c 몫(본 원장 미포함)."
+  },
+  "entries": [
+    {
+      "brewery_id": "BRW-001",
+      "natural_key": "갈기산",
+      "business_name": "갈기산",
+      "natural_key_type": "business_name",
+      "norm": "갈기산"
+    },
+    {
+      "brewery_id": "BRW-002",
+      "natural_key": "고도리 와이너리",
+      "business_name": "고도리 와이너리",
+      "natural_key_type": "business_name",
+      "norm": "고도리와이너리"
+    },
+    {
+      "brewery_id": "BRW-003",
+      "natural_key": "국가유산·명인 조옥화 안동소주",
+      "business_name": "국가유산·명인 조옥화 안동소주",
+      "natural_key_type": "business_name",
+      "norm": "국가유산·명인조옥화안동소주"
+    },
+    {
+      "brewery_id": "BRW-004",
+      "natural_key": "국순당",
+      "business_name": "국순당",
+      "natural_key_type": "business_name",
+      "norm": "국순당"
+    },
+    {
+      "brewery_id": "BRW-005",
+      "natural_key": "그린영농조합",
+      "business_name": "그린영농조합",
+      "natural_key_type": "business_name",
+      "norm": "그린"
+    },
+    {
+      "brewery_id": "BRW-006",
+      "natural_key": "금정산성 토산주",
+      "business_name": "금정산성 토산주",
+      "natural_key_type": "business_name",
+      "norm": "금정산성토산주"
+    },
+    {
+      "brewery_id": "BRW-007",
+      "natural_key": "금풍양조",
+      "business_name": "금풍양조",
+      "natural_key_type": "business_name",
+      "norm": "금풍"
+    },
+    {
+      "brewery_id": "BRW-008",
+      "natural_key": "다도참주가",
+      "business_name": "다도참주가",
+      "natural_key_type": "business_name",
+      "norm": "다도참"
+    },
+    {
+      "brewery_id": "BRW-009",
+      "natural_key": "대강양조장",
+      "business_name": "대강양조장",
+      "natural_key_type": "business_name",
+      "norm": "대강"
+    },
+    {
+      "brewery_id": "BRW-010",
+      "natural_key": "대대로영농조합법인",
+      "business_name": "대대로영농조합법인",
+      "natural_key_type": "business_name",
+      "norm": "대대로"
+    },
+    {
+      "brewery_id": "BRW-011",
+      "natural_key": "덕유양조",
+      "business_name": "덕유양조",
+      "natural_key_type": "business_name",
+      "norm": "덕유"
+    },
+    {
+      "brewery_id": "BRW-012",
+      "natural_key": "도란원",
+      "business_name": "도란원",
+      "natural_key_type": "business_name",
+      "norm": "도란원"
+    },
+    {
+      "brewery_id": "BRW-013",
+      "natural_key": "두레양조",
+      "business_name": "두레양조",
+      "natural_key_type": "business_name",
+      "norm": "두레"
+    },
+    {
+      "brewery_id": "BRW-014",
+      "natural_key": "맑은내일",
+      "business_name": "맑은내일",
+      "natural_key_type": "business_name",
+      "norm": "맑은내일"
+    },
+    {
+      "brewery_id": "BRW-015",
+      "natural_key": "명인안동소주",
+      "business_name": "명인안동소주",
+      "natural_key_type": "business_name",
+      "norm": "명인안동소주"
+    },
+    {
+      "brewery_id": "BRW-016",
+      "natural_key": "모월",
+      "business_name": "모월",
+      "natural_key_type": "business_name",
+      "norm": "모월"
+    },
+    {
+      "brewery_id": "BRW-017",
+      "natural_key": "문경주조",
+      "business_name": "문경주조",
+      "natural_key_type": "business_name",
+      "norm": "문경"
+    },
+    {
+      "brewery_id": "BRW-018",
+      "natural_key": "밀과노닐다",
+      "business_name": "밀과노닐다",
+      "natural_key_type": "business_name",
+      "norm": "밀과노닐다"
+    },
+    {
+      "brewery_id": "BRW-019",
+      "natural_key": "밝은세상영농조합",
+      "business_name": "밝은세상영농조합",
+      "natural_key_type": "business_name",
+      "norm": "밝은세상"
+    },
+    {
+      "brewery_id": "BRW-020",
+      "natural_key": "배상면주가",
+      "business_name": "배상면주가",
+      "natural_key_type": "business_name",
+      "norm": "배상면"
+    },
+    {
+      "brewery_id": "BRW-021",
+      "natural_key": "배혜정도가",
+      "business_name": "배혜정도가",
+      "natural_key_type": "business_name",
+      "norm": "배혜정"
+    },
+    {
+      "brewery_id": "BRW-022",
+      "natural_key": "복순도가",
+      "business_name": "복순도가",
+      "natural_key_type": "business_name",
+      "norm": "복순"
+    },
+    {
+      "brewery_id": "BRW-023",
+      "natural_key": "산막와이너리",
+      "business_name": "산막와이너리",
+      "natural_key_type": "business_name",
+      "norm": "산막와이너리"
+    },
+    {
+      "brewery_id": "BRW-024",
+      "natural_key": "산머루농원",
+      "business_name": "산머루농원",
+      "natural_key_type": "business_name",
+      "norm": "산머루"
+    },
+    {
+      "brewery_id": "BRW-025",
+      "natural_key": "솔송주",
+      "business_name": "솔송주",
+      "natural_key_type": "business_name",
+      "norm": "솔송주"
+    },
+    {
+      "brewery_id": "BRW-026",
+      "natural_key": "수도산와이너리",
+      "business_name": "수도산와이너리",
+      "natural_key_type": "business_name",
+      "norm": "수도산와이너리"
+    },
+    {
+      "brewery_id": "BRW-027",
+      "natural_key": "술빚는 전가네",
+      "business_name": "술빚는 전가네",
+      "natural_key_type": "business_name",
+      "norm": "술빚는전가네"
+    },
+    {
+      "brewery_id": "BRW-028",
+      "natural_key": "술샘",
+      "business_name": "술샘",
+      "natural_key_type": "business_name",
+      "norm": "술샘"
+    },
+    {
+      "brewery_id": "BRW-029",
+      "natural_key": "술아원",
+      "business_name": "술아원",
+      "natural_key_type": "business_name",
+      "norm": "술아원"
+    },
+    {
+      "brewery_id": "BRW-030",
+      "natural_key": "시나브로 와이너리",
+      "business_name": "시나브로 와이너리",
+      "natural_key_type": "business_name",
+      "norm": "시나브로와이너리"
+    },
+    {
+      "brewery_id": "BRW-031",
+      "natural_key": "신평양조장",
+      "business_name": "신평양조장",
+      "natural_key_type": "business_name",
+      "norm": "신평"
+    },
+    {
+      "brewery_id": "BRW-032",
+      "natural_key": "양촌양조",
+      "business_name": "양촌양조",
+      "natural_key_type": "business_name",
+      "norm": "양촌"
+    },
+    {
+      "brewery_id": "BRW-033",
+      "natural_key": "양촌와이너리",
+      "business_name": "양촌와이너리",
+      "natural_key_type": "business_name",
+      "norm": "양촌와이너리"
+    },
+    {
+      "brewery_id": "BRW-034",
+      "natural_key": "여포와인농장",
+      "business_name": "여포와인농장",
+      "natural_key_type": "business_name",
+      "norm": "여포와인"
+    },
+    {
+      "brewery_id": "BRW-035",
+      "natural_key": "예산사과와인",
+      "business_name": "예산사과와인",
+      "natural_key_type": "business_name",
+      "norm": "예산사과와인"
+    },
+    {
+      "brewery_id": "BRW-036",
+      "natural_key": "예술주조",
+      "business_name": "예술주조",
+      "natural_key_type": "business_name",
+      "norm": "예술"
+    },
+    {
+      "brewery_id": "BRW-037",
+      "natural_key": "오미나라",
+      "business_name": "오미나라",
+      "natural_key_type": "business_name",
+      "norm": "오미나라"
+    },
+    {
+      "brewery_id": "BRW-038",
+      "natural_key": "오산양조",
+      "business_name": "오산양조",
+      "natural_key_type": "business_name",
+      "norm": "오산"
+    },
+    {
+      "brewery_id": "BRW-039",
+      "natural_key": "우리술",
+      "business_name": "우리술",
+      "natural_key_type": "business_name",
+      "norm": "우리술"
+    },
+    {
+      "brewery_id": "BRW-040",
+      "natural_key": "울진술도가",
+      "business_name": "울진술도가",
+      "natural_key_type": "business_name",
+      "norm": "울진술"
+    },
+    {
+      "brewery_id": "BRW-041",
+      "natural_key": "은척양조장",
+      "business_name": "은척양조장",
+      "natural_key_type": "business_name",
+      "norm": "은척"
+    },
+    {
+      "brewery_id": "BRW-042",
+      "natural_key": "이원양조장",
+      "business_name": "이원양조장",
+      "natural_key_type": "business_name",
+      "norm": "이원"
+    },
+    {
+      "brewery_id": "BRW-043",
+      "natural_key": "인천탁주",
+      "business_name": "인천탁주",
+      "natural_key_type": "business_name",
+      "norm": "인천탁주"
+    },
+    {
+      "brewery_id": "BRW-044",
+      "natural_key": "장희도가",
+      "business_name": "장희도가",
+      "natural_key_type": "business_name",
+      "norm": "장희"
+    },
+    {
+      "brewery_id": "BRW-045",
+      "natural_key": "제주고소리술익는집",
+      "business_name": "제주고소리술익는집",
+      "natural_key_type": "business_name",
+      "norm": "제주고소리술익는집"
+    },
+    {
+      "brewery_id": "BRW-046",
+      "natural_key": "제주샘주",
+      "business_name": "제주샘주",
+      "natural_key_type": "business_name",
+      "norm": "제주샘주"
+    },
+    {
+      "brewery_id": "BRW-047",
+      "natural_key": "조은술 세종",
+      "business_name": "조은술 세종",
+      "natural_key_type": "business_name",
+      "norm": "조은술세종"
+    },
+    {
+      "brewery_id": "BRW-048",
+      "natural_key": "좋은술",
+      "business_name": "좋은술",
+      "natural_key_type": "business_name",
+      "norm": "좋은술"
+    },
+    {
+      "brewery_id": "BRW-049",
+      "natural_key": "중원당",
+      "business_name": "중원당",
+      "natural_key_type": "business_name",
+      "norm": "중원당"
+    },
+    {
+      "brewery_id": "BRW-050",
+      "natural_key": "지리산 운봉주조",
+      "business_name": "지리산 운봉주조",
+      "natural_key_type": "business_name",
+      "norm": "지리산운봉"
+    },
+    {
+      "brewery_id": "BRW-051",
+      "natural_key": "청산녹수",
+      "business_name": "청산녹수",
+      "natural_key_type": "business_name",
+      "norm": "청산녹수"
+    },
+    {
+      "brewery_id": "BRW-052",
+      "natural_key": "추성고을",
+      "business_name": "추성고을",
+      "natural_key_type": "business_name",
+      "norm": "추성고을"
+    },
+    {
+      "brewery_id": "BRW-053",
+      "natural_key": "태인합동주조장",
+      "business_name": "태인합동주조장",
+      "natural_key_type": "business_name",
+      "norm": "태인합동"
+    },
+    {
+      "brewery_id": "BRW-054",
+      "natural_key": "풍정사계",
+      "business_name": "풍정사계",
+      "natural_key_type": "business_name",
+      "norm": "풍정사계"
+    },
+    {
+      "brewery_id": "BRW-055",
+      "natural_key": "하미앙 와인밸리",
+      "business_name": "하미앙 와인밸리",
+      "natural_key_type": "business_name",
+      "norm": "하미앙와인밸리"
+    },
+    {
+      "brewery_id": "BRW-056",
+      "natural_key": "한국애플리즈",
+      "business_name": "한국애플리즈",
+      "natural_key_type": "business_name",
+      "norm": "한국애플리즈"
+    },
+    {
+      "brewery_id": "BRW-057",
+      "natural_key": "한국와인",
+      "business_name": "한국와인",
+      "natural_key_type": "business_name",
+      "norm": "한국와인"
+    },
+    {
+      "brewery_id": "BRW-058",
+      "natural_key": "한산소곡주",
+      "business_name": "한산소곡주",
+      "natural_key_type": "business_name",
+      "norm": "한산소곡주"
+    },
+    {
+      "brewery_id": "BRW-059",
+      "natural_key": "해창주조장",
+      "business_name": "해창주조장",
+      "natural_key_type": "business_name",
+      "norm": "해창"
+    }
+  ]
+}
