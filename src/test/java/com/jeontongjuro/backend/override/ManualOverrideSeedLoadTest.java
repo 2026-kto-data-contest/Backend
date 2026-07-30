@@ -104,7 +104,7 @@ class ManualOverrideSeedLoadTest {
             assertThat(o.getBreweryId()).isEqualTo("BRW-003");
         });
         assertThat(recheck.stream().map(ManualOverride::getMatchKey).sorted().toList())
-                .containsExactly("조옥화 안동소주 25도", "조옥화 안동소주 45도");
+                .containsExactly("국가유산·명인 조옥화 안동소주 25도", "국가유산·명인 조옥화 안동소주 45도");
     }
 
     @Test

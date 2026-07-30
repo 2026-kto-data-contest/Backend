@@ -144,6 +144,13 @@ enum liquor_status {
   NA        // UNJOINED이면 NA
 }
 
+enum join_source {
+  AUTO           // 양조장 필드 norm == brewery norm 자동 매칭
+  OVERRIDE_NAME  // manual_override NAME_MAP이 AUTO를 덮어씀(양조장명 norm 매칭)
+  OVERRIDE_ROW   // manual_override ROW_PIN(제품명 완전일치, 양조장 필드 null 대상)
+  UNMATCHED      // 정의만(3c-2는 미적재) — 미래 1215 전체 확장 대비
+}
+
 enum region_code {
   CAPITAL      // 수도권(서울·인천·경기)
   GANGWON      // 강원
@@ -254,6 +261,11 @@ Table product_raw {
 §2 채번원장이 시드. ★컬럼 생성 ≠ 값 확정 — raw에서 그대로 오는 값만 3c-1이 채우고, 계산 파생(sido·region·
 join_status·liquor_status)은 컬럼만 두고 후속 단계가 UPDATE한다.
 
+> **[갱신 2026-07-30, 3c-2]** `join_status`·`liquor_status` 첫 UPDATE 실측 완료(§3.3 `product_brewery_link`
+> 조인 결과 반영). **JOINED 58 · UNJOINED 1(밀과노닐다 BRW-018만 단독)**. 2축 규칙 그대로 적용:
+> JOINED→`liquor_status=UNTAGGED`(주종 미태깅 상태), UNJOINED→`NA` 유지(JOINED인데 NA인 모순 없음, 실측 확인).
+> `sido`·`region`은 이번에도 **미계산**(후속 단계 몫, 변경 없음).
+
 ```dbml
 Table brewery {
   brewery_id              varchar       [pk, note: 'BRW-xxx 자연키 PK(원장). 서러게이트 없음·불변·append-only']
@@ -310,29 +322,39 @@ Table liquor_type {
 
 시드: `(TAKJU,탁주),(YAKJU,약주),(CHEONGJU,청주),(JEUNGRYU,증류주),(GWASILJU,과실주)`.
 
-### 3.3 조인(다대다) 층
+### 3.3 조인 층
 
-#### `brewery_product` — 양조장↔제품 조인 매핑 `[혼합: AUTO링크 / MANUAL재매핑 보존]`
+#### `product_brewery_link` — product→brewery 조인 결과 `[혼합: AUTO링크 / MANUAL override 최종값]` `[갱신 2026-07-30, 3c-2]`
+
+> 초안의 범용 `brewery_product`(product_id FK·복합PK·match_source 2-state)는 **아직 없는 `product` 코어
+> dimension**(product_id 채번·alcohol_pct/volume_ml 파싱)을 전제로 한 설계였다. 3c-2는 그 전 단계로,
+> raw product 1215건 중 **brewery 59에 실제 연결되는 행만** 물질화한다 — `product` dimension은 미착수(후속).
+> 진실원천은 `src/main/resources/schema.sql`.
 
 런타임 조인 금지 원칙 → 조인 결과를 배치로 이 테이블에 물질화. **참조키는 brewery_id(이름 아님)**.
+순서는 MANUAL wins: `OVERRIDE_NAME`/`OVERRIDE_ROW`가 `AUTO` 결과를 덮어쓴 뒤 최종값만 담는다(중간값 미보존).
 
 ```dbml
-Table brewery_product {
-  product_id       varchar    [not null, note: 'FK product']
-  brewery_id       varchar    [not null, note: 'FK brewery. 참조키=brewery_id(이름 금지)']
-  match_source     tag_source [not null, note: 'AUTO(정규화매칭) / MANUAL(수기 재매핑). MANUAL wins']
-  matched_raw_name varchar    [null, note: '어느 raw 양조장명이 매칭됐는지(1:N 매칭 감사)']
-  created_at       timestamp  [not null]
-  updated_at       timestamp  [not null]
+Table product_brewery_link {
+  id               bigint       [pk, note: 'surrogate(의미 없음)']
+  source_row_ref   int          [not null, unique, note: '원본 product raw 추적 참조(source_row_index, 전역 0-based)']
+  product_name     varchar      [not null, note: '제품명 원문']
+  brewery_name_raw varchar      [null, note: '원본 양조장 필드 원문. null 가능(ROW_PIN 대상)']
+  product_norm     varchar      [null, note: 'brewery_name_raw 정규화 결과 저장(3d 재계산 방지). raw null이면 null']
+  brewery_id       varchar      [null, note: 'FK brewery. ★nullable(미래 1215 전체 확장·UNMATCHED 대비). 이번 적재분은 전부 non-null']
+  join_source      join_source  [not null, note: 'AUTO / OVERRIDE_NAME / OVERRIDE_ROW / UNMATCHED(정의만, 3c-2 미적재)']
+  created_at       timestamp    [not null]
 
   indexes {
-    (product_id, brewery_id) [pk]
+    source_row_ref [unique]
     brewery_id
   }
 }
 ```
 
-> 카디널리티는 사실상 product→brewery 1:N이나, ①1:N 매칭 감사 ②수기 재매핑을 brewery_id 기준으로 안정 보관하기 위해 **링크 테이블로 분리**(재적재에도 brewery_id 매칭으로 보존).
+> **3c-2 실측 결과**: AUTO 56 + override 개선 2(`OVERRIDE_NAME` 양촌와이너리 BRW-033·`OVERRIDE_ROW`+`OVERRIDE_NAME`
+> 조옥화 BRW-003) = brewery 커버리지 **58/59**. UNJOINED는 밀과노닐다(BRW-018) 단독. AUTO↔override 충돌 0건.
+> UNMATCHED(brewery 미연결 product raw)는 이번엔 적재하지 않음 — raw층(`product_raw`)에 이미 무손실 보존.
 
 #### `product_liquor_type` — 제품↔주종 다중 태깅 `[혼합]`
 

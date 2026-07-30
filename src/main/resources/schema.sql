@@ -91,3 +91,23 @@ CREATE TABLE IF NOT EXISTS manual_override (
     CONSTRAINT ck_manual_override_reason CHECK (reason IN ('ADDR_EXACT', 'ADDR_STRONG', 'MANUAL_DOMAIN'))
 );
 CREATE INDEX IF NOT EXISTS ix_manual_override_brewery ON manual_override (brewery_id);
+
+-- ────────────────────────────────────────────────────────────────────────────
+-- 파생층 (3c-2). product raw 1215건 중 brewery 59에 실제 연결되는 행(AUTO+override)만 적재.
+-- brewery_id는 ★nullable — 미래 1215 전체 확장(UNMATCHED 포함) 대비 스키마이며, 이번 적재분은 전부 non-null.
+-- ★주소 파싱·주종 롤업은 이 테이블의 범위 밖(3d).
+
+CREATE TABLE IF NOT EXISTS product_brewery_link (
+    id                BIGSERIAL PRIMARY KEY,             -- 서러게이트 PK(의미 없음)
+    source_row_ref    INT       NOT NULL,                -- 원본 product raw 추적 참조(source_row_index, 전역 0-based)
+    product_name      TEXT      NOT NULL,                -- 제품명(원문)
+    brewery_name_raw  TEXT,                               -- 원본 '양조장' 필드(원문, null 가능 — ROW_PIN 대상)
+    product_norm      TEXT,                               -- brewery_name_raw 정규화 결과(3d 재계산 방지 저장값)
+    brewery_id        TEXT,                               -- 연결 확정 BRW → brewery.brewery_id. ★nullable(미래 UNMATCHED 확장 대비)
+    join_source       TEXT      NOT NULL,                -- AUTO / OVERRIDE_NAME / OVERRIDE_ROW / UNMATCHED(정의만, 이번 미적재)
+    created_at        TIMESTAMP NOT NULL,
+    CONSTRAINT fk_product_brewery_link_brewery FOREIGN KEY (brewery_id) REFERENCES brewery (brewery_id),
+    CONSTRAINT uq_product_brewery_link_source_row UNIQUE (source_row_ref),
+    CONSTRAINT ck_product_brewery_link_join_source CHECK (join_source IN ('AUTO', 'OVERRIDE_NAME', 'OVERRIDE_ROW', 'UNMATCHED'))
+);
+CREATE INDEX IF NOT EXISTS ix_product_brewery_link_brewery ON product_brewery_link (brewery_id);

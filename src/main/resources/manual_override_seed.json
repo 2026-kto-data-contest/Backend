@@ -13,7 +13,8 @@
       "recheck_flag": "재점검 필요 여부(조옥화 2행 true)",
       "source_raw_name": "원본 product raw명(추적용)"
     },
-    "type_split": "NAME_MAP 7 (#1,2,3,6,7,8,9) + ROW_PIN 2 (#4,5 조옥화 25/45도)"
+    "type_split": "NAME_MAP 7 (#1,2,3,6,7,8,9) + ROW_PIN 2 (#4,5 조옥화 25/45도)",
+    "corrections": "2026-07-30(3c-2): seq 4·5 match_key를 요약 문서(join_decision_ledger·assignment) 축약 표기 \"조옥화 안동소주 25도/45도\"에서 골든 원문(src/test/resources/golden/20260728_product_raw.json 실제 제품명, 브랜드 접두어 포함) \"국가유산·명인 조옥화 안동소주 25도/45도\"로 교정. brewery_id·reason·recheck_flag·override_type 판정은 불변(원문 복원, 재판정 아님). 상세: docs/audit/20260730_3c2_coverage.md"
   },
   "entries": [
     {
@@ -49,7 +50,7 @@
     {
       "seq": 4,
       "override_type": "ROW_PIN",
-      "match_key": "조옥화 안동소주 25도",
+      "match_key": "국가유산·명인 조옥화 안동소주 25도",
       "match_key_kind": "PRODUCT_NAME",
       "brewery_id": "BRW-003",
       "reason": "MANUAL_DOMAIN",
@@ -59,7 +60,7 @@
     {
       "seq": 5,
       "override_type": "ROW_PIN",
-      "match_key": "조옥화 안동소주 45도",
+      "match_key": "국가유산·명인 조옥화 안동소주 45도",
       "match_key_kind": "PRODUCT_NAME",
       "brewery_id": "BRW-003",
       "reason": "MANUAL_DOMAIN",

@@ -124,6 +124,15 @@ public class Brewery {
         return b;
     }
 
+    /**
+     * 3c-2 조인 결과 첫 확정(파생값 UPDATE). 2축 원칙: JOINED면 반드시 UNTAGGED(주종롤업 전),
+     * JOINED인데 NA로 남는 모순 금지. 주종 롤업(TAGGED 판정)은 3d 몫 — 여기선 하지 않는다.
+     */
+    public void markJoined() {
+        this.joinStatus = JoinStatus.JOINED;
+        this.liquorStatus = LiquorStatus.UNTAGGED;
+    }
+
     @PrePersist
     void onCreate() {
         LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
