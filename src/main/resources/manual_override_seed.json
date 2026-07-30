@@ -1,0 +1,110 @@
+{
+  "_meta": {
+    "purpose": "manual_override 시드 — 제품→brewery 수기 보정 원장. 자동 정규화 매칭으로 해소되지 않는 9행을 brewery_id(BRW)로 고정.",
+    "source": "docs/audit/20260730_brewery_id_assignment.md §결정4 (override 확정 9행). 재판정·증감 금지 — 그대로 옮김.",
+    "created_at": "2026-07-30",
+    "row_count": 9,
+    "schema": {
+      "override_type": "NAME_MAP=양조장명 norm으로 매칭 / ROW_PIN=제품명으로 특정 행 고정(원본 양조장 필드 null)",
+      "match_key": "매칭 대상 키. BREWERY_NORM이면 product 양조장명의 norm, PRODUCT_NAME이면 제품명",
+      "match_key_kind": "BREWERY_NORM / PRODUCT_NAME",
+      "brewery_id": "연결 확정 BRW (원장 채번)",
+      "reason": "ADDR_EXACT / ADDR_STRONG / MANUAL_DOMAIN",
+      "recheck_flag": "재점검 필요 여부(조옥화 2행 true)",
+      "source_raw_name": "원본 product raw명(추적용)"
+    },
+    "type_split": "NAME_MAP 7 (#1,2,3,6,7,8,9) + ROW_PIN 2 (#4,5 조옥화 25/45도)"
+  },
+  "entries": [
+    {
+      "seq": 1,
+      "override_type": "NAME_MAP",
+      "match_key": "양촌감와이너리",
+      "match_key_kind": "BREWERY_NORM",
+      "brewery_id": "BRW-033",
+      "reason": "ADDR_EXACT",
+      "recheck_flag": false,
+      "source_raw_name": "양촌감 와이너리"
+    },
+    {
+      "seq": 2,
+      "override_type": "NAME_MAP",
+      "match_key": "양촌감",
+      "match_key_kind": "BREWERY_NORM",
+      "brewery_id": "BRW-033",
+      "reason": "ADDR_STRONG",
+      "recheck_flag": false,
+      "source_raw_name": "양촌감영농조합법인"
+    },
+    {
+      "seq": 3,
+      "override_type": "NAME_MAP",
+      "match_key": "민속주안동소주",
+      "match_key_kind": "BREWERY_NORM",
+      "brewery_id": "BRW-003",
+      "reason": "ADDR_EXACT",
+      "recheck_flag": false,
+      "source_raw_name": "민속주안동소주"
+    },
+    {
+      "seq": 4,
+      "override_type": "ROW_PIN",
+      "match_key": "조옥화 안동소주 25도",
+      "match_key_kind": "PRODUCT_NAME",
+      "brewery_id": "BRW-003",
+      "reason": "MANUAL_DOMAIN",
+      "recheck_flag": true,
+      "source_raw_name": "조옥화 안동소주 25도"
+    },
+    {
+      "seq": 5,
+      "override_type": "ROW_PIN",
+      "match_key": "조옥화 안동소주 45도",
+      "match_key_kind": "PRODUCT_NAME",
+      "brewery_id": "BRW-003",
+      "reason": "MANUAL_DOMAIN",
+      "recheck_flag": true,
+      "source_raw_name": "조옥화 안동소주 45도"
+    },
+    {
+      "seq": 6,
+      "override_type": "NAME_MAP",
+      "match_key": "제이엘",
+      "match_key_kind": "BREWERY_NORM",
+      "brewery_id": "BRW-037",
+      "reason": "ADDR_EXACT",
+      "recheck_flag": false,
+      "source_raw_name": "제이엘"
+    },
+    {
+      "seq": 7,
+      "override_type": "NAME_MAP",
+      "match_key": "솔송주(명가원)",
+      "match_key_kind": "BREWERY_NORM",
+      "brewery_id": "BRW-025",
+      "reason": "ADDR_EXACT",
+      "recheck_flag": false,
+      "source_raw_name": "솔송주(명가원)"
+    },
+    {
+      "seq": 8,
+      "override_type": "NAME_MAP",
+      "match_key": "갈기산농업회사",
+      "match_key_kind": "BREWERY_NORM",
+      "brewery_id": "BRW-001",
+      "reason": "ADDR_EXACT",
+      "recheck_flag": false,
+      "source_raw_name": "갈기산농업회사"
+    },
+    {
+      "seq": 9,
+      "override_type": "NAME_MAP",
+      "match_key": "태인",
+      "match_key_kind": "BREWERY_NORM",
+      "brewery_id": "BRW-053",
+      "reason": "ADDR_EXACT",
+      "recheck_flag": false,
+      "source_raw_name": "태인양조장"
+    }
+  ]
+}
