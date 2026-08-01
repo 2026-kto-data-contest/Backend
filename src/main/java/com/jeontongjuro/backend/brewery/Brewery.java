@@ -125,6 +125,15 @@ public class Brewery {
     }
 
     /**
+     * 주소 파싱 결과 확정(파생값 UPDATE). SSOT = {@link BreweryRegionParser}. 순수함수 산출이라
+     * 같은 주소면 항상 같은 값 → 재실행해도 결과 동일(멱등). 060~ 신규 양조장이 추가돼도 재실행하면 채워진다.
+     */
+    public void applyRegion(String sido, String region) {
+        this.sido = sido;
+        this.region = region;
+    }
+
+    /**
      * 3c-2 조인 결과 첫 확정(파생값 UPDATE). 2축 원칙: JOINED면 반드시 UNTAGGED(주종롤업 전),
      * JOINED인데 NA로 남는 모순 금지. 주종 롤업(TAGGED 판정)은 3d 몫 — 여기선 하지 않는다.
      */
