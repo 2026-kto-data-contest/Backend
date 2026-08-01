@@ -1,6 +1,8 @@
 package com.jeontongjuro.backend.pipeline.collect.source;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.jeontongjuro.backend.pipeline.collect.CollectProperties;
 import com.jeontongjuro.backend.pipeline.collect.RawDataset;
 import java.time.Instant;
@@ -19,16 +21,24 @@ import org.springframework.web.client.RestClient;
  * 수집 도중 totalCount가 변하면(원천 데이터 변동) 순서 보장이 깨지므로 즉시 실패시킨다.
  *
  * serviceKey는 환경변수 AT_SERVICE_KEY 에서 설정으로 주입된 값만 사용하며 로그·예외 메시지에 싣지 않는다.
+ *
+ * known gap: 이 라이브 RestClient 역직렬화 경로는 자동 테스트 커버리지 밖이다(전 테스트는 Fixture 경로라
+ * RestClient를 경유하지 않는다). 검증은 수동 실기동(bootRun --spring.profiles.active=collect)으로 한다.
  */
 @Component
 public class OdcloudRawSnapshotSource implements RawSnapshotSource {
 
     private final CollectProperties properties;
     private final RestClient restClient;
+    private final ObjectMapper objectMapper;
 
-    public OdcloudRawSnapshotSource(CollectProperties properties, RestClient.Builder restClientBuilder) {
+    public OdcloudRawSnapshotSource(CollectProperties properties, RestClient.Builder restClientBuilder,
+                                    ObjectMapper objectMapper) {
         this.properties = properties;
         this.restClient = restClientBuilder.baseUrl(properties.apiBase()).build();
+        // ★골든(FixtureRawSnapshotSource)과 정확히 같은 파이프라인 공용 ObjectMapper(global.JacksonConfig,
+        //   com.fasterxml.jackson=Jackson 2) 빈을 주입받는다. 라이브 응답도 이 매퍼로 파싱해 두 경로를 대칭화한다.
+        this.objectMapper = objectMapper;
     }
 
     @Override
@@ -69,7 +79,11 @@ public class OdcloudRawSnapshotSource implements RawSnapshotSource {
     }
 
     private JsonNode fetchPage(CollectProperties.Dataset spec, int page) {
-        return restClient.get()
+        // ★body(JsonNode.class)로 직접 받지 않는다: Framework 7 RestClient 기본 JSON 컨버터는 Jackson 3
+        //   (tools.jackson.databind) 매퍼라 Jackson 2 타입 JsonNode를 역직렬화 대상으로 받으면 InvalidDefinition
+        //   으로 죽는다. 그래서 원문을 String으로 받고(StringHttpMessageConverter, Jackson 무관) 주입된 Jackson 2
+        //   ObjectMapper로 재파싱해 골든 경로와 동일한 노드를 만든다.
+        String body = restClient.get()
                 .uri(uriBuilder -> uriBuilder
                         .path(spec.path())
                         .queryParam("page", page)
@@ -78,6 +92,15 @@ public class OdcloudRawSnapshotSource implements RawSnapshotSource {
                         .queryParam("serviceKey", properties.serviceKey())
                         .build())
                 .retrieve()
-                .body(JsonNode.class);
+                .body(String.class);
+        if (body == null || body.isBlank()) {
+            throw new IllegalStateException(spec.path() + " page " + page + " 빈 응답");
+        }
+        try {
+            return objectMapper.readTree(body);
+        } catch (JsonProcessingException e) {
+            // 파싱 실패 원문/서비스키를 메시지에 싣지 않는다(응답에 serviceKey 에코 가능성 차단).
+            throw new IllegalStateException(spec.path() + " page " + page + " JSON 파싱 실패", e);
+        }
     }
 }
