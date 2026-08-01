@@ -36,76 +36,81 @@
 
 ---
 
-## 2. 채번표 — brewery_id 매핑 59건 (`brewery_raw.json` 상호명 순서, append-only·이후 불변)
+## 2. 채번표 — brewery_id 매핑 59건 (채번원장 `brewery_id_ledger.json`, 상호명 가나다순·append-only·불변)
 
-- 컬럼: `brewery_id | 상호명(원본) | 정규화명 | 시도 | 광역권`
-- **정규화명**은 정규화 규칙(공백제거+법인격제거+접미어제거) 적용값. 조인 매칭키.
-- **광역권 코드**: CAPITAL=수도권, GANGWON=강원, CHUNGCHEONG=충청, GYEONGSANG=경상, JEOLLA=전라, JEJU=제주.
+> **[갱신 2026-07-30]** 초안(20260728)의 원본배열순 채번표는 **폐기**한다. 이 방 3b 결정으로 채번 기준이
+> **상호명 가나다순(NFC 코드포인트 오름차순, Java String.compareTo 동치)**으로 재확정되어 초안과 BRW 번호가
+> 전면 달라졌다(예: 갈기산 056→001, 조옥화안동소주 059→003). 진실원천은 봉인 채번원장
+> `src/main/resources/brewery_id_ledger.json`이며 아래 표는 그 사본이다.
 
-| brewery_id | 상호명(원본) | 정규화명 | 시도 | 광역권 |
-|---|---|---|---|---|
-| BRW-001 | 산머루농원 | 산머루 | 경기 | CAPITAL |
-| BRW-002 | 배상면주가 | 배상면 | 경기 | CAPITAL |
-| BRW-003 | 우리술 | 우리술 | 경기 | CAPITAL |
-| BRW-004 | 그린영농조합 | 그린 | 경기 | CAPITAL |
-| BRW-005 | 배혜정도가 | 배혜정 | 경기 | CAPITAL |
-| BRW-006 | 밝은세상영농조합 | 밝은세상 | 경기 | CAPITAL |
-| BRW-007 | 좋은술 | 좋은술 | 경기 | CAPITAL |
-| BRW-008 | 술샘 | 술샘 | 경기 | CAPITAL |
-| BRW-009 | 신평양조장 | 신평 | 충남 | CHUNGCHEONG |
-| BRW-010 | 예산사과와인 | 예산사과와인 | 충남 | CHUNGCHEONG |
-| BRW-011 | 양촌양조 | 양촌 | 충남 | CHUNGCHEONG |
-| BRW-012 | 한산소곡주 | 한산소곡주 | 충남 | CHUNGCHEONG |
-| BRW-013 | 중원당 | 중원당 | 충북 | CHUNGCHEONG |
-| BRW-014 | 대강양조장 | 대강 | 충북 | CHUNGCHEONG |
-| BRW-015 | 조은술 세종 | 조은술세종 | 충북 | CHUNGCHEONG |
-| BRW-016 | 이원양조장 | 이원 | 충북 | CHUNGCHEONG |
-| BRW-017 | 여포와인농장 | 여포와인 | 충북 | CHUNGCHEONG |
-| BRW-018 | 시나브로 와이너리 | 시나브로와이너리 | 충북 | CHUNGCHEONG |
-| BRW-019 | 도란원 | 도란원 | 충북 | CHUNGCHEONG |
-| BRW-020 | 태인합동주조장 | 태인합동주조장 | 전북 | JEOLLA |
-| BRW-021 | 지리산 운봉주조 | 지리산운봉 | 전북 | JEOLLA |
-| BRW-022 | 청산녹수 | 청산녹수 | 전남 | JEOLLA |
-| BRW-023 | 추성고을 | 추성고을 | 전남 | JEOLLA |
-| BRW-024 | 대대로영농조합법인 | 대대로 | 전남 | JEOLLA |
-| BRW-025 | 해창주조장 | 해창주조장 | 전남 | JEOLLA |
-| BRW-026 | 예술주조 | 예술 | 강원 | GANGWON |
-| BRW-027 | 국순당 | 국순당 | 강원 | GANGWON |
-| BRW-028 | 울진술도가 | 울진술 | 경북 | GYEONGSANG |
-| BRW-029 | 오미나라 | 오미나라 | 경북 | GYEONGSANG |
-| BRW-030 | 문경주조 | 문경 | 경북 | GYEONGSANG |
-| BRW-031 | 명인안동소주 | 명인안동소주 | 경북 | GYEONGSANG |
-| BRW-032 | 한국애플리즈 | 한국애플리즈 | 경북 | GYEONGSANG |
-| BRW-033 | 은척양조장 | 은척 | 경북 | GYEONGSANG |
-| BRW-034 | 한국와인 | 한국와인 | 경북 | GYEONGSANG |
-| BRW-035 | 고도리 와이너리 | 고도리와이너리 | 경북 | GYEONGSANG |
-| BRW-036 | 수도산와이너리 | 수도산와이너리 | 경북 | GYEONGSANG |
-| BRW-037 | 복순도가 | 복순 | 울산 | GYEONGSANG |
-| BRW-038 | 금정산성 토산주 | 금정산성토산주 | 부산 | GYEONGSANG |
-| BRW-039 | 제주샘주 | 제주샘주 | 제주 | JEJU |
-| BRW-040 | 제주고소리술익는집 | 제주고소리술익는집 | 제주 | JEJU |
-| BRW-041 | 모월 | 모월 | 강원 | GANGWON |
-| BRW-042 | 술아원 | 술아원 | 경기 | CAPITAL |
-| BRW-043 | 장희도가 | 장희 | 충북 | CHUNGCHEONG |
-| BRW-044 | 하미앙 와인밸리 | 하미앙와인밸리 | 경남 | GYEONGSANG |
-| BRW-045 | 풍정사계 | 풍정사계 | 충북 | CHUNGCHEONG |
-| BRW-046 | 솔송주 | 솔송주 | 경남 | GYEONGSANG |
-| BRW-047 | 금풍양조 | 금풍 | 인천 | CAPITAL |
-| BRW-048 | 오산양조 | 오산 | 경기 | CAPITAL |
-| BRW-049 | 산막와이너리 | 산막와이너리 | 충북 | CHUNGCHEONG |
-| BRW-050 | 맑은내일 | 맑은내일 | 경남 | GYEONGSANG |
-| BRW-051 | 인천탁주 | 인천탁주 | 인천 | CAPITAL |
-| BRW-052 | 술빚는 전가네 | 술빚는전가네 | 경기 | CAPITAL |
-| BRW-053 | 두레양조 | 두레 | 충남 | CHUNGCHEONG |
-| BRW-054 | 양촌와이너리 | 양촌와이너리 | 충남 | CHUNGCHEONG |
-| BRW-055 | 덕유양조 | 덕유 | 전북 | JEOLLA |
-| BRW-056 | 갈기산 | 갈기산 | 충북 | CHUNGCHEONG |
-| BRW-057 | 다도참주가 | 다도참 | 전남 | JEOLLA |
-| BRW-058 | 밀과노닐다 | 밀과노닐다 | 경북 | GYEONGSANG |
-| BRW-059 | 국가유산·명인 조옥화 안동소주 | 국가유산·명인조옥화안동소주 | 경북 | GYEONGSANG |
+- 컬럼: `brewery_id | 상호명(원장 원문 NFC) | norm(정규화명, 조인 매칭키)`
+- ★`sido`·`region`·`join_status`·`liquor_status`는 계산 파생 컬럼이라 이 표에 싣지 않는다 — 주소 파싱/조인/주종
+  롤업은 후속 단계(3c-2/3d)가 채운다(3c-1은 원장·raw에서 그대로 오는 값만 적재).
 
-- 시도 분포: 경기11·충북11·경북11·충남6·전남5·경남3·강원3·전북3·인천2·제주2·부산1·울산1 (12개 시도).
-- 광역권 분포: 충청17·경상16·수도권13·전라8·강원3·제주2.
+| brewery_id | 상호명(원장) | norm |
+|---|---|---|
+| BRW-001 | 갈기산 | 갈기산 |
+| BRW-002 | 고도리 와이너리 | 고도리와이너리 |
+| BRW-003 | 국가유산·명인 조옥화 안동소주 | 국가유산·명인조옥화안동소주 |
+| BRW-004 | 국순당 | 국순당 |
+| BRW-005 | 그린영농조합 | 그린 |
+| BRW-006 | 금정산성 토산주 | 금정산성토산주 |
+| BRW-007 | 금풍양조 | 금풍 |
+| BRW-008 | 다도참주가 | 다도참 |
+| BRW-009 | 대강양조장 | 대강 |
+| BRW-010 | 대대로영농조합법인 | 대대로 |
+| BRW-011 | 덕유양조 | 덕유 |
+| BRW-012 | 도란원 | 도란원 |
+| BRW-013 | 두레양조 | 두레 |
+| BRW-014 | 맑은내일 | 맑은내일 |
+| BRW-015 | 명인안동소주 | 명인안동소주 |
+| BRW-016 | 모월 | 모월 |
+| BRW-017 | 문경주조 | 문경 |
+| BRW-018 | 밀과노닐다 | 밀과노닐다 |
+| BRW-019 | 밝은세상영농조합 | 밝은세상 |
+| BRW-020 | 배상면주가 | 배상면 |
+| BRW-021 | 배혜정도가 | 배혜정 |
+| BRW-022 | 복순도가 | 복순 |
+| BRW-023 | 산막와이너리 | 산막와이너리 |
+| BRW-024 | 산머루농원 | 산머루 |
+| BRW-025 | 솔송주 | 솔송주 |
+| BRW-026 | 수도산와이너리 | 수도산와이너리 |
+| BRW-027 | 술빚는 전가네 | 술빚는전가네 |
+| BRW-028 | 술샘 | 술샘 |
+| BRW-029 | 술아원 | 술아원 |
+| BRW-030 | 시나브로 와이너리 | 시나브로와이너리 |
+| BRW-031 | 신평양조장 | 신평 |
+| BRW-032 | 양촌양조 | 양촌 |
+| BRW-033 | 양촌와이너리 | 양촌와이너리 |
+| BRW-034 | 여포와인농장 | 여포와인 |
+| BRW-035 | 예산사과와인 | 예산사과와인 |
+| BRW-036 | 예술주조 | 예술 |
+| BRW-037 | 오미나라 | 오미나라 |
+| BRW-038 | 오산양조 | 오산 |
+| BRW-039 | 우리술 | 우리술 |
+| BRW-040 | 울진술도가 | 울진술 |
+| BRW-041 | 은척양조장 | 은척 |
+| BRW-042 | 이원양조장 | 이원 |
+| BRW-043 | 인천탁주 | 인천탁주 |
+| BRW-044 | 장희도가 | 장희 |
+| BRW-045 | 제주고소리술익는집 | 제주고소리술익는집 |
+| BRW-046 | 제주샘주 | 제주샘주 |
+| BRW-047 | 조은술 세종 | 조은술세종 |
+| BRW-048 | 좋은술 | 좋은술 |
+| BRW-049 | 중원당 | 중원당 |
+| BRW-050 | 지리산 운봉주조 | 지리산운봉 |
+| BRW-051 | 청산녹수 | 청산녹수 |
+| BRW-052 | 추성고을 | 추성고을 |
+| BRW-053 | 태인합동주조장 | 태인합동 |
+| BRW-054 | 풍정사계 | 풍정사계 |
+| BRW-055 | 하미앙 와인밸리 | 하미앙와인밸리 |
+| BRW-056 | 한국애플리즈 | 한국애플리즈 |
+| BRW-057 | 한국와인 | 한국와인 |
+| BRW-058 | 한산소곡주 | 한산소곡주 |
+| BRW-059 | 해창주조장 | 해창 |
+
+- 정렬 기준: 골든 20260728 brewery raw 상호명 원문 NFC → 유니코드 코드포인트 오름차순. 재현성 위해 골든 시점 고정.
+- 번호 순서에 의미 없음(단순 식별자). 신규 양조장은 정렬 무시하고 BRW-060~ append(기존 001~059 절대 불변).
 
 ---
 
@@ -139,6 +144,13 @@ enum liquor_status {
   NA        // UNJOINED이면 NA
 }
 
+enum join_source {
+  AUTO           // 양조장 필드 norm == brewery norm 자동 매칭
+  OVERRIDE_NAME  // manual_override NAME_MAP이 AUTO를 덮어씀(양조장명 norm 매칭)
+  OVERRIDE_ROW   // manual_override ROW_PIN(제품명 완전일치, 양조장 필드 null 대상)
+  UNMATCHED      // 정의만(3c-2는 미적재) — 미래 1215 전체 확장 대비
+}
+
 enum region_code {
   CAPITAL      // 수도권(서울·인천·경기)
   GANGWON      // 강원
@@ -163,6 +175,22 @@ enum tag_source {
 
 enum override_source {
   MANUAL       // manual_override는 항상 MANUAL. 확장 대비 enum
+}
+
+enum override_type {
+  NAME_MAP   // 양조장명 norm으로 매칭
+  ROW_PIN    // 제품명으로 특정 행 고정(원본 양조장 필드 null)
+}
+
+enum match_key_kind {
+  BREWERY_NORM  // match_key = 양조장명 norm
+  PRODUCT_NAME  // match_key = 제품명
+}
+
+enum override_reason {
+  ADDR_EXACT    // 주소 완전 일치
+  ADDR_STRONG   // 주소 강한 근거
+  MANUAL_DOMAIN // 도메인 지식 수기 확정(원본 양조장 필드 결손·recheck 대상)
 }
 ```
 
@@ -224,30 +252,41 @@ Table product_raw {
 
 ### 3.2 파생 층
 
-#### `brewery` — 양조장 코어 dimension(채번표 실체) `[혼합: id 불변 / 파생필드 AUTO / 3-state·image MANUAL보존]`
+#### `brewery` — 양조장 코어 dimension(채번원장 실체) `[혼합: id·상호명·norm·raw속성 확정 / 계산파생 후속 UPDATE]`
 
-§2 채번표가 이 테이블의 시드. 서비스 조회의 기준 dimension.
+> **[갱신 2026-07-30]** 실제 적재 스키마(3c-1)로 교체. 초안 대비 변경: `normalized_name/display_name` →
+> `norm/business_name`, raw 원문 `address·homepage_url·view_count` 추가, 방문 2필드를 `reservation_visit_state·
+> always_visit_state`(visit_state 3-state)로 확정. 진실원천은 `src/main/resources/schema.sql`.
+
+§2 채번원장이 시드. ★컬럼 생성 ≠ 값 확정 — raw에서 그대로 오는 값만 3c-1이 채우고, 계산 파생(sido·region·
+join_status·liquor_status)은 컬럼만 두고 후속 단계가 UPDATE한다.
+
+> **[갱신 2026-07-30, 3c-2]** `join_status`·`liquor_status` 첫 UPDATE 실측 완료(§3.3 `product_brewery_link`
+> 조인 결과 반영). **JOINED 58 · UNJOINED 1(밀과노닐다 BRW-018만 단독)**. 2축 규칙 그대로 적용:
+> JOINED→`liquor_status=UNTAGGED`(주종 미태깅 상태), UNJOINED→`NA` 유지(JOINED인데 NA인 모순 없음, 실측 확인).
+> `sido`·`region`은 이번에도 **미계산**(후속 단계 몫, 변경 없음).
 
 ```dbml
 Table brewery {
-  brewery_id       varchar       [pk, note: 'BRW-xxx 자연키 PK(결정A). 불변·append-only']
-  normalized_name  varchar       [not null, note: '정규화명. 조인 매칭키']
-  display_name     varchar       [not null, note: '서비스 표시명 = 최신 raw 상호명 복사. 표시 안정용']
-  sido             varchar       [not null, note: '주소 앞토큰 파싱(12종 관측)']
-  region           region_code   [not null, note: '광역권 매핑. 지역 탭 기준']
-  join_status      join_status   [not null, note: '제품 조인 성립 여부 2-state']
-  liquor_status    liquor_status [not null, note: '파생값: UNJOINED→NA, 조인제품 주종태그≥1→TAGGED, else UNTAGGED']
-  reservation_visit visit_state  [not null, note: '3-state. raw null→UNKNOWN. null 52% 근거. boolean 금지']
-  always_visit     visit_state   [not null, note: '3-state. raw null→UNKNOWN. null 15% 근거']
-  view_count_snapshot int        [null, note: '조회수 정렬용 스냅샷. 기본정렬 아님. 재적재 시 변동']
-  image_url        varchar      [null, note: 'nullable 격리 — 이미지 소스 확정과 무관하게 개발 진행 가능']
-  created_at       timestamp     [not null]
-  updated_at       timestamp     [not null]
+  brewery_id              varchar       [pk, note: 'BRW-xxx 자연키 PK(원장). 서러게이트 없음·불변·append-only']
+  business_name           varchar       [not null, note: '상호명(골든 원문 NFC). ★UNIQUE 금지(개명 대비)·인덱스만']
+  norm                    varchar       [not null, note: '원장 norm(정규화명). 조인 매칭키 재현용']
+  address                 varchar       [not null, note: '골든 주소 원문(무손실, 골든 null 0건)']
+  homepage_url            varchar       [null, note: '골든 홈페이지(null 1건)']
+  view_count              bigint        [not null, note: '골든 조회수(원본 number). 기본정렬 키 금지']
+  reservation_visit_state visit_state   [not null, note: '3-state. raw null→UNKNOWN(골든 null 31/59)']
+  always_visit_state      visit_state   [not null, note: '3-state. raw null→UNKNOWN(골든 null 9/59)']
+  sido                    varchar       [null, note: '★3c-1 미계산. 주소 파싱 결과 자리(후속 UPDATE)']
+  region                  varchar       [null, note: '★3c-1 미계산. 광역권 매핑 자리(후속 UPDATE)']
+  join_status             join_status   [not null, default: 'UNJOINED', note: '★3c-1 초기값. 3c-2 조인이 UPDATE']
+  liquor_status           liquor_status [not null, default: 'NA', note: '★3c-1 초기값. 3d 주종롤업이 UPDATE']
+  image_url               varchar       [null, note: '소스 미확정(C-10) 격리 자리']
+  created_at              timestamp     [not null]
+  updated_at              timestamp     [not null]
 
   indexes {
-    normalized_name
-    (region)
-    (join_status, liquor_status)
+    business_name
+    norm
   }
 }
 ```
@@ -283,29 +322,39 @@ Table liquor_type {
 
 시드: `(TAKJU,탁주),(YAKJU,약주),(CHEONGJU,청주),(JEUNGRYU,증류주),(GWASILJU,과실주)`.
 
-### 3.3 조인(다대다) 층
+### 3.3 조인 층
 
-#### `brewery_product` — 양조장↔제품 조인 매핑 `[혼합: AUTO링크 / MANUAL재매핑 보존]`
+#### `product_brewery_link` — product→brewery 조인 결과 `[혼합: AUTO링크 / MANUAL override 최종값]` `[갱신 2026-07-30, 3c-2]`
+
+> 초안의 범용 `brewery_product`(product_id FK·복합PK·match_source 2-state)는 **아직 없는 `product` 코어
+> dimension**(product_id 채번·alcohol_pct/volume_ml 파싱)을 전제로 한 설계였다. 3c-2는 그 전 단계로,
+> raw product 1215건 중 **brewery 59에 실제 연결되는 행만** 물질화한다 — `product` dimension은 미착수(후속).
+> 진실원천은 `src/main/resources/schema.sql`.
 
 런타임 조인 금지 원칙 → 조인 결과를 배치로 이 테이블에 물질화. **참조키는 brewery_id(이름 아님)**.
+순서는 MANUAL wins: `OVERRIDE_NAME`/`OVERRIDE_ROW`가 `AUTO` 결과를 덮어쓴 뒤 최종값만 담는다(중간값 미보존).
 
 ```dbml
-Table brewery_product {
-  product_id       varchar    [not null, note: 'FK product']
-  brewery_id       varchar    [not null, note: 'FK brewery. 참조키=brewery_id(이름 금지)']
-  match_source     tag_source [not null, note: 'AUTO(정규화매칭) / MANUAL(수기 재매핑). MANUAL wins']
-  matched_raw_name varchar    [null, note: '어느 raw 양조장명이 매칭됐는지(1:N 매칭 감사)']
-  created_at       timestamp  [not null]
-  updated_at       timestamp  [not null]
+Table product_brewery_link {
+  id               bigint       [pk, note: 'surrogate(의미 없음)']
+  source_row_ref   int          [not null, unique, note: '원본 product raw 추적 참조(source_row_index, 전역 0-based)']
+  product_name     varchar      [not null, note: '제품명 원문']
+  brewery_name_raw varchar      [null, note: '원본 양조장 필드 원문. null 가능(ROW_PIN 대상)']
+  product_norm     varchar      [null, note: 'brewery_name_raw 정규화 결과 저장(3d 재계산 방지). raw null이면 null']
+  brewery_id       varchar      [null, note: 'FK brewery. ★nullable(미래 1215 전체 확장·UNMATCHED 대비). 이번 적재분은 전부 non-null']
+  join_source      join_source  [not null, note: 'AUTO / OVERRIDE_NAME / OVERRIDE_ROW / UNMATCHED(정의만, 3c-2 미적재)']
+  created_at       timestamp    [not null]
 
   indexes {
-    (product_id, brewery_id) [pk]
+    source_row_ref [unique]
     brewery_id
   }
 }
 ```
 
-> 카디널리티는 사실상 product→brewery 1:N이나, ①1:N 매칭 감사 ②수기 재매핑을 brewery_id 기준으로 안정 보관하기 위해 **링크 테이블로 분리**(재적재에도 brewery_id 매칭으로 보존).
+> **3c-2 실측 결과**: AUTO 56 + override 개선 2(`OVERRIDE_NAME` 양촌와이너리 BRW-033·`OVERRIDE_ROW`+`OVERRIDE_NAME`
+> 조옥화 BRW-003) = brewery 커버리지 **58/59**. UNJOINED는 밀과노닐다(BRW-018) 단독. AUTO↔override 충돌 0건.
+> UNMATCHED(brewery 미연결 product raw)는 이번엔 적재하지 않음 — raw층(`product_raw`)에 이미 무손실 보존.
 
 #### `product_liquor_type` — 제품↔주종 다중 태깅 `[혼합]`
 
@@ -350,32 +399,32 @@ Table brewery_liquor_type {
 
 #### `manual_override` — 수기 보정 원장 `[MANUAL보존·불변원장]`
 
-**참조키 brewery_id/product_id(이름 아님). MANUAL always wins over AUTO. 재적재 시 id 매칭으로 재적용.**
+> **[갱신 2026-07-30]** 초안의 범용 `(target_type/field/value)` 스키마를 실제 3c-1 시드 스키마로 교체.
+> 제품→brewery 수기 보정을 폴리모픽(NAME_MAP/ROW_PIN)으로 확정. 시드 = `src/main/resources/manual_override_seed.json`
+> (assignment §결정4 확정 9행, 재판정·증감 없음). 참조키 = brewery_id(이름 아님).
 
 ```dbml
 Table manual_override {
-  override_id   bigint          [pk, note: 'surrogate. 원장 append-only']
-  target_type   varchar         [not null, note: 'BREWERY/PRODUCT/BREWERY_PRODUCT/PRODUCT_LIQUOR 중. 어느 테이블 대상']
-  brewery_id    varchar         [null, note: 'FK brewery. brewery계열 override']
-  product_id    varchar         [null, note: 'FK product. product계열 override']
-  liquor_type_code liquor_type_code [null, note: '주종 태그 override 시']
-  field         varchar         [not null, note: '보정 대상 필드명(예: liquor_status, reservation_visit, join_mapping)']
-  value         varchar         [not null, note: '보정값(문자열 표준화)']
-  source        override_source [not null, default: 'MANUAL']
-  reason        varchar         [null, note: '보정 근거(감사)']
-  overridden_by varchar         [null, note: '검수 담당']
-  overridden_at timestamp       [not null]
-  created_at    timestamp       [not null]
-  updated_at    timestamp       [not null]
+  id              bigint          [pk, note: 'surrogate. append-only']
+  override_type   override_type   [not null, note: 'NAME_MAP=양조장명 norm 매칭 / ROW_PIN=제품명으로 행 고정(양조장 필드 null)']
+  match_key       varchar         [not null, note: 'BREWERY_NORM=양조장명 norm / PRODUCT_NAME=제품명']
+  match_key_kind  match_key_kind  [not null, note: 'BREWERY_NORM / PRODUCT_NAME']
+  brewery_id      varchar         [not null, note: 'FK brewery. 참조키=brewery_id(이름 금지)']
+  reason          override_reason [not null, note: 'ADDR_EXACT / ADDR_STRONG / MANUAL_DOMAIN']
+  recheck_flag    bool            [not null, note: '재점검 필요(조옥화 25/45도 2행 true)']
+  source_raw_name varchar         [not null, note: '원본 product raw명(추적용)']
+  created_at      timestamp       [not null]
 
   indexes {
+    (match_key_kind, match_key) [unique, note: '멱등 재적재 방어']
     brewery_id
-    (target_type, field)
   }
 }
 ```
 
-> **병합 규칙**: 재적재 시 AUTO 파이프라인이 `brewery/brewery_product/product_liquor_type/brewery_liquor_type`를 재생성 → 그 위에 `manual_override`를 **brewery_id(또는 product_id) 매칭으로 재적용**(MANUAL wins). override는 삭제되지 않는 원장.
+> **확정 9행 분해**: NAME_MAP 7(양촌감와이너리·양촌감→BRW-033, 민속주안동소주→BRW-003, 제이엘→BRW-037,
+> 솔송주(명가원)→BRW-025, 갈기산농업회사→BRW-001, 태인→BRW-053), ROW_PIN 2(조옥화 안동소주 25/45도→BRW-003,
+> recheck=true). 6개 BRW 전부 brewery에 실재(FK 유효). ★이번(3c-1)은 원장 "적재"까지 — 실제 조인 적용은 3c-2.
 
 ---
 

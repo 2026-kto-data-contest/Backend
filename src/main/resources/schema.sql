@@ -42,3 +42,72 @@ CREATE TABLE IF NOT EXISTS product_raw (
     homepage_url          TEXT,                           -- 홈페이지주소
     CONSTRAINT uq_product_raw_snapshot_row UNIQUE (snapshot_date, source_row_index)
 );
+
+-- ────────────────────────────────────────────────────────────────────────────
+-- 파생층 (3c-1). 채번원장(brewery_id_ledger.json) + 골든 raw 속성 → brewery 마스터,
+-- assignment 확정 9행 → manual_override 시드. schema.sql이 스키마 진실원천(JPA는 validate만).
+-- ★컬럼 생성 ≠ 값 확정: sido/region(주소파싱)·join_status(조인)·liquor_status(주종롤업)은
+--   이번에 계산하지 않는다. 컬럼만 만들고 초기값(UNJOINED/NA)·nullable로 두며 후속 단계가 UPDATE한다.
+
+CREATE TABLE IF NOT EXISTS brewery (
+    brewery_id              TEXT      PRIMARY KEY,          -- BRW-xxx 자연키 PK(원장). 서러게이트 없음·불변·append-only
+    business_name           TEXT      NOT NULL,             -- 상호명(골든 원문 NFC). ★UNIQUE 금지(개명 대비) — 인덱스만
+    norm                    TEXT      NOT NULL,             -- 원장 norm(정규화명). 조인 매칭키 재현용
+    address                 TEXT      NOT NULL,             -- 골든 주소 원문(무손실, 골든 null 0건)
+    homepage_url            TEXT,                           -- 골든 홈페이지(null 1건)
+    view_count              BIGINT    NOT NULL,             -- 골든 조회수(원본 number)
+    reservation_visit_state TEXT      NOT NULL,             -- 3-state Y/N/UNKNOWN (예약방문, raw null→UNKNOWN)
+    always_visit_state      TEXT      NOT NULL,             -- 3-state Y/N/UNKNOWN (상시방문, raw null→UNKNOWN)
+    -- 계산 파생 자리 (★이번 미계산, 후속 UPDATE)
+    sido                    TEXT,                           -- 주소 파싱 결과 자리(다음 단계)
+    region                  TEXT,                           -- 광역권 매핑 자리(다음 단계)
+    join_status             TEXT      NOT NULL DEFAULT 'UNJOINED',  -- 3c-2 조인이 UPDATE
+    liquor_status           TEXT      NOT NULL DEFAULT 'NA',        -- 3d 주종롤업이 UPDATE
+    image_url               TEXT,                           -- 소스 미확정(C-10) 격리 자리
+    created_at              TIMESTAMP NOT NULL,
+    updated_at              TIMESTAMP NOT NULL,
+    CONSTRAINT ck_brewery_reservation_visit CHECK (reservation_visit_state IN ('Y', 'N', 'UNKNOWN')),
+    CONSTRAINT ck_brewery_always_visit      CHECK (always_visit_state IN ('Y', 'N', 'UNKNOWN')),
+    CONSTRAINT ck_brewery_join_status       CHECK (join_status IN ('JOINED', 'UNJOINED')),
+    CONSTRAINT ck_brewery_liquor_status     CHECK (liquor_status IN ('TAGGED', 'UNTAGGED', 'NA'))
+);
+CREATE INDEX IF NOT EXISTS ix_brewery_business_name ON brewery (business_name);
+CREATE INDEX IF NOT EXISTS ix_brewery_norm ON brewery (norm);
+
+CREATE TABLE IF NOT EXISTS manual_override (
+    id              BIGSERIAL PRIMARY KEY,                  -- 서러게이트 PK(의미 없음)
+    override_type   TEXT      NOT NULL,                     -- NAME_MAP / ROW_PIN
+    match_key       TEXT      NOT NULL,                     -- BREWERY_NORM=양조장명 norm / PRODUCT_NAME=제품명
+    match_key_kind  TEXT      NOT NULL,                     -- BREWERY_NORM / PRODUCT_NAME
+    brewery_id      TEXT      NOT NULL,                     -- 참조키(이름 아님) → brewery.brewery_id
+    reason          TEXT      NOT NULL,                     -- ADDR_EXACT / ADDR_STRONG / MANUAL_DOMAIN
+    recheck_flag    BOOLEAN   NOT NULL,                     -- 재점검 필요(조옥화 2행 true)
+    source_raw_name TEXT      NOT NULL,                     -- 원본 product raw명(추적)
+    created_at      TIMESTAMP NOT NULL,
+    CONSTRAINT fk_manual_override_brewery FOREIGN KEY (brewery_id) REFERENCES brewery (brewery_id),
+    CONSTRAINT uq_manual_override_match UNIQUE (match_key_kind, match_key),
+    CONSTRAINT ck_manual_override_type   CHECK (override_type IN ('NAME_MAP', 'ROW_PIN')),
+    CONSTRAINT ck_manual_override_kind   CHECK (match_key_kind IN ('BREWERY_NORM', 'PRODUCT_NAME')),
+    CONSTRAINT ck_manual_override_reason CHECK (reason IN ('ADDR_EXACT', 'ADDR_STRONG', 'MANUAL_DOMAIN'))
+);
+CREATE INDEX IF NOT EXISTS ix_manual_override_brewery ON manual_override (brewery_id);
+
+-- ────────────────────────────────────────────────────────────────────────────
+-- 파생층 (3c-2). product raw 1215건 중 brewery 59에 실제 연결되는 행(AUTO+override)만 적재.
+-- brewery_id는 ★nullable — 미래 1215 전체 확장(UNMATCHED 포함) 대비 스키마이며, 이번 적재분은 전부 non-null.
+-- ★주소 파싱·주종 롤업은 이 테이블의 범위 밖(3d).
+
+CREATE TABLE IF NOT EXISTS product_brewery_link (
+    id                BIGSERIAL PRIMARY KEY,             -- 서러게이트 PK(의미 없음)
+    source_row_ref    INT       NOT NULL,                -- 원본 product raw 추적 참조(source_row_index, 전역 0-based)
+    product_name      TEXT      NOT NULL,                -- 제품명(원문)
+    brewery_name_raw  TEXT,                               -- 원본 '양조장' 필드(원문, null 가능 — ROW_PIN 대상)
+    product_norm      TEXT,                               -- brewery_name_raw 정규화 결과(3d 재계산 방지 저장값)
+    brewery_id        TEXT,                               -- 연결 확정 BRW → brewery.brewery_id. ★nullable(미래 UNMATCHED 확장 대비)
+    join_source       TEXT      NOT NULL,                -- AUTO / OVERRIDE_NAME / OVERRIDE_ROW / UNMATCHED(정의만, 이번 미적재)
+    created_at        TIMESTAMP NOT NULL,
+    CONSTRAINT fk_product_brewery_link_brewery FOREIGN KEY (brewery_id) REFERENCES brewery (brewery_id),
+    CONSTRAINT uq_product_brewery_link_source_row UNIQUE (source_row_ref),
+    CONSTRAINT ck_product_brewery_link_join_source CHECK (join_source IN ('AUTO', 'OVERRIDE_NAME', 'OVERRIDE_ROW', 'UNMATCHED'))
+);
+CREATE INDEX IF NOT EXISTS ix_product_brewery_link_brewery ON product_brewery_link (brewery_id);
