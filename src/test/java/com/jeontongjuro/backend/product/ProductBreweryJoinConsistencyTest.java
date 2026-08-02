@@ -35,12 +35,12 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.TestPropertySource;
 
 /**
- * 조인 커버리지 verify(3c-2). brewery 59 + override 9 선적재 후 product 1215 전체를 조인해:
+ * 조인 커버리지 verify(3c-2). brewery 59 + override 14 선적재 후 product 1215 전체를 조인해:
  *   (1) AUTO 커버리지 56 (골든 56/59와 대조 — 회귀 감지)
- *   (2) MANUAL 개선 2(양촌와이너리·조옥화)로 합계 58 확정
- *   (3) UNJOINED는 정확히 밀과노닐다(BRW-018) 단독
+ *   (2) MANUAL 개선 3(양촌와이너리·조옥화·밀과노닐다)로 합계 59 확정
+ *   (3) UNJOINED 0건(밀과노닐다 BRW-018 조인 복구)
  *   (4) liquor_status 2축 정합(JOINED→UNTAGGED, UNJOINED→NA)
- *   (5) override 9행 각각 실제 연결 실측(ROW_PIN 2행 조옥화 포함 — 골든 원문 교정 후 재발 방지 가드)
+ *   (5) override 14행 각각 실제 연결 실측(ROW_PIN 조옥화 2·밀과노닐다 4 포함 — 골든 원문 교정 후 재발 방지 가드)
  *   (6) AUTO↔override 충돌 0건
  *   (7) product_norm ↔ 현재 normalizer 재계산 일치(코드 드리프트 감시)
  *   (8) 멱등
@@ -55,7 +55,7 @@ import org.springframework.test.context.TestPropertySource;
 class ProductBreweryJoinConsistencyTest {
 
     private static final String MILGWA_NONILDA_ID = "BRW-018";
-    private static final Set<String> MANUAL_IMPROVED_BREWERIES = Set.of("BRW-033", "BRW-003");
+    private static final Set<String> MANUAL_IMPROVED_BREWERIES = Set.of("BRW-033", "BRW-003", "BRW-018");
 
     @Autowired
     private BreweryMasterLoadService breweryLoadService;
@@ -97,8 +97,8 @@ class ProductBreweryJoinConsistencyTest {
     }
 
     @Test
-    @DisplayName("MANUAL 개선: override로 새로 연결되는 brewery == {양촌와이너리(BRW-033), 조옥화(BRW-003)}")
-    void overrideAddsExactlyTwoBreweriesBeyondAuto() {
+    @DisplayName("MANUAL 개선: override로 새로 연결되는 brewery == {양촌와이너리(BRW-033), 조옥화(BRW-003), 밀과노닐다(BRW-018)}")
+    void overrideAddsBreweriesBeyondAuto() {
         Set<String> autoBreweries = new HashSet<>();
         for (ProductBreweryLink link : linkRepository.findByJoinSource(JoinSource.AUTO)) {
             autoBreweries.add(link.getBreweryId());
@@ -113,9 +113,9 @@ class ProductBreweryJoinConsistencyTest {
     }
 
     @Test
-    @DisplayName("합계 커버리지: AUTO∪MANUAL distinct brewery == 58/59")
-    void totalLinkedBreweryCoverageIs58() {
-        assertThat(joinService.linkedBreweryIds()).hasSize(58);
+    @DisplayName("합계 커버리지: AUTO∪MANUAL distinct brewery == 59/59")
+    void totalLinkedBreweryCoverageIs59() {
+        assertThat(joinService.linkedBreweryIds()).hasSize(59);
     }
 
     @Test
@@ -125,10 +125,10 @@ class ProductBreweryJoinConsistencyTest {
     }
 
     @Test
-    @DisplayName("override 9행 실측: 전 행이 실제로 1개 이상 product를 연결(0건 침묵 금지)")
+    @DisplayName("override 14행 실측: 전 행이 실제로 1개 이상 product를 연결(0건 침묵 금지)")
     void everyOverrideActuallyLinksAtLeastOneProduct() {
         List<ManualOverride> all = overrideRepository.findAll();
-        assertThat(all).hasSize(9);
+        assertThat(all).hasSize(14);
         for (ManualOverride o : all) {
             int hits = joinResult.overrideHitCounts().getOrDefault(o.getId(), 0);
             assertThat(hits).as("override id=%d (%s, match_key=%s) 실제 연결 건수", o.getId(), o.getOverrideType(), o.getMatchKey())
@@ -137,41 +137,60 @@ class ProductBreweryJoinConsistencyTest {
     }
 
     @Test
-    @DisplayName("ROW_PIN 재발 방지 가드: 조옥화 2행(match_key=골든 원문 교정본)이 정확히 2건 BRW-003에 연결")
-    void rowPinOverridesLinkExactlyTwoJoOkHwaProducts() {
-        assertThat(joinResult.overrideRowLinked()).isEqualTo(2);
+    @DisplayName("ROW_PIN 재발 방지 가드: 총 6건 = 조옥화 2(BRW-003) + 밀과노닐다 4(BRW-018), 브루어리별 분리 검증")
+    void rowPinOverridesLinkJoOkHwaAndMilgwaNonildaProducts() {
+        assertThat(joinResult.overrideRowLinked()).isEqualTo(6);
+
         List<ManualOverride> rowPins = overrideRepository.findAll().stream()
                 .filter(o -> o.getOverrideType() == OverrideType.ROW_PIN)
                 .toList();
-        assertThat(rowPins).hasSize(2);
+        assertThat(rowPins).hasSize(6);
+        // 전체 단정(allSatisfy BRW-003) 금지 — 각 ROW_PIN이 정확히 1건 연결됨은 공통, brewery는 부분집합으로 분리 검증.
         for (ManualOverride rowPin : rowPins) {
             int hits = joinResult.overrideHitCounts().getOrDefault(rowPin.getId(), 0);
             assertThat(hits).as("ROW_PIN match_key=%s 실제 연결 건수(골든 원문 완전일치 필요)", rowPin.getMatchKey())
                     .isEqualTo(1);
-            assertThat(rowPin.getBreweryId()).isEqualTo("BRW-003");
         }
+
         List<ProductBreweryLink> rowPinLinks = linkRepository.findByJoinSource(JoinSource.OVERRIDE_ROW);
-        assertThat(rowPinLinks).hasSize(2);
-        assertThat(rowPinLinks).allSatisfy(link -> assertThat(link.getBreweryId()).isEqualTo("BRW-003"));
+        assertThat(rowPinLinks).hasSize(6);
+
+        // ── 조옥화(BRW-003) 재발 방지 가드: 정확히 2건, 골든 원문 제품명 ──
+        List<ManualOverride> joOkHwaRowPins = rowPins.stream()
+                .filter(o -> o.getBreweryId().equals("BRW-003")).toList();
+        assertThat(joOkHwaRowPins).hasSize(2);
+        assertThat(joOkHwaRowPins.stream().map(ManualOverride::getMatchKey).sorted().toList())
+                .containsExactly("국가유산·명인 조옥화 안동소주 25도", "국가유산·명인 조옥화 안동소주 45도");
+        assertThat(rowPinLinks.stream().filter(l -> l.getBreweryId().equals("BRW-003")).count()).isEqualTo(2);
+
+        // ── 밀과노닐다(BRW-018): 정확히 4건(진맥 계열) ──
+        List<ManualOverride> milgwaRowPins = rowPins.stream()
+                .filter(o -> o.getBreweryId().equals("BRW-018")).toList();
+        assertThat(milgwaRowPins).hasSize(4);
+        assertThat(milgwaRowPins.stream().map(ManualOverride::getMatchKey).sorted().toList())
+                .containsExactly("진맥소주", "진맥소주 시인의바위", "진맥소주 오크40%", "진맥애플");
+        assertThat(rowPinLinks.stream().filter(l -> l.getBreweryId().equals("BRW-018")).count()).isEqualTo(4);
     }
 
     @Test
-    @DisplayName("brewery UPDATE 후: JOINED 58 · UNJOINED 정확히 밀과노닐다(BRW-018) 단독")
-    void breweryStatusUpdateYields58JoinedAndSoleUnjoined() {
+    @DisplayName("brewery UPDATE 후: JOINED 59 전건, UNJOINED 없음(밀과노닐다 BRW-018 조인 복구 확인)")
+    void breweryStatusUpdateYields59JoinedAndNoUnjoined() {
         statusUpdateService.applyJoinResult(joinService.linkedBreweryIds());
 
         List<Brewery> all = breweryRepository.findAll();
         List<Brewery> joined = all.stream().filter(b -> b.getJoinStatus() == JoinStatus.JOINED).toList();
         List<Brewery> unjoined = all.stream().filter(b -> b.getJoinStatus() == JoinStatus.UNJOINED).toList();
 
-        assertThat(joined).hasSize(58);
-        assertThat(unjoined).hasSize(1);
-        assertThat(unjoined.get(0).getBreweryId()).isEqualTo(MILGWA_NONILDA_ID);
-        assertThat(unjoined.get(0).getBusinessName()).isEqualTo("밀과노닐다");
+        assertThat(joined).hasSize(59);
+        assertThat(unjoined).isEmpty();
+        // 조인 복구 확인: 이전 유일 UNJOINED였던 밀과노닐다(BRW-018)가 이제 JOINED
+        assertThat(all.stream().filter(b -> b.getBreweryId().equals(MILGWA_NONILDA_ID)).findFirst())
+                .get()
+                .satisfies(b -> assertThat(b.getJoinStatus()).isEqualTo(JoinStatus.JOINED));
     }
 
     @Test
-    @DisplayName("liquor_status 2축 정합: JOINED 58 전부 UNTAGGED, UNJOINED 1 NA (JOINED인데 NA 금지)")
+    @DisplayName("liquor_status 2축 정합: JOINED 59 전부 UNTAGGED, UNJOINED 0 (JOINED인데 NA 금지)")
     void liquorStatusTwoAxisConsistency() {
         statusUpdateService.applyJoinResult(joinService.linkedBreweryIds());
 

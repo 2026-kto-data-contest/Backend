@@ -86,22 +86,22 @@ class ProcessOrchestratorIntegrationTest {
         assertThat(report.master().loaded()).isEqualTo(59);
         assertThat(report.master().skippedExisting()).isZero();
 
-        // override 시드 9 신규
-        assertThat(report.seed().seedRows()).isEqualTo(9);
-        assertThat(report.seed().loaded()).isEqualTo(9);
+        // override 시드 14 신규
+        assertThat(report.seed().seedRows()).isEqualTo(14);
+        assertThat(report.seed().loaded()).isEqualTo(14);
         assertThat(report.seed().skippedExisting()).isZero();
 
-        // 조인 360 = AUTO 346 · OVERRIDE_NAME 12 · OVERRIDE_ROW 2
-        assertThat(report.join().linked()).isEqualTo(360);
+        // 조인 366 = AUTO 346 · OVERRIDE_NAME 14 · OVERRIDE_ROW 6
+        assertThat(report.join().linked()).isEqualTo(366);
         assertThat(report.join().autoLinked()).isEqualTo(346);
-        assertThat(report.join().overrideNameLinked()).isEqualTo(12);
-        assertThat(report.join().overrideRowLinked()).isEqualTo(2);
+        assertThat(report.join().overrideNameLinked()).isEqualTo(14);
+        assertThat(report.join().overrideRowLinked()).isEqualTo(6);
         assertThat(report.join().skippedExisting()).isZero();
         assertThat(report.join().autoOverrideConflicts()).isZero();
 
-        // join_status: 후보 58(distinct 연결 brewery) 전부 JOINED로 승격
-        assertThat(report.status().candidateBreweries()).isEqualTo(58);
-        assertThat(report.status().updatedToJoined()).isEqualTo(58);
+        // join_status: 후보 59(distinct 연결 brewery) 전부 JOINED로 승격
+        assertThat(report.status().candidateBreweries()).isEqualTo(59);
+        assertThat(report.status().updatedToJoined()).isEqualTo(59);
         assertThat(report.status().alreadyJoined()).isZero();
 
         // region: 전 59행 채움
@@ -109,16 +109,14 @@ class ProcessOrchestratorIntegrationTest {
         assertThat(report.region().changed()).isEqualTo(59);
         assertThat(report.region().unchanged()).isZero();
 
-        // override 미적중 0(9행 전부 ≥1 적중)
+        // override 미적중 0(14행 전부 ≥1 적중)
         assertThat(report.staleOverrides()).isEmpty();
 
-        // DB 최종 상태: JOINED 58 · UNJOINED 1(밀과노닐다 BRW-018)
+        // DB 최종 상태: JOINED 59 전건 · UNJOINED 0(밀과노닐다 BRW-018 조인 복구 확인)
         var all = breweryRepository.findAll();
-        assertThat(all.stream().filter(b -> b.getJoinStatus() == JoinStatus.JOINED).count()).isEqualTo(58);
+        assertThat(all.stream().filter(b -> b.getJoinStatus() == JoinStatus.JOINED).count()).isEqualTo(59);
         var unjoined = all.stream().filter(b -> b.getJoinStatus() == JoinStatus.UNJOINED).toList();
-        assertThat(unjoined).hasSize(1);
-        assertThat(unjoined.get(0).getBreweryId()).isEqualTo("BRW-018");
-        assertThat(unjoined.get(0).getBusinessName()).isEqualTo("밀과노닐다");
+        assertThat(unjoined).isEmpty();
 
         // region 8칩 분포 == 골든
         Map<String, Integer> chip = new TreeMap<>();
@@ -140,15 +138,15 @@ class ProcessOrchestratorIntegrationTest {
         assertThat(again.master().loaded()).isZero();
         assertThat(again.master().skippedExisting()).isEqualTo(59);
         assertThat(again.seed().loaded()).isZero();
-        assertThat(again.seed().skippedExisting()).isEqualTo(9);
+        assertThat(again.seed().skippedExisting()).isEqualTo(14);
 
         // 조인: 신규 link 0, 기존 전량 skip(★재동기화가 아니라 멱등 skip)
         assertThat(again.join().linked()).isZero();
-        assertThat(again.join().skippedExisting()).isEqualTo(360);
+        assertThat(again.join().skippedExisting()).isEqualTo(366);
 
-        // 갱신 단계: 상태 이미 확정 → 신규 승격 0, 이미 JOINED 58 / region 변화 0
+        // 갱신 단계: 상태 이미 확정 → 신규 승격 0, 이미 JOINED 59 / region 변화 0
         assertThat(again.status().updatedToJoined()).isZero();
-        assertThat(again.status().alreadyJoined()).isEqualTo(58);
+        assertThat(again.status().alreadyJoined()).isEqualTo(59);
         assertThat(again.region().changed()).isZero();
         assertThat(again.region().unchanged()).isEqualTo(59);
 
@@ -157,7 +155,7 @@ class ProcessOrchestratorIntegrationTest {
         assertThat(linkRepository.count()).isEqualTo(linkBefore);
         assertThat(overrideRepository.count()).isEqualTo(overrideBefore);
         assertThat(breweryRepository.findAll().stream()
-                .filter(b -> b.getJoinStatus() == JoinStatus.JOINED).count()).isEqualTo(58);
+                .filter(b -> b.getJoinStatus() == JoinStatus.JOINED).count()).isEqualTo(59);
     }
 
     @Test
