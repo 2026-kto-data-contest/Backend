@@ -1,0 +1,45 @@
+name: 작업 이슈
+description: 기능, 버그, 리팩터링, 문서, 테스트, 설정 작업을 등록합니다.
+title: "[TYPE]: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        이슈 제목의 `TYPE`을 작업 유형에 맞게 변경해 주세요.
+
+        - `FEAT`: 새로운 기능 추가
+        - `FIX`: 버그 수정
+        - `REFACTOR`: 기능 변경 없는 코드 개선
+        - `DOCS`: 문서 작성 및 수정
+        - `TEST`: 테스트 코드 작성 및 수정
+        - `CHORE`: 설정, 패키지, 빌드 관련 작업
+
+  - type: textarea
+    id: description
+    attributes:
+      label: 작업 내용
+      description: 진행할 작업과 목적을 간단하게 작성해 주세요.
+      placeholder: |
+        - 작업 내용을 작성해 주세요.
+    validations:
+      required: true
+
+  - type: textarea
+    id: tasks
+    attributes:
+      label: 세부 작업
+      description: 작업을 확인 가능한 단위로 나누어 작성해 주세요.
+      placeholder: |
+        - [ ] 세부 작업을 작성해 주세요.
+        - [ ] 세부 작업을 작성해 주세요.
+    validations:
+      required: true
+
+  - type: textarea
+    id: notes
+    attributes:
+      label: 참고 사항
+      description: 관련 문서, 링크 또는 논의할 내용이 있다면 작성해 주세요.
+      placeholder: 참고할 내용이 없다면 비워 두어도 됩니다.
+    validations:
+      required: false
