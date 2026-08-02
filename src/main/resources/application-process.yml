@@ -1,0 +1,4 @@
+# process 프로파일 전용 — 순수 배치라 웹서버가 필요 없다. 배치 완료 후 앱이 자연 종료되도록 웹서버를 안 띄운다.
+spring:
+  main:
+    web-application-type: none
