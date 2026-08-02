@@ -3,7 +3,7 @@
     "purpose": "manual_override 시드 — 제품→brewery 수기 보정 원장. 자동 정규화 매칭으로 해소되지 않는 9행을 brewery_id(BRW)로 고정.",
     "source": "docs/audit/20260730_brewery_id_assignment.md §결정4 (override 확정 9행). 재판정·증감 금지 — 그대로 옮김.",
     "created_at": "2026-07-30",
-    "row_count": 9,
+    "row_count": 14,
     "schema": {
       "override_type": "NAME_MAP=양조장명 norm으로 매칭 / ROW_PIN=제품명으로 특정 행 고정(원본 양조장 필드 null)",
       "match_key": "매칭 대상 키. BREWERY_NORM이면 product 양조장명의 norm, PRODUCT_NAME이면 제품명",
@@ -13,7 +13,7 @@
       "recheck_flag": "재점검 필요 여부(조옥화 2행 true)",
       "source_raw_name": "원본 product raw명(추적용)"
     },
-    "type_split": "NAME_MAP 7 (#1,2,3,6,7,8,9) + ROW_PIN 2 (#4,5 조옥화 25/45도)",
+    "type_split": "NAME_MAP 8 (#1,2,3,6,7,8,9,10) + ROW_PIN 6 (#4,5 조옥화 25/45도 + #11,12,13,14 밀과노닐다 진맥소주 4행)",
     "corrections": "2026-07-30(3c-2): seq 4·5 match_key를 요약 문서(join_decision_ledger·assignment) 축약 표기 \"조옥화 안동소주 25도/45도\"에서 골든 원문(src/test/resources/golden/20260728_product_raw.json 실제 제품명, 브랜드 접두어 포함) \"국가유산·명인 조옥화 안동소주 25도/45도\"로 교정. brewery_id·reason·recheck_flag·override_type 판정은 불변(원문 복원, 재판정 아님). 상세: docs/audit/20260730_3c2_coverage.md"
   },
   "entries": [
@@ -106,6 +106,56 @@
       "reason": "ADDR_EXACT",
       "recheck_flag": false,
       "source_raw_name": "태인양조장"
+    },
+    {
+      "seq": 10,
+      "override_type": "NAME_MAP",
+      "match_key": "맹개술",
+      "match_key_kind": "BREWERY_NORM",
+      "brewery_id": "BRW-018",
+      "reason": "MANUAL_DOMAIN",
+      "recheck_flag": true,
+      "source_raw_name": "맹개술도가"
+    },
+    {
+      "seq": 11,
+      "override_type": "ROW_PIN",
+      "match_key": "진맥애플",
+      "match_key_kind": "PRODUCT_NAME",
+      "brewery_id": "BRW-018",
+      "reason": "MANUAL_DOMAIN",
+      "recheck_flag": true,
+      "source_raw_name": "진맥애플"
+    },
+    {
+      "seq": 12,
+      "override_type": "ROW_PIN",
+      "match_key": "진맥소주 오크40%",
+      "match_key_kind": "PRODUCT_NAME",
+      "brewery_id": "BRW-018",
+      "reason": "MANUAL_DOMAIN",
+      "recheck_flag": true,
+      "source_raw_name": "진맥소주 오크40%"
+    },
+    {
+      "seq": 13,
+      "override_type": "ROW_PIN",
+      "match_key": "진맥소주 시인의바위",
+      "match_key_kind": "PRODUCT_NAME",
+      "brewery_id": "BRW-018",
+      "reason": "MANUAL_DOMAIN",
+      "recheck_flag": true,
+      "source_raw_name": "진맥소주 시인의바위"
+    },
+    {
+      "seq": 14,
+      "override_type": "ROW_PIN",
+      "match_key": "진맥소주",
+      "match_key_kind": "PRODUCT_NAME",
+      "brewery_id": "BRW-018",
+      "reason": "MANUAL_DOMAIN",
+      "recheck_flag": true,
+      "source_raw_name": "진맥소주"
     }
   ]
 }

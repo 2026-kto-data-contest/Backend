@@ -24,12 +24,12 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.TestPropertySource;
 
 /**
- * 적재 정합 verify(3c-1, manual_override 시드). brewery 선적재 후 시드 9행을 적재한 뒤:
- *   (1) 9행 적재
- *   (2) 타입 분해 정확(NAME_MAP 7 · ROW_PIN 2, BREWERY_NORM 7 · PRODUCT_NAME 2)
+ * 적재 정합 verify(3c-1, manual_override 시드). brewery 선적재 후 시드 14행을 적재한 뒤:
+ *   (1) 14행 적재
+ *   (2) 타입 분해 정확(NAME_MAP 8 · ROW_PIN 6, BREWERY_NORM 8 · PRODUCT_NAME 6)
  *   (3) 전 행 brewery_id FK가 brewery에 실재
- *   (4) recheck_flag=true 정확히 2행(조옥화 25/45도, PRODUCT_NAME·MANUAL_DOMAIN)
- *   (5) 멱등(재적재 시 신규 0·스킵 9)
+ *   (4) recheck_flag=true 대상: 조옥화 2행(BRW-003) + 밀과노닐다 5행(BRW-018) 부분집합 검증
+ *   (5) 멱등(재적재 시 신규 0·스킵 14)
  *   (6) FK 미충족 시 멈춤(brewery 없이 적재 시도 → 예외)
  * ★조인·커버리지·주종 카운트는 검증하지 않는다(3c-2). 적재만.
  */
@@ -67,58 +67,76 @@ class ManualOverrideSeedLoadTest {
     }
 
     @Test
-    @DisplayName("적재 결과: 시드 9행 전부 적재(신규 9·스킵 0)")
-    void loadsAll9Rows() {
-        assertThat(firstResult.seedRows()).isEqualTo(9);
-        assertThat(firstResult.loaded()).isEqualTo(9);
+    @DisplayName("적재 결과: 시드 14행 전부 적재(신규 14·스킵 0)")
+    void loadsAll14Rows() {
+        assertThat(firstResult.seedRows()).isEqualTo(14);
+        assertThat(firstResult.loaded()).isEqualTo(14);
         assertThat(firstResult.skippedExisting()).isZero();
-        assertThat(overrideRepository.count()).isEqualTo(9);
+        assertThat(overrideRepository.count()).isEqualTo(14);
     }
 
     @Test
-    @DisplayName("타입 분해: NAME_MAP 7 · ROW_PIN 2, BREWERY_NORM 7 · PRODUCT_NAME 2")
+    @DisplayName("타입 분해: NAME_MAP 8 · ROW_PIN 6, BREWERY_NORM 8 · PRODUCT_NAME 6")
     void typeSplitIsExact() {
         List<ManualOverride> all = overrideRepository.findAll();
-        assertThat(all.stream().filter(o -> o.getOverrideType() == OverrideType.NAME_MAP).count()).isEqualTo(7);
-        assertThat(all.stream().filter(o -> o.getOverrideType() == OverrideType.ROW_PIN).count()).isEqualTo(2);
-        assertThat(all.stream().filter(o -> o.getMatchKeyKind() == MatchKeyKind.BREWERY_NORM).count()).isEqualTo(7);
-        assertThat(all.stream().filter(o -> o.getMatchKeyKind() == MatchKeyKind.PRODUCT_NAME).count()).isEqualTo(2);
+        assertThat(all.stream().filter(o -> o.getOverrideType() == OverrideType.NAME_MAP).count()).isEqualTo(8);
+        assertThat(all.stream().filter(o -> o.getOverrideType() == OverrideType.ROW_PIN).count()).isEqualTo(6);
+        assertThat(all.stream().filter(o -> o.getMatchKeyKind() == MatchKeyKind.BREWERY_NORM).count()).isEqualTo(8);
+        assertThat(all.stream().filter(o -> o.getMatchKeyKind() == MatchKeyKind.PRODUCT_NAME).count()).isEqualTo(6);
     }
 
     @Test
-    @DisplayName("FK 유효: 전 행 brewery_id가 brewery에 실재(6개 BRW)")
+    @DisplayName("FK 유효: 전 행 brewery_id가 brewery에 실재(7개 BRW)")
     void allForeignKeysResolve() {
         List<ManualOverride> all = overrideRepository.findAll();
         assertThat(all).allSatisfy(o ->
                 assertThat(breweryRepository.existsById(o.getBreweryId()))
                         .as("FK %s 실재", o.getBreweryId()).isTrue());
         assertThat(all.stream().map(ManualOverride::getBreweryId).distinct().sorted().toList())
-                .containsExactly("BRW-001", "BRW-003", "BRW-025", "BRW-033", "BRW-037", "BRW-053");
+                .containsExactly("BRW-001", "BRW-003", "BRW-018", "BRW-025", "BRW-033", "BRW-037", "BRW-053");
     }
 
     @Test
-    @DisplayName("recheck_flag: 정확히 2행 true(조옥화 25/45도, ROW_PIN·PRODUCT_NAME·MANUAL_DOMAIN)")
-    void recheckRowsAreExactlyTheTwoJoOkHwa() {
+    @DisplayName("recheck_flag: true 7행 = 조옥화 2(BRW-003) + 밀과노닐다 5(BRW-018), 브루어리별 분리 검증")
+    void recheckRowsCoverJoOkHwaAndMilgwaNonilda() {
         List<ManualOverride> recheck = overrideRepository.findAll().stream()
                 .filter(ManualOverride::isRecheckFlag).toList();
-        assertThat(recheck).hasSize(2);
-        assertThat(recheck).allSatisfy(o -> {
+        // 전체 단정(containsExactly) 금지 — 미래에 세 번째 recheck 대상이 늘어도 카운트만 바꾸면 되게 부분집합으로.
+        assertThat(recheck).hasSize(7);
+
+        // ── 조옥화(BRW-003) 재발 방지 가드: 정확히 2행, ROW_PIN·PRODUCT_NAME·MANUAL_DOMAIN, 골든 원문 제품명 ──
+        List<ManualOverride> joOkHwa = recheck.stream()
+                .filter(o -> o.getBreweryId().equals("BRW-003")).toList();
+        assertThat(joOkHwa).hasSize(2);
+        assertThat(joOkHwa).allSatisfy(o -> {
             assertThat(o.getOverrideType()).isEqualTo(OverrideType.ROW_PIN);
             assertThat(o.getMatchKeyKind()).isEqualTo(MatchKeyKind.PRODUCT_NAME);
             assertThat(o.getReason()).isEqualTo(OverrideReason.MANUAL_DOMAIN);
-            assertThat(o.getBreweryId()).isEqualTo("BRW-003");
         });
-        assertThat(recheck.stream().map(ManualOverride::getMatchKey).sorted().toList())
+        assertThat(joOkHwa.stream().map(ManualOverride::getMatchKey).sorted().toList())
                 .containsExactly("국가유산·명인 조옥화 안동소주 25도", "국가유산·명인 조옥화 안동소주 45도");
+
+        // ── 밀과노닐다(BRW-018): 정확히 5행 = NAME_MAP 1(맹개술) + ROW_PIN 4(진맥 계열) ──
+        List<ManualOverride> milgwaNonilda = recheck.stream()
+                .filter(o -> o.getBreweryId().equals("BRW-018")).toList();
+        assertThat(milgwaNonilda).hasSize(5);
+        assertThat(milgwaNonilda).allSatisfy(o ->
+                assertThat(o.getReason()).isEqualTo(OverrideReason.MANUAL_DOMAIN));
+        assertThat(milgwaNonilda.stream()
+                .filter(o -> o.getOverrideType() == OverrideType.NAME_MAP).count()).isEqualTo(1);
+        assertThat(milgwaNonilda.stream()
+                .filter(o -> o.getOverrideType() == OverrideType.ROW_PIN).count()).isEqualTo(4);
+        assertThat(milgwaNonilda.stream().map(ManualOverride::getMatchKey).sorted().toList())
+                .contains("맹개술", "진맥소주", "진맥소주 시인의바위", "진맥소주 오크40%", "진맥애플");
     }
 
     @Test
-    @DisplayName("멱등: 재적재 시 신규 0·스킵 9, 행수 불변")
+    @DisplayName("멱등: 재적재 시 신규 0·스킵 14, 행수 불변")
     void reloadIsIdempotent() {
         ManualOverrideSeedLoadService.LoadResult again = overrideLoadService.load();
         assertThat(again.loaded()).isZero();
-        assertThat(again.skippedExisting()).isEqualTo(9);
-        assertThat(overrideRepository.count()).isEqualTo(9);
+        assertThat(again.skippedExisting()).isEqualTo(14);
+        assertThat(overrideRepository.count()).isEqualTo(14);
     }
 
     @Test
