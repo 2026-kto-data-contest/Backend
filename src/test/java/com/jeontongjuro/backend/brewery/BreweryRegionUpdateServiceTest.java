@@ -53,10 +53,13 @@ class BreweryRegionUpdateServiceTest {
     @Autowired
     private ProductBreweryLinkRepository linkRepository;
     @Autowired
+    private com.jeontongjuro.backend.liquortype.ProductLiquorTypeRepository productLiquorTypeRepository;
+    @Autowired
     private ObjectMapper objectMapper;
 
     @BeforeEach
     void seedMaster() {
+        productLiquorTypeRepository.deleteAll();
         linkRepository.deleteAll();
         overrideRepository.deleteAll();
         breweryRepository.deleteAll();

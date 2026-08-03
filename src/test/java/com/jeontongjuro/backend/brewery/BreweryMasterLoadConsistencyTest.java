@@ -52,6 +52,8 @@ class BreweryMasterLoadConsistencyTest {
     @Autowired
     private ProductBreweryLinkRepository linkRepository;
     @Autowired
+    private com.jeontongjuro.backend.liquortype.ProductLiquorTypeRepository productLiquorTypeRepository;
+    @Autowired
     private ObjectMapper objectMapper;
 
     private BreweryMasterLoadService.LoadResult firstResult;
@@ -59,6 +61,7 @@ class BreweryMasterLoadConsistencyTest {
     @BeforeEach
     void loadBreweryMaster() {
         // FK 자식(product_brewery_link·override)이 brewery를 참조하므로 자식 먼저 비운 뒤 brewery 비우고 재적재
+        productLiquorTypeRepository.deleteAll();
         linkRepository.deleteAll();
         overrideRepository.deleteAll();
         breweryRepository.deleteAll();

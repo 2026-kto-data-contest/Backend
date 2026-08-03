@@ -66,10 +66,13 @@ class BreweryQueryApiTest {
     private ManualOverrideRepository overrideRepository;
     @Autowired
     private ProductBreweryLinkRepository linkRepository;
+    @Autowired
+    private com.jeontongjuro.backend.liquortype.ProductLiquorTypeRepository productLiquorTypeRepository;
 
     @BeforeEach
     void seedBreweryWithRegion() {
         // FK 자식(link·override) 먼저 비운 뒤 brewery 재적재 → sido/region 채움(파생 UPDATE)
+        productLiquorTypeRepository.deleteAll();
         linkRepository.deleteAll();
         overrideRepository.deleteAll();
         breweryRepository.deleteAll();

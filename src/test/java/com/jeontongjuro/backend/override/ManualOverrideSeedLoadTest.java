@@ -52,6 +52,8 @@ class ManualOverrideSeedLoadTest {
     @Autowired
     private ProductBreweryLinkRepository linkRepository;
     @Autowired
+    private com.jeontongjuro.backend.liquortype.ProductLiquorTypeRepository productLiquorTypeRepository;
+    @Autowired
     private ObjectMapper objectMapper;
 
     private ManualOverrideSeedLoadService.LoadResult firstResult;
@@ -59,6 +61,7 @@ class ManualOverrideSeedLoadTest {
     @BeforeEach
     void loadBreweryThenOverride() {
         // FK 자식(product_brewery_link)이 brewery를 참조하므로 자식 먼저 비운 뒤 override·brewery 비우고 재적재
+        productLiquorTypeRepository.deleteAll();
         linkRepository.deleteAll();
         overrideRepository.deleteAll();
         breweryRepository.deleteAll();
@@ -142,6 +145,7 @@ class ManualOverrideSeedLoadTest {
     @Test
     @DisplayName("FK 미충족 시 멈춤: brewery 비운 뒤 적재 시도 → 예외(누락 BRW 보고)")
     void stopsWhenBreweryMissing() {
+        productLiquorTypeRepository.deleteAll();
         linkRepository.deleteAll();
         overrideRepository.deleteAll();
         breweryRepository.deleteAll();

@@ -1,0 +1,25 @@
+{
+  "_meta": {
+    "purpose": "주종 수기 시드(3d MANUAL). 검수 결과 사람이 확정한 주종을 append-only로 적재한다. source=MANUAL·recheck_flag=false.",
+    "created_at": "2026-08-03",
+    "status": "★1차(이슈 #15)에는 비어 있음(entries=[]) — 로더는 0건 처리. 2차 검수 후 이 파일만 채우면 재실행 시 동작한다.",
+    "manual_wins": "같은 (source_row_ref, liquorType)에 MANUAL이 있으면 AUTO 추론은 그 조합을 적재하지 않는다(MANUAL 우선).",
+    "append_only": "기존 행 수정·삭제 금지. 판정이 바뀌면 새 행을 추가하고 근거에 사유를 남긴다.",
+    "schema": {
+      "source_row_ref": "제품 참조(INT) = product_brewery_link.source_row_ref(원본 source_row_index). 검수 리포트 섹션(1)/(2)에 함께 출력되는 값을 그대로 옮긴다. brewery_id는 로더가 link에서 자동 도출.",
+      "liquorType": "탁주 / 약주 / 청주 / 증류주 / 과실주 / 기타 (★기타는 사람만 부여)",
+      "reason": "판정 근거(자유 서술 — 검수 시 무엇을 보고 판정했는지)",
+      "decided_at": "판정일 YYYY-MM-DD"
+    },
+    "_example": {
+      "note": "아래는 형식 예시 1건(주석용). 실제 적재 대상이 아니므로 entries에는 넣지 않았다.",
+      "sample_entry": {
+        "source_row_ref": 123,
+        "liquorType": "탁주",
+        "reason": "미커버 양조장 '인천탁주' — 제품소개 원문상 막걸리 확정",
+        "decided_at": "2026-08-10"
+      }
+    }
+  },
+  "entries": []
+}
