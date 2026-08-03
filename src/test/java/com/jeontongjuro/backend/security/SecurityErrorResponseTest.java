@@ -43,10 +43,8 @@ class SecurityErrorResponseTest {
     }
 
     @Test
-    void breweryListRequiresLogin() throws Exception {
+    void breweryListIsPublic() throws Exception {
         mockMvc.perform(get("/api/v1/breweries"))
-                .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.code").value("AUTHENTICATION_REQUIRED"))
-                .andExpect(jsonPath("$.message").value("로그인이 필요합니다."));
+                .andExpect(status().isOk());
     }
 }

@@ -5,7 +5,6 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
-import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -22,7 +21,6 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/v1/breweries")
 @Tag(name = "양조장", description = "양조장 조회 API")
-@SecurityRequirement(name = "sessionCookie")
 public class BreweryQueryController {
 
     private final BreweryQueryService breweryQueryService;
@@ -42,8 +40,7 @@ public class BreweryQueryController {
             """)
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "양조장 목록 조회 성공"),
-            @ApiResponse(responseCode = "400", description = "잘못된 필터 또는 페이징 값"),
-            @ApiResponse(responseCode = "401", description = "로그인 필요")
+            @ApiResponse(responseCode = "400", description = "잘못된 필터 또는 페이징 값")
     })
     public PageResponse<BreweryListItemResponse> list(
             @Parameter(description = "지역 필터. 보내지 않으면 전체 지역", example = "전라")
