@@ -61,11 +61,14 @@ class ProcessOrchestratorIntegrationTest {
     @Autowired
     private ProductBreweryLinkRepository linkRepository;
     @Autowired
+    private com.jeontongjuro.backend.liquortype.ProductLiquorTypeRepository productLiquorTypeRepository;
+    @Autowired
     private ObjectMapper objectMapper;
 
     @BeforeEach
     void resetAndSeedRaw() {
         // 파생(FK 자식부터) → raw 순으로 비우고, 골든을 raw 테이블에 적재(운영과 동일한 입력 경로)
+        productLiquorTypeRepository.deleteAll();   // link·brewery FK 자식 — 가장 먼저 비움
         linkRepository.deleteAll();
         overrideRepository.deleteAll();
         breweryRepository.deleteAll();
@@ -122,6 +125,26 @@ class ProcessOrchestratorIntegrationTest {
         Map<String, Integer> chip = new TreeMap<>();
         breweryRepository.findAll().forEach(b -> chip.merge(b.getRegion(), 1, Integer::sum));
         assertThat(chip).containsExactlyInAnyOrderEntriesOf(GOLDEN_CHIP);
+    }
+
+    @Test
+    @DisplayName("주종 롤업(6단계): 태그가 생기되 liquor_status는 UNTAGGED 불변, '기타' 미생성")
+    void liquorRollupRunsWithoutStatusTransition() {
+        ProcessReport report = orchestrator.run(SNAPSHOT);
+
+        // 6단계가 파이프라인에 배선돼 실제로 태깅이 일어난다(분포는 단정하지 않음)
+        assertThat(report.liquor().infer().tagRowsInserted()).isGreaterThan(0);
+        assertThat(report.liquor().manual().loaded()).isZero(); // MANUAL 시드 비어 있음
+
+        // AUTO는 '기타'를 만들지 않는다
+        assertThat(productLiquorTypeRepository.findAll())
+                .noneSatisfy(t -> assertThat(t.getLiquorType())
+                        .isEqualTo(com.jeontongjuro.backend.liquortype.LiquorType.기타));
+
+        // ★liquor_status 불변: 조인 승격분(UNTAGGED)을 주종 롤업이 TAGGED로 전이시키지 않는다(2차 범위)
+        assertThat(breweryRepository.findAll()).allSatisfy(b ->
+                assertThat(b.getLiquorStatus())
+                        .isEqualTo(com.jeontongjuro.backend.brewery.LiquorStatus.UNTAGGED));
     }
 
     @Test

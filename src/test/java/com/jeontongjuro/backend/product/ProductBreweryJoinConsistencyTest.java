@@ -70,6 +70,8 @@ class ProductBreweryJoinConsistencyTest {
     @Autowired
     private ProductBreweryLinkRepository linkRepository;
     @Autowired
+    private com.jeontongjuro.backend.liquortype.ProductLiquorTypeRepository productLiquorTypeRepository;
+    @Autowired
     private BreweryJoinStatusUpdateService statusUpdateService;
     @Autowired
     private ObjectMapper objectMapper;
@@ -78,6 +80,7 @@ class ProductBreweryJoinConsistencyTest {
 
     @BeforeEach
     void loadBreweryOverrideThenJoin() {
+        productLiquorTypeRepository.deleteAll();
         linkRepository.deleteAll();
         overrideRepository.deleteAll();
         breweryRepository.deleteAll();

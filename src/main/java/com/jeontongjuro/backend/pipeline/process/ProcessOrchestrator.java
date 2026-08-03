@@ -3,6 +3,9 @@ package com.jeontongjuro.backend.pipeline.process;
 import com.jeontongjuro.backend.brewery.BreweryJoinStatusUpdateService;
 import com.jeontongjuro.backend.brewery.BreweryMasterLoadService;
 import com.jeontongjuro.backend.brewery.BreweryRegionUpdateService;
+import com.jeontongjuro.backend.liquortype.LiquorInferenceService;
+import com.jeontongjuro.backend.liquortype.LiquorManualSeedLoadService;
+import com.jeontongjuro.backend.liquortype.LiquorRollupResult;
 import com.jeontongjuro.backend.override.ManualOverride;
 import com.jeontongjuro.backend.override.ManualOverrideRepository;
 import com.jeontongjuro.backend.override.ManualOverrideSeedLoadService;
@@ -42,6 +45,8 @@ public class ProcessOrchestrator {
     private final ProductBreweryJoinService joinService;
     private final BreweryJoinStatusUpdateService joinStatusUpdateService;
     private final BreweryRegionUpdateService regionUpdateService;
+    private final LiquorManualSeedLoadService liquorManualSeedLoadService;
+    private final LiquorInferenceService liquorInferenceService;
     private final BreweryRawRepository breweryRawRepository;
     private final ProductRawRepository productRawRepository;
     private final ManualOverrideRepository overrideRepository;
@@ -51,6 +56,8 @@ public class ProcessOrchestrator {
                                ProductBreweryJoinService joinService,
                                BreweryJoinStatusUpdateService joinStatusUpdateService,
                                BreweryRegionUpdateService regionUpdateService,
+                               LiquorManualSeedLoadService liquorManualSeedLoadService,
+                               LiquorInferenceService liquorInferenceService,
                                BreweryRawRepository breweryRawRepository,
                                ProductRawRepository productRawRepository,
                                ManualOverrideRepository overrideRepository) {
@@ -59,6 +66,8 @@ public class ProcessOrchestrator {
         this.joinService = joinService;
         this.joinStatusUpdateService = joinStatusUpdateService;
         this.regionUpdateService = regionUpdateService;
+        this.liquorManualSeedLoadService = liquorManualSeedLoadService;
+        this.liquorInferenceService = liquorInferenceService;
         this.breweryRawRepository = breweryRawRepository;
         this.productRawRepository = productRawRepository;
         this.overrideRepository = overrideRepository;
@@ -107,7 +116,13 @@ public class ProcessOrchestrator {
                 step(4, "join_status 갱신", () -> joinStatusUpdateService.applyJoinResult(linkedIds));
         BreweryRegionUpdateService.UpdateResult region =
                 step(5, "region 갱신", regionUpdateService::apply);
-        // [미래 seam] 6. liquorRollup — 3d 주종 롤업(회의 후 착수). 지금은 호출하지 않는다.
+        // 6. liquorRollup — 3d 주종 롤업(이슈 #15 1차). MANUAL 시드 선적재(MANUAL wins) → AUTO 추론 순서.
+        //    ★검수 전 1차: 전 AUTO행 recheck_flag=true. brewery.liquor_status는 건드리지 않는다(2차 범위).
+        LiquorManualSeedLoadService.LoadResult liquorManual =
+                step(6, "주종 MANUAL 시드", liquorManualSeedLoadService::load);
+        LiquorInferenceService.InferResult liquorInfer =
+                step(6, "주종 AUTO 추론", () -> liquorInferenceService.infer(productRaws));
+        LiquorRollupResult liquor = new LiquorRollupResult(liquorManual, liquorInfer);
 
         // [4] override 스테일 경고 — hit==0 override는 WARN-and-continue(예외 던지지 않음).
         //     새 uddi 재수집 시 제품명 한 글자 바뀌어 override 스테일 나는 건 정상 시나리오 — 사람이 요약 보고 판단.
@@ -118,7 +133,7 @@ public class ProcessOrchestrator {
         }
 
         return new ProcessReport(snapshotDate, breweryRawCount, productRawCount,
-                master, seed, join, status, region, stale);
+                master, seed, join, status, region, liquor, stale);
     }
 
     /** overrideHitCounts에 없는(=적중 0건) override를 골라 경고 목록으로. */

@@ -1,5 +1,7 @@
 package com.jeontongjuro.backend.pipeline.process;
 
+import com.jeontongjuro.backend.liquortype.LiquorAuditReportService;
+import java.nio.file.Path;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
@@ -26,9 +28,12 @@ public class ProcessRunner implements CommandLineRunner {
     private static final String SNAPSHOT_ARG_PREFIX = "--snapshot=";
 
     private final ProcessOrchestrator orchestrator;
+    private final LiquorAuditReportService liquorAuditReportService;
 
-    public ProcessRunner(ProcessOrchestrator orchestrator) {
+    public ProcessRunner(ProcessOrchestrator orchestrator,
+                         LiquorAuditReportService liquorAuditReportService) {
         this.orchestrator = orchestrator;
+        this.liquorAuditReportService = liquorAuditReportService;
     }
 
     @Override
@@ -40,6 +45,13 @@ public class ProcessRunner implements CommandLineRunner {
         String elapsed = Duration.ofNanos(System.nanoTime() - startNanos).toMillis() + "ms";
         // 요약은 표준출력으로(골든과 눈으로 대조하는 사람용 리포트 — collect Runner의 로그와 성격이 다름).
         System.out.println(report.render(elapsed));
+
+        // 주종 검수 리포트 3섹션 — 파일(docs/audit/)로 남기고 콘솔에도 출력한다(사람이 이것만 보고 검수).
+        String auditReport = liquorAuditReportService.render(snapshotDate);
+        Path auditPath = liquorAuditReportService.writeReport(snapshotDate);
+        System.out.println();
+        System.out.println(auditReport);
+        System.out.println("[주종 검수 리포트 기록] " + auditPath);
     }
 
     private LocalDate parseSnapshotArg(String... args) {
