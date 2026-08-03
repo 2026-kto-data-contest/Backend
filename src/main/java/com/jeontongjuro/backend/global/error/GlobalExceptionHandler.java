@@ -1,7 +1,9 @@
 package com.jeontongjuro.backend.global.error;
 
+import com.jeontongjuro.backend.auth.exception.AuthException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
@@ -16,7 +18,8 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
  * </ul>
  * 리소스 없음(404)은 이번 PR에서 발생 상황이 없어 만들지 않는다(필요해질 때 추가).
  * <p>
- * 인증/인가(401/403) 예외는 인증 라인에서 핸들러 메서드를 추가한다(여기 자리만 비워둠 — by 인증 담당).
+ * 인증 서비스 예외와 요청 바디 검증 오류도 같은 {@code ErrorResponse} 계약으로 변환한다.
+ * Spring Security 필터에서 직접 발생하는 401/403은 security/handler에서 동일한 응답 형식을 사용한다.
  */
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -36,5 +39,15 @@ public class GlobalExceptionHandler {
                 .body(new ErrorResponse(INVALID_QUERY_PARAMETER, message));
     }
 
-    // 인증/인가(401/403) 예외는 인증 라인에서 핸들러 추가 (자리만 비워둠 — 인증 담당)
+    @ExceptionHandler(AuthException.class)
+    public ResponseEntity<ErrorResponse> handleAuthException(AuthException e) {
+        return ResponseEntity.status(e.getStatus())
+                .body(new ErrorResponse(e.getCode(), e.getMessage()));
+    }
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<ErrorResponse> handleValidation(MethodArgumentNotValidException e) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(new ErrorResponse("INVALID_REQUEST", "요청값을 확인해 주세요."));
+    }
 }

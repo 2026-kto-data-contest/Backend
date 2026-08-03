@@ -111,3 +111,69 @@ CREATE TABLE IF NOT EXISTS product_brewery_link (
     CONSTRAINT ck_product_brewery_link_join_source CHECK (join_source IN ('AUTO', 'OVERRIDE_NAME', 'OVERRIDE_ROW', 'UNMATCHED'))
 );
 CREATE INDEX IF NOT EXISTS ix_product_brewery_link_brewery ON product_brewery_link (brewery_id);
+
+-- ────────────────────────────────────────────────────────────────────────────
+-- 회원·인증 도메인. 카카오 회원번호가 외부 인증 식별자이며 카카오 토큰은 저장하지 않는다.
+
+CREATE TABLE IF NOT EXISTS member_account (
+    id            BIGSERIAL PRIMARY KEY,
+    kakao_user_id BIGINT    NOT NULL,
+    nickname      TEXT      NOT NULL,
+    email         TEXT,
+    role          TEXT      NOT NULL DEFAULT 'USER',
+    onboarding_completed BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at    TIMESTAMP NOT NULL,
+    updated_at    TIMESTAMP NOT NULL,
+    CONSTRAINT uq_member_account_kakao_user_id UNIQUE (kakao_user_id),
+    CONSTRAINT ck_member_account_role CHECK (role IN ('USER', 'ADMIN'))
+);
+
+CREATE TABLE IF NOT EXISTS auth_session (
+    id            BIGSERIAL PRIMARY KEY,
+    member_id     BIGINT    NOT NULL,
+    token_hash    TEXT      NOT NULL,
+    expires_at    TIMESTAMP NOT NULL,
+    revoked_at    TIMESTAMP,
+    created_at    TIMESTAMP NOT NULL,
+    last_used_at  TIMESTAMP NOT NULL,
+    CONSTRAINT fk_auth_session_member FOREIGN KEY (member_id) REFERENCES member_account (id) ON DELETE CASCADE,
+    CONSTRAINT uq_auth_session_token_hash UNIQUE (token_hash)
+);
+CREATE INDEX IF NOT EXISTS ix_auth_session_member ON auth_session (member_id);
+CREATE INDEX IF NOT EXISTS ix_auth_session_expires ON auth_session (expires_at);
+
+CREATE TABLE IF NOT EXISTS terms_definition (
+    code          TEXT      NOT NULL,
+    version       TEXT      NOT NULL,
+    title         TEXT      NOT NULL,
+    required      BOOLEAN   NOT NULL,
+    display_order INT       NOT NULL,
+    content_url   TEXT,
+    active        BOOLEAN   NOT NULL DEFAULT TRUE,
+    PRIMARY KEY (code, version)
+);
+ALTER TABLE terms_definition ADD COLUMN IF NOT EXISTS content_url TEXT;
+
+CREATE TABLE IF NOT EXISTS terms_agreement (
+    id            BIGSERIAL PRIMARY KEY,
+    member_id     BIGINT    NOT NULL,
+    term_code     TEXT      NOT NULL,
+    term_version  TEXT      NOT NULL,
+    agreed        BOOLEAN   NOT NULL,
+    recorded_at   TIMESTAMP NOT NULL,
+    CONSTRAINT fk_terms_agreement_member FOREIGN KEY (member_id) REFERENCES member_account (id) ON DELETE CASCADE,
+    CONSTRAINT fk_terms_agreement_definition FOREIGN KEY (term_code, term_version)
+        REFERENCES terms_definition (code, version),
+    CONSTRAINT uq_terms_agreement_member_term UNIQUE (member_id, term_code, term_version)
+);
+
+INSERT INTO terms_definition (code, version, title, required, display_order)
+VALUES
+    ('SERVICE_USE', '1.0', '서비스 이용약관 동의', TRUE, 1),
+    ('PRIVACY', '1.0', '개인정보 수집 및 이용 동의', TRUE, 2),
+    ('LOCATION', '1.0', '위치기반 서비스 이용약관', FALSE, 3),
+    ('MARKETING', '1.0', '마케팅 정보 수신 동의 (카카오톡, 이메일 등)', FALSE, 4)
+ON CONFLICT (code, version) DO UPDATE SET
+    title = EXCLUDED.title,
+    required = EXCLUDED.required,
+    display_order = EXCLUDED.display_order;

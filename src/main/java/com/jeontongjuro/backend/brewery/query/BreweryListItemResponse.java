@@ -2,6 +2,7 @@ package com.jeontongjuro.backend.brewery.query;
 
 import com.jeontongjuro.backend.brewery.Brewery;
 import com.jeontongjuro.backend.brewery.VisitState;
+import io.swagger.v3.oas.annotations.media.Schema;
 
 /**
  * 양조장 리스트 아이템 응답 DTO(엔티티 직노출 금지 — 명시 프로젝션).
@@ -13,11 +14,13 @@ import com.jeontongjuro.backend.brewery.VisitState;
  * 값이 확정되는 후속 PR에서 필드를 추가(additive)하는 편이 계약을 깔끔하게 유지한다.
  */
 public record BreweryListItemResponse(
-        String breweryId,
-        String businessName,
-        String sido,
-        String region,
+        @Schema(description = "양조장 고유 ID", example = "BRW-001") String breweryId,
+        @Schema(description = "화면에 표시할 양조장 이름", example = "해남 장독대 양조장") String businessName,
+        @Schema(description = "시·도 단위 주소", example = "전라남도") String sido,
+        @Schema(description = "서비스 지역 필터 분류", example = "전라") String region,
+        @Schema(description = "예약 방문 가능 여부: Y(가능), N(불가), UNKNOWN(정보 없음)", example = "Y")
         VisitState reservationVisitState,
+        @Schema(description = "상시 방문 가능 여부: Y(가능), N(불가), UNKNOWN(정보 없음)", example = "UNKNOWN")
         VisitState alwaysVisitState) {
 
     public static BreweryListItemResponse from(Brewery b) {
