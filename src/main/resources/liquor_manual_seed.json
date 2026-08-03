@@ -2,7 +2,7 @@
   "_meta": {
     "purpose": "주종 수기 시드(3d MANUAL). 검수 결과 사람이 확정한 주종을 append-only로 적재한다. source=MANUAL·recheck_flag=false.",
     "created_at": "2026-08-03",
-    "status": "★1차(이슈 #15)에는 비어 있음(entries=[]) — 로더는 0건 처리. 2차 검수 후 이 파일만 채우면 재실행 시 동작한다.",
+    "status": "★2차(이슈 #18): 미커버 양조장 10곳(BRW-007·009·010·014·016·019·025·041·043·054)의 제품 29건을 수기 검수로 확정해 채움. 전 행 source=MANUAL·recheck_flag=false. 재실행 시 MANUAL 선적재→AUTO는 같은 (제품,주종) 조합 skip. 이 29건으로 미커버 양조장 0곳, 해당 10곳 liquor_status TAGGED 전이.",
     "manual_wins": "같은 (source_row_ref, liquorType)에 MANUAL이 있으면 AUTO 추론은 그 조합을 적재하지 않는다(MANUAL 우선).",
     "append_only": "기존 행 수정·삭제 금지. 판정이 바뀌면 새 행을 추가하고 근거에 사유를 남긴다.",
     "schema": {
@@ -21,5 +21,35 @@
       }
     }
   },
-  "entries": []
+  "entries": [
+    { "source_row_ref": 594, "liquorType": "탁주", "reason": "금풍양조 — 전통주갤러리·라벨 '유형: 탁주' 750mL 6.9% 확인", "decided_at": "2026-08-03" },
+    { "source_row_ref": 7, "liquorType": "탁주", "reason": "대강양조장 오곡 진상주 — 병 라벨 상품정보고시 사진 '주류의종류: 탁주 / 7% / 원료 쌀·밀·보리·옥수수·조 / 제조원 대강양조' 직접 확인", "decided_at": "2026-08-03" },
+    { "source_row_ref": 462, "liquorType": "증류주", "reason": "대대로영농조합 명품홍주 — 공식 브로슈어 '진도홍주&백주는 고품격 증류주'", "decided_at": "2026-08-03" },
+    { "source_row_ref": 509, "liquorType": "증류주", "reason": "진도홍주 만홍 — 공식 브로슈어 증류주 라인업(500ml 40%)", "decided_at": "2026-08-03" },
+    { "source_row_ref": 569, "liquorType": "증류주", "reason": "진도홍주 아라리35%·루비콘40% — 공식 홍주 증류주 라인. 소개글 '약용주'는 지초 사용 표현이며 약주 아님", "decided_at": "2026-08-03" },
+    { "source_row_ref": 772, "liquorType": "증류주", "reason": "진도 백주 — 공식 브로슈어 '진도홍주&백주는 증류주'(백주1호 500ml 38%)", "decided_at": "2026-08-03" },
+    { "source_row_ref": 697, "liquorType": "약주", "reason": "맑은내일 유자 — 술담화·데일리샷 유통몰 2곳 '주종: 약주 / 7%' 일치", "decided_at": "2026-08-03" },
+    { "source_row_ref": 877, "liquorType": "증류주", "reason": "운암 32오크 — 술담화 '주종: 증류식소주 / 32%' 및 다수 유통몰 일치", "decided_at": "2026-08-03" },
+    { "source_row_ref": 207, "liquorType": "약주", "reason": "모월 청 — 공식 홈페이지 '우리술 품질 인증 획득한 약주입니다'(16도) 직접 확인", "decided_at": "2026-08-03" },
+    { "source_row_ref": 242, "liquorType": "약주", "reason": "모월 연 — 공식 상품페이지 '주종: 약주'(13도)", "decided_at": "2026-08-03" },
+    { "source_row_ref": 433, "liquorType": "증류주", "reason": "모월 인 — 공식 상품페이지 '주종: 증류식 소주'(41도)", "decided_at": "2026-08-03" },
+    { "source_row_ref": 581, "liquorType": "증류주", "reason": "모월 로 — 공식 홈페이지 '증류식 소주 25도'", "decided_at": "2026-08-03" },
+    { "source_row_ref": 153, "liquorType": "탁주", "reason": "밝은세상영농조합 호랑이배꼽 — 대표 인터뷰 '탁주로는 호랑이배꼽 막걸리(6.5%)'", "decided_at": "2026-08-03" },
+    { "source_row_ref": 489, "liquorType": "증류주", "reason": "밝은세상영농조합 소호 — 대표 인터뷰 '증류주로는 소호36.5·소호56'", "decided_at": "2026-08-03" },
+    { "source_row_ref": 859, "liquorType": "탁주", "reason": "밝은세상영농조합 에피소드 — 블로터 기사 '호랑이배꼽 에피소드 막걸리(9%)' 및 제품 사진 라벨 'craft makgeolli' 확인", "decided_at": "2026-08-03" },
+    { "source_row_ref": 220, "liquorType": "약주", "reason": "솔송주(명가원) 녹파주 — 공식몰 '주종 약주 / 15% / 375ml'", "decided_at": "2026-08-03" },
+    { "source_row_ref": 273, "liquorType": "약주", "reason": "솔송주 — 공식몰 '주종 약주 / 13% / 750ml' 직접 확인", "decided_at": "2026-08-03" },
+    { "source_row_ref": 317, "liquorType": "과실주", "reason": "명가원 복분자술 — 공식몰 '주종 과실주 / 16% / 750ml'", "decided_at": "2026-08-03" },
+    { "source_row_ref": 570, "liquorType": "증류주", "reason": "담솔 — 공식몰 '주종 리큐르주 / 40% / 500ml' 직접 확인. 솔송주를 증류한 40도 술로 6종 매핑 시 증류주(사용자가 증류주 필터에서 기대하는 술)", "decided_at": "2026-08-03" },
+    { "source_row_ref": 771, "liquorType": "과실주", "reason": "명가원 산머루주 — 공식몰 '주종 과실주 / 16% / 750ml'", "decided_at": "2026-08-03" },
+    { "source_row_ref": 1212, "liquorType": "증류주", "reason": "솔직 25도 10년 숙성 — 공식몰 '주종 증류주 / 25% / 375ml'", "decided_at": "2026-08-03" },
+    { "source_row_ref": 590, "liquorType": "탁주", "reason": "은척양조장 은자골 생 탁배기 — 라벨 '주류의 종류: 탁주 / 5도' 및 경북 공공DB 막걸리 분류", "decided_at": "2026-08-03" },
+    { "source_row_ref": 905, "liquorType": "탁주", "reason": "인천탁주 인천 생 소성주 — 술달다 DB 막걸리 분류, 생막걸리 6%", "decided_at": "2026-08-03" },
+    { "source_row_ref": 906, "liquorType": "탁주", "reason": "인천 소성주 플러스 — 상품정보고시 '주류의 종류: 탁주'", "decided_at": "2026-08-03" },
+    { "source_row_ref": 907, "liquorType": "탁주", "reason": "쌀은 원래 달다 — 데일리샷 '종류 탁주 · 12%'", "decided_at": "2026-08-03" },
+    { "source_row_ref": 73, "liquorType": "탁주", "reason": "풍정사계 추(秋) — 라벨 '주류의 종류: 탁주'(12도) 및 공식홈 표기", "decided_at": "2026-08-03" },
+    { "source_row_ref": 236, "liquorType": "약주", "reason": "풍정사계 춘(春) — 라벨 '주류의 종류: 약주'(15도) 및 공식 인스타 '종류│약주'. 소개글 '와인과 같은 과실향'은 비유 표현이며 과실주 아님", "decided_at": "2026-08-03" },
+    { "source_row_ref": 449, "liquorType": "증류주", "reason": "풍정사계 동(冬) — 공식홈 '증류식소주' 표기", "decided_at": "2026-08-03" },
+    { "source_row_ref": 957, "liquorType": "약주", "reason": "풍정사계 하(夏) — 화양 공식 홈페이지 '종류: 과하주 / 18%', '약주 숙성 중에 증류식 소주를 첨가하여 주정강화', '풍정사계 춘(약주)을 숙성하는 과정에서 동(증류식 소주)을 더해 완성'. 베이스가 약주이며 증류주 아님. 6종 매핑상 약주", "decided_at": "2026-08-03" }
+  ]
 }

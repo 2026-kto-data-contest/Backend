@@ -1,11 +1,13 @@
 package com.jeontongjuro.backend.pipeline.process;
 
 import com.jeontongjuro.backend.brewery.BreweryJoinStatusUpdateService;
+import com.jeontongjuro.backend.brewery.BreweryLiquorStatusUpdateService;
 import com.jeontongjuro.backend.brewery.BreweryMasterLoadService;
 import com.jeontongjuro.backend.brewery.BreweryRegionUpdateService;
 import com.jeontongjuro.backend.liquortype.LiquorInferenceService;
 import com.jeontongjuro.backend.liquortype.LiquorManualSeedLoadService;
 import com.jeontongjuro.backend.liquortype.LiquorRollupResult;
+import com.jeontongjuro.backend.liquortype.LiquorRollupStatusService;
 import com.jeontongjuro.backend.override.ManualOverride;
 import com.jeontongjuro.backend.override.ManualOverrideRepository;
 import com.jeontongjuro.backend.override.ManualOverrideSeedLoadService;
@@ -47,6 +49,8 @@ public class ProcessOrchestrator {
     private final BreweryRegionUpdateService regionUpdateService;
     private final LiquorManualSeedLoadService liquorManualSeedLoadService;
     private final LiquorInferenceService liquorInferenceService;
+    private final LiquorRollupStatusService liquorRollupStatusService;
+    private final BreweryLiquorStatusUpdateService liquorStatusUpdateService;
     private final BreweryRawRepository breweryRawRepository;
     private final ProductRawRepository productRawRepository;
     private final ManualOverrideRepository overrideRepository;
@@ -58,6 +62,8 @@ public class ProcessOrchestrator {
                                BreweryRegionUpdateService regionUpdateService,
                                LiquorManualSeedLoadService liquorManualSeedLoadService,
                                LiquorInferenceService liquorInferenceService,
+                               LiquorRollupStatusService liquorRollupStatusService,
+                               BreweryLiquorStatusUpdateService liquorStatusUpdateService,
                                BreweryRawRepository breweryRawRepository,
                                ProductRawRepository productRawRepository,
                                ManualOverrideRepository overrideRepository) {
@@ -68,6 +74,8 @@ public class ProcessOrchestrator {
         this.regionUpdateService = regionUpdateService;
         this.liquorManualSeedLoadService = liquorManualSeedLoadService;
         this.liquorInferenceService = liquorInferenceService;
+        this.liquorRollupStatusService = liquorRollupStatusService;
+        this.liquorStatusUpdateService = liquorStatusUpdateService;
         this.breweryRawRepository = breweryRawRepository;
         this.productRawRepository = productRawRepository;
         this.overrideRepository = overrideRepository;
@@ -116,13 +124,20 @@ public class ProcessOrchestrator {
                 step(4, "join_status 갱신", () -> joinStatusUpdateService.applyJoinResult(linkedIds));
         BreweryRegionUpdateService.UpdateResult region =
                 step(5, "region 갱신", regionUpdateService::apply);
-        // 6. liquorRollup — 3d 주종 롤업(이슈 #15 1차). MANUAL 시드 선적재(MANUAL wins) → AUTO 추론 순서.
-        //    ★검수 전 1차: 전 AUTO행 recheck_flag=true. brewery.liquor_status는 건드리지 않는다(2차 범위).
+        // 6. liquorRollup — 3d 주종 롤업. MANUAL 시드 선적재(MANUAL wins) → AUTO 추론 순서.
+        //    ★AUTO행은 recheck_flag=true(미검증), MANUAL 시드행은 recheck_flag=false(검수 완료).
         LiquorManualSeedLoadService.LoadResult liquorManual =
                 step(6, "주종 MANUAL 시드", liquorManualSeedLoadService::load);
         LiquorInferenceService.InferResult liquorInfer =
                 step(6, "주종 AUTO 추론", () -> liquorInferenceService.infer(productRaws));
         LiquorRollupResult liquor = new LiquorRollupResult(liquorManual, liquorInfer);
+        // 7. liquor_status 전이(이슈 #18 2차) — 4단계 join_status 갱신과 대칭 독립 단계.
+        //    조인 제품 전건 태깅 & 전건 recheck_flag=false인 양조장만 TAGGED, 그 외 UNTAGGED,
+        //    미조인은 NA. 6단계(태깅) 결과를 읽어 상태 컬럼만 갱신한다(멱등).
+        Set<String> confirmedBreweryIds =
+                step(7, "확정 양조장 집계", liquorRollupStatusService::confirmedBreweryIds);
+        BreweryLiquorStatusUpdateService.UpdateResult liquorStatus =
+                step(7, "liquor_status 갱신", () -> liquorStatusUpdateService.applyLiquorRollup(confirmedBreweryIds));
 
         // [4] override 스테일 경고 — hit==0 override는 WARN-and-continue(예외 던지지 않음).
         //     새 uddi 재수집 시 제품명 한 글자 바뀌어 override 스테일 나는 건 정상 시나리오 — 사람이 요약 보고 판단.
@@ -133,7 +148,7 @@ public class ProcessOrchestrator {
         }
 
         return new ProcessReport(snapshotDate, breweryRawCount, productRawCount,
-                master, seed, join, status, region, liquor, stale);
+                master, seed, join, status, region, liquor, liquorStatus, stale);
     }
 
     /** overrideHitCounts에 없는(=적중 0건) override를 골라 경고 목록으로. */
