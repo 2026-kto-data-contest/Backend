@@ -1,6 +1,7 @@
 package com.jeontongjuro.backend.pipeline.process;
 
 import com.jeontongjuro.backend.brewery.BreweryJoinStatusUpdateService;
+import com.jeontongjuro.backend.brewery.BreweryLiquorStatusUpdateService;
 import com.jeontongjuro.backend.brewery.BreweryMasterLoadService;
 import com.jeontongjuro.backend.brewery.BreweryRegionUpdateService;
 import com.jeontongjuro.backend.liquortype.LiquorRollupResult;
@@ -26,6 +27,7 @@ public record ProcessReport(
         BreweryJoinStatusUpdateService.UpdateResult status,
         BreweryRegionUpdateService.UpdateResult region,
         LiquorRollupResult liquor,
+        BreweryLiquorStatusUpdateService.UpdateResult liquorStatus,
         List<StaleOverride> staleOverrides
 ) {
 
@@ -57,12 +59,18 @@ public record ProcessReport(
                 .append(" unchanged=").append(region.unchanged()).append('\n');
         sb.append("liquor MANUAL seeded=").append(liquor.manual().loaded())
                 .append(" skipped=").append(liquor.manual().skippedExisting())
+                .append(" (recheck_flag=false)")
                 .append(" | AUTO target=").append(liquor.infer().targetProducts())
                 .append(" tagged=").append(liquor.infer().tagRowsInserted())
                 .append(" skippedExisting=").append(liquor.infer().skippedExisting())
                 .append(" suppressed=").append(liquor.infer().suppressedTags())
                 .append(" uncovered=").append(liquor.infer().uncoveredProducts())
-                .append(" (전건 recheck_flag=true, 검수 전 1차)").append('\n');
+                .append(" (AUTO는 recheck_flag=true)").append('\n');
+        sb.append("liquor_status TAGGED=").append(liquorStatus.tagged())
+                .append(" UNTAGGED=").append(liquorStatus.untagged())
+                .append(" NA=").append(liquorStatus.na())
+                .append(" (changed=").append(liquorStatus.changed())
+                .append(" unchanged=").append(liquorStatus.unchanged()).append(")\n");
         sb.append("⚠ override 미적중: ");
         if (staleOverrides.isEmpty()) {
             sb.append("없음");

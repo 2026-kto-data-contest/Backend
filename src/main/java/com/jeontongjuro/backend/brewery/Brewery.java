@@ -142,6 +142,15 @@ public class Brewery {
         this.liquorStatus = LiquorStatus.UNTAGGED;
     }
 
+    /**
+     * 주종 롤업 결과 liquor_status 확정(파생값 UPDATE, 3d 7단계). ★2축 원칙을 이 메서드는 강제하지 않는다 —
+     * 호출자(BreweryLiquorStatusUpdateService)가 UNJOINED→NA / JOINED→TAGGED|UNTAGGED만 넘긴다.
+     * 순수 대입이라 같은 값이면 재실행해도 동일(멱등은 호출자가 unchanged로 스킵).
+     */
+    public void applyLiquorStatus(LiquorStatus liquorStatus) {
+        this.liquorStatus = liquorStatus;
+    }
+
     @PrePersist
     void onCreate() {
         LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);

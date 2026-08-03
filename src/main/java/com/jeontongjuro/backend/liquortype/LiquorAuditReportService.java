@@ -78,9 +78,11 @@ public class LiquorAuditReportService {
         }
 
         StringBuilder sb = new StringBuilder();
-        sb.append("# 주종 롤업 검수 리포트 (검수 전 1차, snapshot ").append(snapshotDate).append(")\n\n");
-        sb.append("> ★이 리포트는 추론 결과의 검수 대상 추출용이다. 전 AUTO행 recheck_flag=true(미검증).\n")
-                .append("> 분포 수치는 보고용이며 골든이 아니다. brewery.liquor_status는 이 단계에서 변경하지 않는다.\n\n");
+        sb.append("# 주종 롤업 검수 리포트 (snapshot ").append(snapshotDate).append(")\n\n");
+        sb.append("> ★이 리포트는 추론 결과의 검수 대상 추출용이다. AUTO행 recheck_flag=true(미검증), ")
+                .append("MANUAL 시드행 recheck_flag=false(검수 완료).\n")
+                .append("> 분포 수치는 보고용이며 골든이 아니다. brewery.liquor_status는 별도 7단계가 갱신한다 ")
+                .append("(조인 제품 전건 태깅 & 전건 recheck_flag=false인 양조장만 TAGGED).\n\n");
 
         appendUncoveredBreweries(sb, links, businessNameById, taggedBreweryIds, rawByRowRef);
         appendFlavorDoubles(sb, tags, links, businessNameById);
