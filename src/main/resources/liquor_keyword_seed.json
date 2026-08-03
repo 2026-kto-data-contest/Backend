@@ -1,0 +1,42 @@
+{
+  "_meta": {
+    "purpose": "주종 추론 키워드 사전(3d, 이슈 #15 1차). ★추론 규칙은 전부 이 JSON이 결정한다 — 자바 코드는 해석만 한다.",
+    "created_at": "2026-08-03",
+    "scope_values": "business_name(양조장 상호명) / product_name(제품명) / characteristics(특징). ★description은 스코프 금지(음식 페어링 오탐: '막걸리 안주로 좋다' 등).",
+    "wordBoundary": "true면 매칭 위치 앞·뒤 문자가 한글 음절이 아닐 때만 매칭(한글엔 정규식 \\b 안 통함 → 앞뒤 문자 한글 여부로 직접 판정). 짧고 오탐 많은 단어에만.",
+    "flavor_double": "flavor_words는 주종 키워드가 아니다 — 제품명에 향미어+주종어가 동시에 있으면 그 제품 태그를 suppressed_from_tab=true로 표시(억제)하는 C-4 판정에만 쓴다.",
+    "included_notes": {
+      "와이너리": "business_name 스코프. 와이너리(winery)는 과실주 단일 생산자를 뜻하는 명시적 업종어 → 과실주. (양조/도가/주조 같은 범용 접미어와 달리 주종을 특정함)",
+      "소곡주": "한산소곡주 계열은 전통 약주 → 약주. 반면 범용 '곡주'(순곡주·우곡주 등)는 주종이 약주/기타로 갈려 모호 → 제외.",
+      "진": "gin. product_name 스코프 + wordBoundary — '진맥소주'·'진도홍주'·'진상주' 등 오탐 방지. '퍼플 진' 등만 매칭."
+    },
+    "excluded_and_why": {
+      "생막걸리": "'막걸리'가 부분문자열로 이미 커버(유자생막걸리 포함) → 중복이라 제외.",
+      "증류주": "'증류'가 '증류주'·'증류식'을 부분문자열로 커버 → 중복이라 제외.",
+      "곡주": "순곡주·우곡주 등 주종이 갈려 모호 → 확정 대신 미커버로 남겨 사람 판정(2차)에 맡김.",
+      "주조/도가/양조": "양조장 이름 접미어일 뿐 주종 힌트 아님(지시대로 제외).",
+      "향미어(유자·복분자 등)": "명시적 주종어 아님 → 과실주 키워드로 넣지 않음. C-4 억제 판정에만."
+    }
+  },
+  "keywords": [
+    { "keyword": "막걸리", "liquorType": "탁주", "scope": ["product_name", "characteristics"], "wordBoundary": false },
+    { "keyword": "탁주", "liquorType": "탁주", "scope": ["product_name", "characteristics"], "wordBoundary": false },
+    { "keyword": "동동주", "liquorType": "탁주", "scope": ["product_name", "characteristics"], "wordBoundary": false },
+
+    { "keyword": "약주", "liquorType": "약주", "scope": ["product_name", "characteristics"], "wordBoundary": false },
+    { "keyword": "소곡주", "liquorType": "약주", "scope": ["product_name", "characteristics"], "wordBoundary": false },
+
+    { "keyword": "청주", "liquorType": "청주", "scope": ["product_name", "characteristics"], "wordBoundary": false },
+
+    { "keyword": "소주", "liquorType": "증류주", "scope": ["product_name", "characteristics"], "wordBoundary": false },
+    { "keyword": "증류", "liquorType": "증류주", "scope": ["product_name", "characteristics"], "wordBoundary": false },
+    { "keyword": "고소리", "liquorType": "증류주", "scope": ["product_name", "characteristics"], "wordBoundary": false },
+    { "keyword": "진", "liquorType": "증류주", "scope": ["product_name"], "wordBoundary": true },
+
+    { "keyword": "와인", "liquorType": "과실주", "scope": ["product_name", "characteristics"], "wordBoundary": false },
+    { "keyword": "브랜디", "liquorType": "과실주", "scope": ["product_name", "characteristics"], "wordBoundary": false },
+    { "keyword": "과실주", "liquorType": "과실주", "scope": ["product_name", "characteristics"], "wordBoundary": false },
+    { "keyword": "와이너리", "liquorType": "과실주", "scope": ["business_name", "product_name"], "wordBoundary": false }
+  ],
+  "flavor_words": ["유자", "복분자", "오미자", "매실", "자몽", "딸기", "포도", "사과", "머루"]
+}

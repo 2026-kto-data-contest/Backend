@@ -3,6 +3,7 @@ package com.jeontongjuro.backend.pipeline.process;
 import com.jeontongjuro.backend.brewery.BreweryJoinStatusUpdateService;
 import com.jeontongjuro.backend.brewery.BreweryMasterLoadService;
 import com.jeontongjuro.backend.brewery.BreweryRegionUpdateService;
+import com.jeontongjuro.backend.liquortype.LiquorRollupResult;
 import com.jeontongjuro.backend.override.ManualOverrideSeedLoadService;
 import com.jeontongjuro.backend.product.ProductBreweryJoinService;
 import java.time.LocalDate;
@@ -24,6 +25,7 @@ public record ProcessReport(
         ProductBreweryJoinService.JoinResult join,
         BreweryJoinStatusUpdateService.UpdateResult status,
         BreweryRegionUpdateService.UpdateResult region,
+        LiquorRollupResult liquor,
         List<StaleOverride> staleOverrides
 ) {
 
@@ -53,6 +55,14 @@ public record ProcessReport(
         sb.append("region total=").append(region.total())
                 .append(" changed=").append(region.changed())
                 .append(" unchanged=").append(region.unchanged()).append('\n');
+        sb.append("liquor MANUAL seeded=").append(liquor.manual().loaded())
+                .append(" skipped=").append(liquor.manual().skippedExisting())
+                .append(" | AUTO target=").append(liquor.infer().targetProducts())
+                .append(" tagged=").append(liquor.infer().tagRowsInserted())
+                .append(" skippedExisting=").append(liquor.infer().skippedExisting())
+                .append(" suppressed=").append(liquor.infer().suppressedTags())
+                .append(" uncovered=").append(liquor.infer().uncoveredProducts())
+                .append(" (전건 recheck_flag=true, 검수 전 1차)").append('\n');
         sb.append("⚠ override 미적중: ");
         if (staleOverrides.isEmpty()) {
             sb.append("없음");

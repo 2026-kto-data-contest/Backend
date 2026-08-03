@@ -111,3 +111,28 @@ CREATE TABLE IF NOT EXISTS product_brewery_link (
     CONSTRAINT ck_product_brewery_link_join_source CHECK (join_source IN ('AUTO', 'OVERRIDE_NAME', 'OVERRIDE_ROW', 'UNMATCHED'))
 );
 CREATE INDEX IF NOT EXISTS ix_product_brewery_link_brewery ON product_brewery_link (brewery_id);
+
+-- ────────────────────────────────────────────────────────────────────────────
+-- 파생층 (3d, 이슈 #15 1차). 주종 추론 결과 태깅 — product_brewery_link로 연결된 제품(366)만 대상.
+-- ★이 테이블은 "확정"이 아니라 "추론+검수 대상 추출"이다. 전 AUTO행 recheck_flag=true(미검증).
+--   골든 정답지 없음(프로젝트 첫 사례) → 분포를 봉인하지 않는다. brewery.liquor_status는 이 단계에서 건드리지 않는다.
+-- 다대다: 한 제품이 여러 주종 키워드에 걸리면 (source_row_ref, liquor_type) 조합으로 여러 행이 정상.
+-- MANUAL wins: 같은 (제품, 주종)에 MANUAL이 있으면 AUTO는 그 조합을 적재하지 않는다(uq가 최종 방어선).
+
+CREATE TABLE IF NOT EXISTS product_liquor_type (
+    id                  BIGSERIAL PRIMARY KEY,             -- 서러게이트 PK(의미 없음)
+    source_row_ref      INT       NOT NULL,                -- 원본 product raw 추적 참조(= product_brewery_link.source_row_ref)
+    brewery_id          TEXT      NOT NULL,                -- ★조회 편의 비정규화(양조장별 GROUP BY 집계를 link 재조인 없이). link가 이미 brewery_id를 담는 선례 동일
+    liquor_type         TEXT      NOT NULL,                -- 탁주/약주/청주/증류주/과실주/기타. AUTO는 '기타' 미생성(판정 안 됨≠기타)
+    source              TEXT      NOT NULL,                -- AUTO(추론) / MANUAL(수기 시드)
+    recheck_flag        BOOLEAN   NOT NULL,                -- 재점검 필요. AUTO 전건 true(미검증), MANUAL false
+    suppressed_from_tab BOOLEAN   NOT NULL DEFAULT false,  -- C-4 향미이중 억제 표시(행은 남기고 표시만)
+    matched_keyword     TEXT,                              -- 어느 키워드에 걸렸는지(검수·디버깅 근거). MANUAL은 null
+    created_at          TIMESTAMP NOT NULL,
+    CONSTRAINT fk_product_liquor_type_link FOREIGN KEY (source_row_ref) REFERENCES product_brewery_link (source_row_ref),
+    CONSTRAINT fk_product_liquor_type_brewery FOREIGN KEY (brewery_id) REFERENCES brewery (brewery_id),
+    CONSTRAINT uq_product_liquor_type_row_type UNIQUE (source_row_ref, liquor_type),
+    CONSTRAINT ck_product_liquor_type_type   CHECK (liquor_type IN ('탁주', '약주', '청주', '증류주', '과실주', '기타')),
+    CONSTRAINT ck_product_liquor_type_source CHECK (source IN ('AUTO', 'MANUAL'))
+);
+CREATE INDEX IF NOT EXISTS ix_product_liquor_type_brewery ON product_liquor_type (brewery_id);
