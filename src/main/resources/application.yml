@@ -1,12 +1,14 @@
-# 파이프라인 RAW 적재층 설정. DB는 PostgreSQL 단일(H2 미사용).
-# 이 파일은 파이프라인 raw 테이블 관련 설정만 담는다(user/auth 등 타 도메인 설정 없음).
+# 전통주 데이터 파이프라인과 회원·인증이 함께 사용하는 PostgreSQL 설정(H2 미사용).
 spring:
   application:
     name: backend
+  config:
+    # 로컬 비밀값은 저장소 루트의 .env에 직접 설정한다. .env가 없어도 서버 자체는 실행 가능하다.
+    import: "optional:file:.env[.properties]"
   datasource:
-    url: jdbc:postgresql://localhost:5432/jeontongjuro
-    username: jeontongjuro
-    password: jeontongjuro
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/jeontongjuro}
+    username: ${DB_USERNAME:jeontongjuro}
+    password: ${DB_PASSWORD:jeontongjuro}
     driver-class-name: org.postgresql.Driver
   jpa:
     # 스키마의 단일 진실은 schema.sql(BIGSERIAL·UNIQUE 제약 명시). Hibernate는 검증만 수행.
@@ -17,6 +19,22 @@ spring:
     init:
       # schema.sql은 CREATE TABLE IF NOT EXISTS 라 재기동 시에도 멱등.
       mode: always
+
+app:
+  frontend-base-url: ${FRONTEND_BASE_URL:http://localhost:3000}
+  auth:
+    session-duration: ${AUTH_SESSION_DURATION:14d}
+    cookie-secure: ${AUTH_COOKIE_SECURE:false}
+  kakao:
+    rest-api-key: ${KAKAO_REST_API_KEY:}
+    client-secret: ${KAKAO_CLIENT_SECRET:}
+    redirect-uri: ${KAKAO_REDIRECT_URI:http://localhost:8080/api/v1/auth/kakao/callback}
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+    operations-sorter: method
+    tags-sorter: alpha
 
 pipeline:
   collect:

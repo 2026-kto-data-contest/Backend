@@ -39,10 +39,20 @@ out/
 ### Secrets — 방어적 커밋 차단 (serviceKey 등) ###
 .env
 .env.*
+.envrc
 *.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.keystore
 .at_service_key
 *service_key*
 *serviceKey*
+
+### Logs ###
+*.log
+logs/
 
 ### 로컬 audit 원문 실수 유입 방지 (레포 문서는 docs/schema/·docs/*.md 정제본만) ###
 docs/audit/
