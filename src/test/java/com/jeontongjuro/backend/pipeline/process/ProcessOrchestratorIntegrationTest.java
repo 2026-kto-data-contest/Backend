@@ -127,18 +127,18 @@ class ProcessOrchestratorIntegrationTest {
         assertThat(chip).containsExactlyInAnyOrderEntriesOf(GOLDEN_CHIP);
     }
 
-    /** #18 2차 MANUAL 시드 대상 미커버 양조장 10곳(전건 검수 완료 → TAGGED 전이 예상). */
+    /** 3차 MANUAL 시드로 조인 제품이 전건 확정된 양조장 12곳(→ TAGGED 전이 예상). */
     private static final java.util.Set<String> SEEDED_BREWERIES = java.util.Set.of(
-            "BRW-007", "BRW-009", "BRW-010", "BRW-014", "BRW-016",
-            "BRW-019", "BRW-025", "BRW-041", "BRW-043", "BRW-054");
+            "BRW-007", "BRW-009", "BRW-010", "BRW-014", "BRW-016", "BRW-019",
+            "BRW-025", "BRW-033", "BRW-034", "BRW-041", "BRW-043", "BRW-054");
 
     @Test
-    @DisplayName("주종 롤업(6·7단계): MANUAL 74 적재(3차) → 확정 양조장만 TAGGED 전이, 나머지 UNTAGGED, '기타' 미생성")
+    @DisplayName("주종 롤업(6·7단계): MANUAL 221 적재(74+3B 147) → 확정 양조장만 TAGGED 전이, 나머지 UNTAGGED, '기타' 미생성")
     void liquorRollupTransitionsStatusForConfirmedBreweries() {
         ProcessReport report = orchestrator.run(SNAPSHOT);
 
-        // 6단계: MANUAL 시드 74(3차: 29+신설4+승격41) 적재 + AUTO 추론 태깅
-        assertThat(report.liquor().manual().loaded()).isEqualTo(74);
+        // 6단계: MANUAL 시드 221(74+3B 147) 적재 + AUTO 추론 태깅
+        assertThat(report.liquor().manual().loaded()).isEqualTo(221);
         assertThat(report.liquor().infer().tagRowsInserted()).isGreaterThan(0);
 
         // AUTO는 '기타'를 만들지 않는다(MANUAL만 '기타' 부여 가능 — 이번 시드엔 없음)
@@ -146,9 +146,9 @@ class ProcessOrchestratorIntegrationTest {
                 .noneSatisfy(t -> assertThat(t.getLiquorType())
                         .isEqualTo(com.jeontongjuro.backend.liquortype.LiquorType.기타));
 
-        // 7단계 전이: 시드 10곳 TAGGED, 그 외 59-10=49곳 UNTAGGED, NA 0(전건 JOINED — 2축 유지)
-        assertThat(report.liquorStatus().tagged()).isEqualTo(10);
-        assertThat(report.liquorStatus().untagged()).isEqualTo(49);
+        // 7단계 전이: 시드 12곳 TAGGED, 그 외 59-12=47곳 UNTAGGED, NA 0(전건 JOINED — 2축 유지)
+        assertThat(report.liquorStatus().tagged()).isEqualTo(12);
+        assertThat(report.liquorStatus().untagged()).isEqualTo(47);
         assertThat(report.liquorStatus().na()).isZero();
         breweryRepository.findAll().forEach(b -> {
             var expected = SEEDED_BREWERIES.contains(b.getBreweryId())
@@ -190,9 +190,9 @@ class ProcessOrchestratorIntegrationTest {
         assertThat(again.region().changed()).isZero();
         assertThat(again.region().unchanged()).isEqualTo(59);
 
-        // 6단계 주종 롤업: MANUAL 시드 74(3차) 전건 skip(멱등), 7단계 liquor_status 변화 0
+        // 6단계 주종 롤업: MANUAL 시드 221(3차) 전건 skip(멱등), 7단계 liquor_status 변화 0
         assertThat(again.liquor().manual().loaded()).isZero();
-        assertThat(again.liquor().manual().skippedExisting()).isEqualTo(74);
+        assertThat(again.liquor().manual().skippedExisting()).isEqualTo(221);
         assertThat(again.liquorStatus().changed()).isZero();
         assertThat(again.liquorStatus().unchanged()).isEqualTo(59);
 

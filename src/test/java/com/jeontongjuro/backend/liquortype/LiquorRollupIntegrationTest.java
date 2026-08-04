@@ -229,23 +229,23 @@ class LiquorRollupIntegrationTest {
         assertThat(takjuTags.get(0).isRecheckFlag()).isFalse();
     }
 
-    /** #18 2차 시드 대상 미커버 양조장 10곳(전건 MANUAL로 확정 → TAGGED 전이 예상). */
+    /** 3차 MANUAL 시드로 조인 제품이 전건 확정된 양조장 12곳(→ TAGGED 전이 예상). */
     private static final List<String> SEEDED_BREWERIES = List.of(
-            "BRW-007", "BRW-009", "BRW-010", "BRW-014", "BRW-016",
-            "BRW-019", "BRW-025", "BRW-041", "BRW-043", "BRW-054");
+            "BRW-007", "BRW-009", "BRW-010", "BRW-014", "BRW-016", "BRW-019",
+            "BRW-025", "BRW-033", "BRW-034", "BRW-041", "BRW-043", "BRW-054");
 
     @Test
-    @DisplayName("MANUAL 시드(3차): 74건 적재(29+신설4+승격41)·전건 source=MANUAL·recheck_flag=false·matched_keyword=null")
+    @DisplayName("MANUAL 시드(3차): 221건 적재(74+3B 147)·전건 source=MANUAL·recheck_flag=false·matched_keyword=null")
     void manualSeedLoadsExpectedCount() {
         LiquorManualSeedLoadService.LoadResult result = liquorManualSeedLoadService.load();
-        assertThat(result.seedRows()).isEqualTo(74);   // 전사 드리프트 감지(요약 STEP 3d) — 29(2차) + 4(신설) + 41(승격)
-        assertThat(result.loaded()).isEqualTo(74);
+        assertThat(result.seedRows()).isEqualTo(221);   // 전사 드리프트 감지(요약 STEP 3d) — liquor_manual_seed.json entries
+        assertThat(result.loaded()).isEqualTo(221);
         assertThat(result.skippedExisting()).isZero();
 
         List<ProductLiquorType> manual = liquorTypeRepository.findAll().stream()
                 .filter(t -> t.getSource() == LiquorTagSource.MANUAL)
                 .toList();
-        assertThat(manual).hasSize(74);
+        assertThat(manual).hasSize(221);
         assertThat(manual).allSatisfy(t -> {
             assertThat(t.isRecheckFlag()).isFalse();
             assertThat(t.isSuppressedFromTab()).isFalse();
@@ -296,7 +296,7 @@ class LiquorRollupIntegrationTest {
     }
 
     @Test
-    @DisplayName("7단계 전이: 시드 10곳(전건 검수완료)만 TAGGED, 나머지 JOINED는 UNTAGGED, NA 0(2축 유지)")
+    @DisplayName("7단계 전이: 시드 12곳(전건 검수완료)만 TAGGED, 나머지 JOINED는 UNTAGGED, NA 0(2축 유지)")
     void liquorStatusTransitionsForConfirmedBreweries() {
         liquorManualSeedLoadService.load();
         liquorInferenceService.infer(productRaws());
@@ -305,7 +305,7 @@ class LiquorRollupIntegrationTest {
         Map<String, LiquorStatus> statusById = new HashMap<>();
         breweryRepository.findAll().forEach(b -> statusById.put(b.getBreweryId(), b.getLiquorStatus()));
 
-        // 시드 10곳: 조인 제품이 전건 MANUAL(recheck=false)로 채워져 TAGGED
+        // 시드 12곳: 조인 제품이 전건 MANUAL(recheck=false)로 채워져 TAGGED
         for (String id : SEEDED_BREWERIES) {
             assertThat(statusById.get(id)).as("시드 양조장 TAGGED: %s", id).isEqualTo(LiquorStatus.TAGGED);
         }
