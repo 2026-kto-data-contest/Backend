@@ -1,0 +1,29 @@
+{
+  "_meta": {
+    "purpose": "주종 오탐 제외 시드(3d EXCLUSION). AUTO 추론이 매칭했지만 문맥·근거 검토 결과 오탐으로 확정된 (source_row_ref, liquorType) 조합을 append-only로 적재한다. DB 테이블을 신설하지 않고 인메모리 Set으로만 쓴다.",
+    "created_at": "2026-08-04",
+    "how_used": "LiquorInferenceService.infer()의 AUTO 삽입 루프에서 삽입 전 필터로 쓰인다 — (source_row_ref, liquorType)이 이 시드에 있으면 그 조합은 적재하지 않고 excluded 카운트만 늘린다. 삽입 후 삭제 방식이 아니다(멱등성 보존).",
+    "priority": "MANUAL > EXCLUSION > AUTO. 즉 동일 (ref, liquorType)에 MANUAL이 있으면 애초에 AUTO가 시도되지 않으므로 EXCLUSION은 무의미해지고, 로더가 이를 authoring 모순으로 간주해 중단한다.",
+    "append_only": "기존 행 수정·삭제 금지. 판정이 바뀌면 새 행을 추가하고 근거에 사유를 남긴다.",
+    "schema": {
+      "source_row_ref": "제품 참조(INT) = product_brewery_link.source_row_ref(원본 source_row_index).",
+      "liquorType": "탁주 / 약주 / 청주 / 증류주 / 과실주 / 기타",
+      "reason": "제외 근거(자유 서술 — 어떤 문맥을 오탐으로 판단했는지)",
+      "decided_at": "판정일 YYYY-MM-DD"
+    }
+  },
+  "entries": [
+    { "source_row_ref": 464, "liquorType": "과실주", "reason": "국순당 려 — 원료가 쌀·고구마 증류소주원액. characteristics의 '브랜디'는 향 비유이며 실제 브랜디 아님", "decided_at": "2026-08-04" },
+    { "source_row_ref": 464, "liquorType": "청주", "reason": "국순당 려 — \"마치 맑은 청주를 마시는 느낌이다\"는 비유. awards는 '2019 우리술품평회 증류주 최우수상'", "decided_at": "2026-08-04" },
+    { "source_row_ref": 862, "liquorType": "청주", "reason": "한산소곡주 천상문 — \"빛깔은 청주와 같으며\"는 색상 비유. 동일 문장의 '소곡주'는 정탐이므로 약주는 유지", "decided_at": "2026-08-04" },
+    { "source_row_ref": 560, "liquorType": "과실주", "reason": "배혜정도가 매실탁테일 — \"가벼운 와인안주로 많이 선호하는 음식\"은 안주 설명. 탁주 태깅은 유지", "decided_at": "2026-08-04" },
+    { "source_row_ref": 6, "liquorType": "탁주", "reason": "오산양조 오매백주 — \"오산막걸리와는 완전히 다른 느낌\"은 타제품 언급", "decided_at": "2026-08-04" },
+    { "source_row_ref": 918, "liquorType": "과실주", "reason": "양촌와이너리 양촌감 보드카 — 원료 '감발효증류주', 32도. business_name의 '와이너리' 매칭에 의한 오탐", "decided_at": "2026-08-04" },
+    { "source_row_ref": 431, "liquorType": "과실주", "reason": "양촌와이너리 감이슬 — characteristics에 \"감 증류주\"라 명시. 증류주 태깅은 유지", "decided_at": "2026-08-04" },
+    { "source_row_ref": 122, "liquorType": "약주", "reason": "술아원 핸드메이드 막걸리 — characteristics가 ref 246(순곡주, 20도) 설명과 글자 단위 동일한 복붙 오염. 본 제품은 8도이고 원료에 증류주 없음. 3-B 재판정 대상", "decided_at": "2026-08-04" },
+    { "source_row_ref": 480, "liquorType": "과실주", "reason": "고도리 징기스칸 — 증류주로 교체. 원료 '레드와인' 증류, 40도. 공식몰 별도 카테고리·라벨 BRANDY 표기(웹 검증)", "decided_at": "2026-08-04" },
+    { "source_row_ref": 1042, "liquorType": "과실주", "reason": "시나브로 바야흐로 — 증류주로 교체. 원료 '증류주 원액', 40도", "decided_at": "2026-08-04" },
+    { "source_row_ref": 1043, "liquorType": "과실주", "reason": "시나브로 바야흐로 오크 — 증류주로 교체. 원료 '증류주 원액', 40도", "decided_at": "2026-08-04" },
+    { "source_row_ref": 1040, "liquorType": "과실주", "reason": "시나브로 P.S 샤인 스파클링 — characteristics·ingredients 공란으로 근거 부재. 와이너리 scope 제거 시 근거 소멸. 3-B 재판정 대상", "decided_at": "2026-08-04" }
+  ]
+}

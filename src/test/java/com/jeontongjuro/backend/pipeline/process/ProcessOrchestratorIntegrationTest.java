@@ -133,12 +133,12 @@ class ProcessOrchestratorIntegrationTest {
             "BRW-019", "BRW-025", "BRW-041", "BRW-043", "BRW-054");
 
     @Test
-    @DisplayName("주종 롤업(6·7단계): MANUAL 29 적재 → 시드 10곳만 TAGGED 전이, 나머지 UNTAGGED, '기타' 미생성")
+    @DisplayName("주종 롤업(6·7단계): MANUAL 74 적재(3차) → 확정 양조장만 TAGGED 전이, 나머지 UNTAGGED, '기타' 미생성")
     void liquorRollupTransitionsStatusForConfirmedBreweries() {
         ProcessReport report = orchestrator.run(SNAPSHOT);
 
-        // 6단계: MANUAL 시드 29 적재 + AUTO 추론 태깅
-        assertThat(report.liquor().manual().loaded()).isEqualTo(29);
+        // 6단계: MANUAL 시드 74(3차: 29+신설4+승격41) 적재 + AUTO 추론 태깅
+        assertThat(report.liquor().manual().loaded()).isEqualTo(74);
         assertThat(report.liquor().infer().tagRowsInserted()).isGreaterThan(0);
 
         // AUTO는 '기타'를 만들지 않는다(MANUAL만 '기타' 부여 가능 — 이번 시드엔 없음)
@@ -190,9 +190,9 @@ class ProcessOrchestratorIntegrationTest {
         assertThat(again.region().changed()).isZero();
         assertThat(again.region().unchanged()).isEqualTo(59);
 
-        // 6단계 주종 롤업: MANUAL 시드 29 전건 skip(멱등), 7단계 liquor_status 변화 0
+        // 6단계 주종 롤업: MANUAL 시드 74(3차) 전건 skip(멱등), 7단계 liquor_status 변화 0
         assertThat(again.liquor().manual().loaded()).isZero();
-        assertThat(again.liquor().manual().skippedExisting()).isEqualTo(29);
+        assertThat(again.liquor().manual().skippedExisting()).isEqualTo(74);
         assertThat(again.liquorStatus().changed()).isZero();
         assertThat(again.liquorStatus().unchanged()).isEqualTo(59);
 
