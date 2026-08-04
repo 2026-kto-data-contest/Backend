@@ -30,6 +30,8 @@ import org.springframework.transaction.annotation.Transactional;
  *       원문을 함께 출력해 사람이 이것만 보고 주종을 판정할 수 있게 한다(description은 여기서만 사용).</li>
  *   <li>(2) 향미이중 후보 — suppressed_from_tab=true 행(제품명·주종·매칭 키워드).</li>
  *   <li>(3) 무태깅 제품 — 양조장은 커버됐으나 개별 제품이 무태깅(참고·부채. 이번 검수 대상 아님).</li>
+ *   <li>(4) 오탐 제외 — 3차(이슈 #20) liquor_exclusion_seed.json으로 AUTO 삽입을 억제한 (제품, 주종, 근거) 목록.
+ *       exclusion은 DB에 남지 않으므로 이 리포트가 유일한 가시화 경로다.</li>
  * </ul>
  * docs/audit/ 하위에 파일로도 남긴다(레포 상대경로 — 해당 디렉터리는 로컬 산출물이라 커밋 대상 아님).
  */
@@ -40,15 +42,18 @@ public class LiquorAuditReportService {
     private final ProductBreweryLinkRepository linkRepository;
     private final BreweryRepository breweryRepository;
     private final ProductRawRepository productRawRepository;
+    private final LiquorExclusionSeedLoadService exclusionSeedLoadService;
 
     public LiquorAuditReportService(ProductLiquorTypeRepository liquorTypeRepository,
                                     ProductBreweryLinkRepository linkRepository,
                                     BreweryRepository breweryRepository,
-                                    ProductRawRepository productRawRepository) {
+                                    ProductRawRepository productRawRepository,
+                                    LiquorExclusionSeedLoadService exclusionSeedLoadService) {
         this.liquorTypeRepository = liquorTypeRepository;
         this.linkRepository = linkRepository;
         this.breweryRepository = breweryRepository;
         this.productRawRepository = productRawRepository;
+        this.exclusionSeedLoadService = exclusionSeedLoadService;
     }
 
     /** 3섹션 마크다운 리포트를 문자열로 산출(파일 미기록 — 테스트·미리보기용). */
@@ -87,6 +92,7 @@ public class LiquorAuditReportService {
         appendUncoveredBreweries(sb, links, businessNameById, taggedBreweryIds, rawByRowRef);
         appendFlavorDoubles(sb, tags, links, businessNameById);
         appendUntaggedProducts(sb, links, businessNameById, taggedBreweryIds, taggedRowRefs);
+        appendExclusions(sb, links);
         return sb.toString();
     }
 
@@ -203,6 +209,35 @@ public class LiquorAuditReportService {
             sb.append("| ").append(l.getSourceRowRef())
                     .append(" | ").append(nz(businessNameById.get(l.getBreweryId())))
                     .append(" | ").append(nz(l.getProductName()))
+                    .append(" |\n");
+        }
+        sb.append('\n');
+    }
+
+    private void appendExclusions(StringBuilder sb, List<ProductBreweryLink> links) {
+        Map<Integer, String> productNameByRowRef = new HashMap<>();
+        for (ProductBreweryLink l : links) {
+            productNameByRowRef.put(l.getSourceRowRef(), l.getProductName());
+        }
+        List<LiquorExclusionSeedLoadService.ExclusionEntry> exclusions =
+                new ArrayList<>(exclusionSeedLoadService.loadEntries());
+        exclusions.sort(Comparator.comparing(LiquorExclusionSeedLoadService.ExclusionEntry::sourceRowRef)
+                .thenComparing(e -> e.liquorType().name()));
+
+        sb.append("## (4) 오탐 제외 — liquor_exclusion_seed.json\n\n");
+        sb.append("AUTO가 매칭했으나 삽입 전 필터로 걸러 DB에 남기지 않은 (제품, 주종) **")
+                .append(exclusions.size()).append("건** (DB에 행이 없으므로 이 리포트가 유일한 가시화 경로).\n\n");
+        if (exclusions.isEmpty()) {
+            sb.append("_해당 없음._\n\n");
+            return;
+        }
+        sb.append("| source_row_ref | 제품명 | 제외 주종 | 근거 |\n");
+        sb.append("|---|---|---|---|\n");
+        for (LiquorExclusionSeedLoadService.ExclusionEntry e : exclusions) {
+            sb.append("| ").append(e.sourceRowRef())
+                    .append(" | ").append(nz(productNameByRowRef.get(e.sourceRowRef())))
+                    .append(" | ").append(e.liquorType().name())
+                    .append(" | ").append(oneLine(e.reason()))
                     .append(" |\n");
         }
         sb.append('\n');

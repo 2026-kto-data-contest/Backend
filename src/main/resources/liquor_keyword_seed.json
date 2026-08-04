@@ -6,9 +6,10 @@
     "wordBoundary": "true면 매칭 위치 앞·뒤 문자가 한글 음절이 아닐 때만 매칭(한글엔 정규식 \\b 안 통함 → 앞뒤 문자 한글 여부로 직접 판정). 짧고 오탐 많은 단어에만.",
     "flavor_double": "flavor_words는 주종 키워드가 아니다 — 제품명에 향미어+주종어가 동시에 있으면 그 제품 태그를 suppressed_from_tab=true로 표시(억제)하는 C-4 판정에만 쓴다.",
     "included_notes": {
-      "와이너리": "business_name 스코프. 와이너리(winery)는 과실주 단일 생산자를 뜻하는 명시적 업종어 → 과실주. (양조/도가/주조 같은 범용 접미어와 달리 주종을 특정함)",
+      "와이너리": "product_name 스코프(★3차/이슈 #20: business_name 제거 — business_name 매칭이 오탐 다수 유발, 918 양촌감 보드카 등). 와이너리(winery)는 과실주 단일 생산자를 뜻하는 명시적 업종어 → 과실주. (양조/도가/주조 같은 범용 접미어와 달리 주종을 특정함)",
       "소곡주": "한산소곡주 계열은 전통 약주 → 약주. 반면 범용 '곡주'(순곡주·우곡주 등)는 주종이 약주/기타로 갈려 모호 → 제외.",
-      "진": "gin. product_name 스코프 + wordBoundary — '진맥소주'·'진도홍주'·'진상주' 등 오탐 방지. '퍼플 진' 등만 매칭."
+      "진": "gin. product_name 스코프 + wordBoundary — '진맥소주'·'진도홍주'·'진상주' 등 오탐 방지. '퍼플 진' 등만 매칭.",
+      "브랜디": "★3차(이슈 #20): 과실주 → 증류주로 이동. 브랜디는 과실 발효주를 증류한 술 → 6종 매핑상 증류주(포도/사과 등 원재료가 아니라 증류 여부가 분류 기준)."
     },
     "excluded_and_why": {
       "생막걸리": "'막걸리'가 부분문자열로 이미 커버(유자생막걸리 포함) → 중복이라 제외.",
@@ -32,11 +33,11 @@
     { "keyword": "증류", "liquorType": "증류주", "scope": ["product_name", "characteristics"], "wordBoundary": false },
     { "keyword": "고소리", "liquorType": "증류주", "scope": ["product_name", "characteristics"], "wordBoundary": false },
     { "keyword": "진", "liquorType": "증류주", "scope": ["product_name"], "wordBoundary": true },
+    { "keyword": "브랜디", "liquorType": "증류주", "scope": ["product_name", "characteristics"], "wordBoundary": false },
 
     { "keyword": "와인", "liquorType": "과실주", "scope": ["product_name", "characteristics"], "wordBoundary": false },
-    { "keyword": "브랜디", "liquorType": "과실주", "scope": ["product_name", "characteristics"], "wordBoundary": false },
     { "keyword": "과실주", "liquorType": "과실주", "scope": ["product_name", "characteristics"], "wordBoundary": false },
-    { "keyword": "와이너리", "liquorType": "과실주", "scope": ["business_name", "product_name"], "wordBoundary": false }
+    { "keyword": "와이너리", "liquorType": "과실주", "scope": ["product_name"], "wordBoundary": false }
   ],
   "flavor_words": ["유자", "복분자", "오미자", "매실", "자몽", "딸기", "포도", "사과", "머루"]
 }

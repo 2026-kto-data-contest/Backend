@@ -10,6 +10,10 @@ public interface ProductLiquorTypeRepository extends JpaRepository<ProductLiquor
     /** 멱등 스킵용 — 같은 (제품, 주종) 조합이 이미 있으면 재적재하지 않는다(MANUAL·AUTO 공통). */
     boolean existsBySourceRowRefAndLiquorType(Integer sourceRowRef, LiquorType liquorType);
 
+    /** EXCLUSION 모순 검출용 — 같은 (제품, 주종)이 MANUAL로도 있으면 authoring 모순(3d 3차, 이슈 #20). */
+    boolean existsBySourceRowRefAndLiquorTypeAndSource(Integer sourceRowRef, LiquorType liquorType,
+                                                        LiquorTagSource source);
+
     /**
      * 양조장별 주종 집계(별도 집계 테이블 없이 GROUP BY — 59행 규모라 성능 무관). 조회 API가 쓸 준비.
      * <p>

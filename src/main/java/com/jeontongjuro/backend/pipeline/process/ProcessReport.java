@@ -63,6 +63,7 @@ public record ProcessReport(
                 .append(" | AUTO target=").append(liquor.infer().targetProducts())
                 .append(" tagged=").append(liquor.infer().tagRowsInserted())
                 .append(" skippedExisting=").append(liquor.infer().skippedExisting())
+                .append(" excluded=").append(liquor.infer().excludedTags())
                 .append(" suppressed=").append(liquor.infer().suppressedTags())
                 .append(" uncovered=").append(liquor.infer().uncoveredProducts())
                 .append(" (AUTO는 recheck_flag=true)").append('\n');

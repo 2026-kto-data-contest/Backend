@@ -1,6 +1,8 @@
 package com.jeontongjuro.backend.liquortype;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.jeontongjuro.backend.brewery.Brewery;
@@ -62,6 +64,8 @@ class LiquorRollupIntegrationTest {
     private BreweryJoinStatusUpdateService joinStatusUpdateService;
     @Autowired
     private LiquorManualSeedLoadService liquorManualSeedLoadService;
+    @Autowired
+    private LiquorExclusionSeedLoadService liquorExclusionSeedLoadService;
     @Autowired
     private LiquorInferenceService liquorInferenceService;
     @Autowired
@@ -231,22 +235,64 @@ class LiquorRollupIntegrationTest {
             "BRW-019", "BRW-025", "BRW-041", "BRW-043", "BRW-054");
 
     @Test
-    @DisplayName("MANUAL 시드(2차): 29건 적재·전건 source=MANUAL·recheck_flag=false·matched_keyword=null")
-    void manualSeedLoads29AsConfirmed() {
+    @DisplayName("MANUAL 시드(3차): 74건 적재(29+신설4+승격41)·전건 source=MANUAL·recheck_flag=false·matched_keyword=null")
+    void manualSeedLoadsExpectedCount() {
         LiquorManualSeedLoadService.LoadResult result = liquorManualSeedLoadService.load();
-        assertThat(result.seedRows()).isEqualTo(29);   // 전사 드리프트 감지(요약 STEP 2d)
-        assertThat(result.loaded()).isEqualTo(29);
+        assertThat(result.seedRows()).isEqualTo(74);   // 전사 드리프트 감지(요약 STEP 3d) — 29(2차) + 4(신설) + 41(승격)
+        assertThat(result.loaded()).isEqualTo(74);
         assertThat(result.skippedExisting()).isZero();
 
         List<ProductLiquorType> manual = liquorTypeRepository.findAll().stream()
                 .filter(t -> t.getSource() == LiquorTagSource.MANUAL)
                 .toList();
-        assertThat(manual).hasSize(29);
+        assertThat(manual).hasSize(74);
         assertThat(manual).allSatisfy(t -> {
             assertThat(t.isRecheckFlag()).isFalse();
             assertThat(t.isSuppressedFromTab()).isFalse();
             assertThat(t.getMatchedKeyword()).isNull();
         });
+    }
+
+    @Test
+    @DisplayName("오탐 제외: exclusion 대상 (ref,type)은 AUTO 삽입 대상에서 걸러지고, 2회 실행해도 계속 부재(멱등)")
+    void excludedPairsAreNeverInsertedByAuto() {
+        // 6=탁주('막걸리'는 타제품 언급), 862=청주('청주'는 색상 비유), 122=약주(246 복붙 오염) — 모두
+        // exclusion 시드에 있으면서 새 사전(브랜디→증류주, 와이너리 business_name 제거)에서도 여전히 매칭되는 케이스.
+        LiquorInferenceService.InferResult first = liquorInferenceService.infer(productRaws());
+        assertThat(first.excludedTags()).isGreaterThan(0);
+        assertThat(liquorTypeRepository.existsBySourceRowRefAndLiquorType(6, LiquorType.탁주)).isFalse();
+        assertThat(liquorTypeRepository.existsBySourceRowRefAndLiquorType(862, LiquorType.청주)).isFalse();
+        assertThat(liquorTypeRepository.existsBySourceRowRefAndLiquorType(122, LiquorType.약주)).isFalse();
+
+        LiquorInferenceService.InferResult second = liquorInferenceService.infer(productRaws());
+        assertThat(second.tagRowsInserted()).isZero();
+        assertThat(second.excludedTags()).isEqualTo(first.excludedTags());
+        assertThat(liquorTypeRepository.existsBySourceRowRefAndLiquorType(6, LiquorType.탁주)).isFalse();
+        assertThat(liquorTypeRepository.existsBySourceRowRefAndLiquorType(862, LiquorType.청주)).isFalse();
+        assertThat(liquorTypeRepository.existsBySourceRowRefAndLiquorType(122, LiquorType.약주)).isFalse();
+    }
+
+    @Test
+    @DisplayName("모순 검출: exclusion과 동일한 (ref,type)에 MANUAL이 이미 있으면 IllegalStateException으로 중단")
+    void exclusionManualContradictionThrows() {
+        ProductBreweryLink link = linkFor("오매백주"); // ref=6, exclusion=(6,탁주)
+        liquorTypeRepository.save(
+                ProductLiquorType.manual(link.getSourceRowRef(), link.getBreweryId(), LiquorType.탁주));
+
+        assertThatThrownBy(() -> liquorInferenceService.infer(productRaws()))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("모순");
+    }
+
+    @Test
+    @DisplayName("같은 ref 다른 주종 공존: exclusion(480,과실주)과 manual(480,증류주)이 공존해도 예외 없음")
+    void sameRefDifferentTypeExclusionAndManualCoexist() {
+        liquorManualSeedLoadService.load();
+
+        assertThatCode(() -> liquorInferenceService.infer(productRaws())).doesNotThrowAnyException();
+
+        assertThat(liquorTypeRepository.existsBySourceRowRefAndLiquorType(480, LiquorType.증류주)).isTrue();
+        assertThat(liquorTypeRepository.existsBySourceRowRefAndLiquorType(480, LiquorType.과실주)).isFalse();
     }
 
     @Test
