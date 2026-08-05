@@ -10,11 +10,15 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.jeontongjuro.backend.brewery.BreweryMasterLoadService;
 import com.jeontongjuro.backend.brewery.BreweryRegionUpdateService;
 import com.jeontongjuro.backend.brewery.BreweryRepository;
+import com.jeontongjuro.backend.liquortype.LiquorType;
+import com.jeontongjuro.backend.liquortype.ProductLiquorType;
 import com.jeontongjuro.backend.override.ManualOverrideRepository;
 import com.jeontongjuro.backend.pipeline.collect.RawDataset;
 import com.jeontongjuro.backend.pipeline.collect.raw.BreweryRaw;
 import com.jeontongjuro.backend.pipeline.collect.source.FixtureRawSnapshotSource;
 import com.jeontongjuro.backend.pipeline.collect.source.RawSnapshot;
+import com.jeontongjuro.backend.product.JoinSource;
+import com.jeontongjuro.backend.product.ProductBreweryLink;
 import com.jeontongjuro.backend.product.ProductBreweryLinkRepository;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -176,7 +180,143 @@ class BreweryQueryApiTest {
                 assertThat(item.get("businessName").asText()).contains("안동소주"));
     }
 
+    // ── 주종 필터(이슈 #24) ────────────────────────────────────────────────────
+    // 골든 59행 중 실재 3곳에 최소 픽스처를 심는다(시드/추론 파이프라인 미의존 — "주어진 데이터에 대한 필터 정확성"만 검증):
+    //   A=BRW-004(강원, 국순당)  : 탁주·약주·청주·증류주 4행 — 1:N 중복 유발원
+    //   B=BRW-002(경상, 고도리)  : 탁주 1행
+    //   C=BRW-006(부산, 금정산성): 증류주 1행
+    private static final String BREWERY_A = "BRW-004";
+    private static final String BREWERY_B = "BRW-002";
+    private static final String BREWERY_C = "BRW-006";
+
+    @Test
+    @DisplayName("주종 단일 탁주 → A·B 2건")
+    void liquorTypeSingleTakju() throws Exception {
+        seedLiquorTags();
+        mockMvc.perform(get("/api/v1/breweries").param("liquorType", "탁주").param("size", "100"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(2));
+    }
+
+    @Test
+    @DisplayName("주종 단일 청주 → A 1건")
+    void liquorTypeSingleCheongju() throws Exception {
+        seedLiquorTags();
+        mockMvc.perform(get("/api/v1/breweries").param("liquorType", "청주").param("size", "100"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(1));
+    }
+
+    @Test
+    @DisplayName("주종 OR 탁주·약주 → A(중복 제거)·B 2건")
+    void liquorTypeOrTakjuYakju() throws Exception {
+        seedLiquorTags();
+        mockMvc.perform(get("/api/v1/breweries")
+                        .param("liquorType", "탁주").param("liquorType", "약주").param("size", "100"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(2));
+    }
+
+    @Test
+    @DisplayName("주종 OR 탁주·증류주 → A·B·C 3건")
+    void liquorTypeOrTakjuJeungnyuju() throws Exception {
+        seedLiquorTags();
+        mockMvc.perform(get("/api/v1/breweries")
+                        .param("liquorType", "탁주").param("liquorType", "증류주").param("size", "100"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(3));
+    }
+
+    @Test
+    @DisplayName("★주종 4종 전부(탁주·약주·청주·증류주) → EXISTS 중복 제거로 3건 (join이면 6)")
+    void liquorTypeAllFourDeduped() throws Exception {
+        seedLiquorTags();
+        mockMvc.perform(get("/api/v1/breweries")
+                        .param("liquorType", "탁주")
+                        .param("liquorType", "약주")
+                        .param("liquorType", "청주")
+                        .param("liquorType", "증류주")
+                        .param("size", "100"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(3))
+                .andExpect(jsonPath("$.content.length()").value(3));
+    }
+
+    @Test
+    @DisplayName("주종 미지정 → 필터 미적용, 전체 59")
+    void liquorTypeAbsentReturnsAll() throws Exception {
+        seedLiquorTags();
+        mockMvc.perform(get("/api/v1/breweries").param("size", "100"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(59));
+    }
+
+    @Test
+    @DisplayName("AND 조합: region=강원 & 탁주 → A만(강원) 1건")
+    void regionAndLiquorType() throws Exception {
+        seedLiquorTags();
+        // 탁주 보유는 A(강원)·B(경상). region=강원 AND 탁주 → 강원인 A 하나.
+        mockMvc.perform(get("/api/v1/breweries")
+                        .param("region", "강원").param("liquorType", "탁주").param("size", "100"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(1))
+                .andExpect(jsonPath("$.content[0].breweryId").value(BREWERY_A));
+    }
+
+    @Test
+    @DisplayName("페이지네이션: 탁주 필터 size=1 → content 1건이지만 totalElements 2")
+    void liquorTypePaginationSizeOne() throws Exception {
+        seedLiquorTags();
+        mockMvc.perform(get("/api/v1/breweries").param("liquorType", "탁주").param("size", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content.length()").value(1))
+                .andExpect(jsonPath("$.totalElements").value(2));
+    }
+
+    @Test
+    @DisplayName("주종 기타 → 400 (enum 값이지만 API 계약 배제)")
+    void liquorTypeGitaYields400() throws Exception {
+        mockMvc.perform(get("/api/v1/breweries").param("liquorType", "기타"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("INVALID_QUERY_PARAMETER"))
+                .andExpect(jsonPath("$.message").isNotEmpty());
+    }
+
+    @Test
+    @DisplayName("주종 맥주(정의 밖) → 400")
+    void liquorTypeUnknownYields400() throws Exception {
+        mockMvc.perform(get("/api/v1/breweries").param("liquorType", "맥주"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("INVALID_QUERY_PARAMETER"));
+    }
+
+    @Test
+    @DisplayName("주종 다중값 중 하나가 기타 → 원소별 검증으로 400")
+    void liquorTypeMixedWithGitaYields400() throws Exception {
+        mockMvc.perform(get("/api/v1/breweries").param("liquorType", "탁주").param("liquorType", "기타"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("INVALID_QUERY_PARAMETER"));
+    }
+
     // ── helpers ──────────────────────────────────────────────────────────────
+    /**
+     * 주종 필터 검증용 최소 픽스처. product_liquor_type.source_row_ref → product_brewery_link.source_row_ref
+     * FK를 만족시키려 link도 함께 심는다(@BeforeEach가 link를 비우므로 여기서 세우지 않으면 FK 위반).
+     * A는 한 제품(9001)에 4개 주종 태그 — uq는 (source_row_ref, liquor_type)이라 정상이고 1:N 중복을 만든다.
+     */
+    private void seedLiquorTags() {
+        linkRepository.save(ProductBreweryLink.of(9001, "제품-A", "국순당", "국순당", BREWERY_A, JoinSource.AUTO));
+        linkRepository.save(ProductBreweryLink.of(9002, "제품-B", "고도리", "고도리", BREWERY_B, JoinSource.AUTO));
+        linkRepository.save(ProductBreweryLink.of(9003, "제품-C", "금정산성", "금정산성", BREWERY_C, JoinSource.AUTO));
+
+        productLiquorTypeRepository.save(ProductLiquorType.manual(9001, BREWERY_A, LiquorType.탁주));
+        productLiquorTypeRepository.save(ProductLiquorType.manual(9001, BREWERY_A, LiquorType.약주));
+        productLiquorTypeRepository.save(ProductLiquorType.manual(9001, BREWERY_A, LiquorType.청주));
+        productLiquorTypeRepository.save(ProductLiquorType.manual(9001, BREWERY_A, LiquorType.증류주));
+        productLiquorTypeRepository.save(ProductLiquorType.manual(9002, BREWERY_B, LiquorType.탁주));
+        productLiquorTypeRepository.save(ProductLiquorType.manual(9003, BREWERY_C, LiquorType.증류주));
+    }
+
     private void assertRegionCount(String region, int expected) throws Exception {
         mockMvc.perform(get("/api/v1/breweries").param("region", region).param("size", "100"))
                 .andExpect(status().isOk())

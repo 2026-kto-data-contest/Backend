@@ -6,6 +6,7 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import java.util.List;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -51,12 +52,16 @@ public class BreweryQueryController {
             @RequestParam(required = false) String alwaysVisit,
             @Parameter(description = "양조장 이름 검색어. 보내지 않으면 이름 검색 안 함", example = "해남")
             @RequestParam(required = false) String keyword,
+            @Parameter(description = "주종 필터. 여러 번 보내면(liquorType=탁주&liquorType=증류주) 그중 하나라도 "
+                    + "빚는 양조장이 모두 나옵니다. 허용값: 탁주, 약주, 청주, 증류주, 과실주. 보내지 않으면 주종 제한 없음",
+                    example = "탁주")
+            @RequestParam(required = false) List<String> liquorType,
             @Parameter(description = "페이지 번호. 0부터 시작", example = "0")
             @RequestParam(defaultValue = "0") int page,
             @Parameter(description = "한 페이지에 받을 개수. 최대 100", example = "20")
             @RequestParam(defaultValue = "20") int size) {
         BrewerySearchCondition condition =
-                BrewerySearchCondition.of(region, reservationVisit, alwaysVisit, keyword);
+                BrewerySearchCondition.of(region, reservationVisit, alwaysVisit, keyword, liquorType);
         return breweryQueryService.search(condition, page, size);
     }
 }

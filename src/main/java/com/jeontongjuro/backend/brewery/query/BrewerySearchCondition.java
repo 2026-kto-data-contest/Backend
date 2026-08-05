@@ -2,8 +2,11 @@ package com.jeontongjuro.backend.brewery.query;
 
 import com.jeontongjuro.backend.brewery.VisitState;
 import com.jeontongjuro.backend.global.error.InvalidQueryParameterException;
+import com.jeontongjuro.backend.liquortype.LiquorType;
 import java.text.Normalizer;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.stream.Collectors;
 
 /**
@@ -17,24 +20,41 @@ import java.util.stream.Collectors;
  * @param reservationVisit 예약방문 상태(null 가능)
  * @param alwaysVisit      상시방문 상태(null 가능)
  * @param keyword          상호명 부분일치 키워드(NFC 정규화된 값, null 가능)
+ * @param liquorTypes      주종 필터(허용 5종, 비어 있으면 필터 미적용). 여러 값은 Specification에서 OR로 걸린다.
  */
 public record BrewerySearchCondition(
         Region region,
         VisitState reservationVisit,
         VisitState alwaysVisit,
-        String keyword) {
+        String keyword,
+        List<LiquorType> liquorTypes) {
 
     /**
      * 원문 파라미터 → 검증된 조건. 허용 집합 밖 값은 {@link InvalidQueryParameterException}(400).
      * keyword는 NFC 정규화만 하고 부분일치 매칭은 Specification이 담당한다.
+     * liquorType은 다중 값이라 원소별로 검증하고, 하나라도 정의 밖이면 400.
      */
     public static BrewerySearchCondition of(String region, String reservationVisit,
-                                            String alwaysVisit, String keyword) {
+                                            String alwaysVisit, String keyword,
+                                            List<String> liquorType) {
         return new BrewerySearchCondition(
                 Region.from(region),
                 parseVisit("reservationVisit", reservationVisit),
                 parseVisit("alwaysVisit", alwaysVisit),
-                normalizeKeyword(keyword));
+                normalizeKeyword(keyword),
+                parseLiquorTypes(liquorType));
+    }
+
+    /** 주종 원문 목록 → 검증된 주종 목록. null·빈 목록은 "필터 미적용"이므로 빈 목록 반환. 원소별 검증(하나라도 틀리면 400). */
+    private static List<LiquorType> parseLiquorTypes(List<String> raw) {
+        if (raw == null || raw.isEmpty()) {
+            return List.of();
+        }
+        List<LiquorType> parsed = new ArrayList<>(raw.size());
+        for (String value : raw) {
+            parsed.add(LiquorType.from(value));
+        }
+        return parsed;
     }
 
     /** Y/N/UNKNOWN 만 허용. ★VisitState.fromRaw(미입력→UNKNOWN 흡수)는 검증용으로 쓰면 안 된다 — 정확 매칭. */
