@@ -2,6 +2,10 @@ package com.jeontongjuro.backend.brewery.query;
 
 import com.jeontongjuro.backend.brewery.Brewery;
 import com.jeontongjuro.backend.brewery.VisitState;
+import com.jeontongjuro.backend.liquortype.LiquorType;
+import com.jeontongjuro.backend.liquortype.ProductLiquorType;
+import jakarta.persistence.criteria.Root;
+import jakarta.persistence.criteria.Subquery;
 import java.util.ArrayList;
 import java.util.List;
 import org.springframework.data.jpa.domain.Specification;
@@ -26,7 +30,31 @@ public final class BreweryQuerySpecifications {
         addIfPresent(specs, reservationVisit(cond.reservationVisit()));
         addIfPresent(specs, alwaysVisit(cond.alwaysVisit()));
         addIfPresent(specs, keywordContains(cond.keyword()));
+        addIfPresent(specs, liquorTypes(cond.liquorTypes()));
         return Specification.allOf(specs);
+    }
+
+    /**
+     * 주종 보유 필터(지정 주종 중 하나라도 태깅된 양조장). ★product_liquor_type과 brewery는 1:N이라
+     * join으로 걸면 결과 행이 곱해져 페이징·totalElements가 깨진다. 외부 root는 brewery 단독으로 두고
+     * {@code EXISTS} 상관 서브쿼리로 존재만 판정해 중복을 원천 차단한다(count 쿼리도 brewery 단독 → 정확).
+     * <p>
+     * ProductLiquorType.breweryId는 연관 매핑이 아닌 단순 String 컬럼이라 {@code root.join}을 쓸 수 없다 →
+     * breweryId 문자열끼리 상관시킨다. 여러 주종은 {@code IN}으로 OR 결합.
+     */
+    public static Specification<Brewery> liquorTypes(List<LiquorType> types) {
+        if (types == null || types.isEmpty()) {
+            return null;
+        }
+        return (root, query, cb) -> {
+            Subquery<Long> sub = query.subquery(Long.class);
+            Root<ProductLiquorType> plt = sub.from(ProductLiquorType.class);
+            sub.select(cb.literal(1L));
+            sub.where(
+                    cb.equal(plt.get("breweryId"), root.get("breweryId")),
+                    plt.get("liquorType").in(types));
+            return cb.exists(sub);
+        };
     }
 
     /** region 칩 정확 일치. region 컬럼 저장값 == 칩 name(). */
