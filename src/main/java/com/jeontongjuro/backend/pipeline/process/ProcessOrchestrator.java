@@ -1,5 +1,6 @@
 package com.jeontongjuro.backend.pipeline.process;
 
+import com.jeontongjuro.backend.brewery.BreweryCoordinateUpdateService;
 import com.jeontongjuro.backend.brewery.BreweryJoinStatusUpdateService;
 import com.jeontongjuro.backend.brewery.BreweryLiquorStatusUpdateService;
 import com.jeontongjuro.backend.brewery.BreweryMasterLoadService;
@@ -51,6 +52,7 @@ public class ProcessOrchestrator {
     private final LiquorInferenceService liquorInferenceService;
     private final LiquorRollupStatusService liquorRollupStatusService;
     private final BreweryLiquorStatusUpdateService liquorStatusUpdateService;
+    private final BreweryCoordinateUpdateService coordinateUpdateService;
     private final BreweryRawRepository breweryRawRepository;
     private final ProductRawRepository productRawRepository;
     private final ManualOverrideRepository overrideRepository;
@@ -64,6 +66,7 @@ public class ProcessOrchestrator {
                                LiquorInferenceService liquorInferenceService,
                                LiquorRollupStatusService liquorRollupStatusService,
                                BreweryLiquorStatusUpdateService liquorStatusUpdateService,
+                               BreweryCoordinateUpdateService coordinateUpdateService,
                                BreweryRawRepository breweryRawRepository,
                                ProductRawRepository productRawRepository,
                                ManualOverrideRepository overrideRepository) {
@@ -76,6 +79,7 @@ public class ProcessOrchestrator {
         this.liquorInferenceService = liquorInferenceService;
         this.liquorRollupStatusService = liquorRollupStatusService;
         this.liquorStatusUpdateService = liquorStatusUpdateService;
+        this.coordinateUpdateService = coordinateUpdateService;
         this.breweryRawRepository = breweryRawRepository;
         this.productRawRepository = productRawRepository;
         this.overrideRepository = overrideRepository;
@@ -138,6 +142,10 @@ public class ProcessOrchestrator {
                 step(7, "확정 양조장 집계", liquorRollupStatusService::confirmedBreweryIds);
         BreweryLiquorStatusUpdateService.UpdateResult liquorStatus =
                 step(7, "liquor_status 갱신", () -> liquorStatusUpdateService.applyLiquorRollup(confirmedBreweryIds));
+        // 8. 좌표 지오코딩(#28) — 카카오 Local API로 brewery 좌표 편입. 멱등(좌표 있으면 미호출).
+        //    ★brewery 마스터(1단계 산출)에 의존하므로 collect가 아니라 process에 편입한다(계층 정합).
+        BreweryCoordinateUpdateService.GeoResult geo =
+                step(8, "좌표 지오코딩", coordinateUpdateService::apply);
 
         // [4] override 스테일 경고 — hit==0 override는 WARN-and-continue(예외 던지지 않음).
         //     새 uddi 재수집 시 제품명 한 글자 바뀌어 override 스테일 나는 건 정상 시나리오 — 사람이 요약 보고 판단.
@@ -148,7 +156,7 @@ public class ProcessOrchestrator {
         }
 
         return new ProcessReport(snapshotDate, breweryRawCount, productRawCount,
-                master, seed, join, status, region, liquor, liquorStatus, stale);
+                master, seed, join, status, region, liquor, liquorStatus, geo, stale);
     }
 
     /** overrideHitCounts에 없는(=적중 0건) override를 골라 경고 목록으로. */

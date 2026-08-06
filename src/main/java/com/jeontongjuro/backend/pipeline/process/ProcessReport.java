@@ -1,5 +1,6 @@
 package com.jeontongjuro.backend.pipeline.process;
 
+import com.jeontongjuro.backend.brewery.BreweryCoordinateUpdateService;
 import com.jeontongjuro.backend.brewery.BreweryJoinStatusUpdateService;
 import com.jeontongjuro.backend.brewery.BreweryLiquorStatusUpdateService;
 import com.jeontongjuro.backend.brewery.BreweryMasterLoadService;
@@ -28,6 +29,7 @@ public record ProcessReport(
         BreweryRegionUpdateService.UpdateResult region,
         LiquorRollupResult liquor,
         BreweryLiquorStatusUpdateService.UpdateResult liquorStatus,
+        BreweryCoordinateUpdateService.GeoResult geo,
         List<StaleOverride> staleOverrides
 ) {
 
@@ -72,6 +74,10 @@ public record ProcessReport(
                 .append(" NA=").append(liquorStatus.na())
                 .append(" (changed=").append(liquorStatus.changed())
                 .append(" unchanged=").append(liquorStatus.unchanged()).append(")\n");
+        sb.append("geo geocoded=").append(geo.geocoded())
+                .append(" skipped=").append(geo.skipped())
+                .append(" failed=").append(geo.failed())
+                .append(" (total=").append(geo.total()).append(")\n");
         sb.append("⚠ override 미적중: ");
         if (staleOverrides.isEmpty()) {
             sb.append("없음");

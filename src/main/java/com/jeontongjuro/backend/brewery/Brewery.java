@@ -9,7 +9,9 @@ import jakarta.persistence.Index;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -94,6 +96,24 @@ public class Brewery {
     @Column(name = "image_url", columnDefinition = "text")
     private String imageUrl;
 
+    // ── 좌표 파생 자리 (#28 8단계 지오코딩이 UPDATE) ───────────────────────
+    /** 위도(카카오 y). 한국 범위 33~39 검증 통과분만 저장. ★address는 손대지 않는다. */
+    @Column(name = "latitude", precision = 9, scale = 6)
+    private BigDecimal latitude;
+
+    /** 경도(카카오 x). 한국 범위 124~132 검증 통과분만 저장. */
+    @Column(name = "longitude", precision = 9, scale = 6)
+    private BigDecimal longitude;
+
+    /** 좌표 출처(폴백 단계 식별). */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "coord_source", length = 32)
+    private CoordSource coordSource;
+
+    /** 카카오 호출로 좌표 확정한 시각(UTC). */
+    @Column(name = "geocoded_at")
+    private OffsetDateTime geocodedAt;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
@@ -149,6 +169,19 @@ public class Brewery {
      */
     public void applyLiquorStatus(LiquorStatus liquorStatus) {
         this.liquorStatus = liquorStatus;
+    }
+
+    /**
+     * 좌표 확정(파생값 UPDATE, #28 8단계). 호출자(BreweryCoordinateUpdateService)는 이미 좌표가 있으면
+     * 이 메서드를 호출하지 않는다(멱등 skip). 범위 검증(위도 33~39·경도 124~132)은 산출측
+     * (GeocodingService)이 통과시킨 값만 넘긴다 — 여기서는 순수 대입만 한다.
+     */
+    public void applyCoordinate(BigDecimal latitude, BigDecimal longitude,
+                                CoordSource coordSource, OffsetDateTime geocodedAt) {
+        this.latitude = latitude;
+        this.longitude = longitude;
+        this.coordSource = coordSource;
+        this.geocodedAt = geocodedAt;
     }
 
     @PrePersist

@@ -1,0 +1,34 @@
+{
+  "_meta": {
+    "policy": "append-only",
+    "purpose": "raw 주소 오류 보정. 좌표가 아니라 주소를 고친다. 좌표는 언제나 카카오가 계산한다.",
+    "verified_at": "2026-08-06",
+    "verified_by": "human (kakao address.json 직접 호출, total=1/pageable=1/ROAD_ADDR 확인)"
+  },
+  "fixes": [
+    {
+      "brewery_id": "BRW-004",
+      "raw_address": "강원도 횡성군 둔내면 현천리 120",
+      "fixed_address": "강원 횡성군 둔내면 강변로 975",
+      "reason": "raw 필지가 카카오 DB 부재(total=0). 역지오코딩으로 현천리 113 = 강변로 975 동일지점 확인, 건물명 '국순당 횡성공장'"
+    },
+    {
+      "brewery_id": "BRW-043",
+      "raw_address": "인천광역시 부평구 안남로 433번길 14",
+      "fixed_address": "인천 부평구 안남로433번길 26",
+      "reason": "raw 번지 오류(실제 26)"
+    },
+    {
+      "brewery_id": "BRW-047",
+      "raw_address": "충북 청주시 청원구 사천로 18길 5-2",
+      "fixed_address": "충북 청주시 청원구 사천로18번길 5-2",
+      "reason": "raw에 '번' 누락(정상 사천로18번길)"
+    },
+    {
+      "brewery_id": "BRW-051",
+      "raw_address": "전라남도 장성군 장섭읍 남양촌길 19",
+      "fixed_address": "전남 장성군 장성읍 남양촌길 19",
+      "reason": "raw 오타(정상 장성읍)"
+    }
+  ]
+}
