@@ -64,13 +64,32 @@ CREATE TABLE IF NOT EXISTS brewery (
     join_status             TEXT      NOT NULL DEFAULT 'UNJOINED',  -- 3c-2 조인이 UPDATE
     liquor_status           TEXT      NOT NULL DEFAULT 'NA',        -- 3d 주종롤업이 UPDATE
     image_url               TEXT,                           -- 소스 미확정(C-10) 격리 자리
+    -- 좌표 파생 자리 (#28 8단계 카카오 지오코딩이 UPDATE). ★address는 항상 raw 원문 — 좌표만 파생.
+    latitude                NUMERIC(9,6),                   -- 위도(카카오 y). 한국 범위 33~39 검증 후 저장
+    longitude               NUMERIC(9,6),                   -- 경도(카카오 x). 한국 범위 124~132 검증 후 저장
+    coord_source            VARCHAR(32),                    -- 좌표 출처(폴백 단계 식별). 3값 — 실사용만
+    geocoded_at             TIMESTAMPTZ,                    -- 카카오 호출로 좌표 확정한 시각(UTC)
     created_at              TIMESTAMP NOT NULL,
     updated_at              TIMESTAMP NOT NULL,
     CONSTRAINT ck_brewery_reservation_visit CHECK (reservation_visit_state IN ('Y', 'N', 'UNKNOWN')),
     CONSTRAINT ck_brewery_always_visit      CHECK (always_visit_state IN ('Y', 'N', 'UNKNOWN')),
     CONSTRAINT ck_brewery_join_status       CHECK (join_status IN ('JOINED', 'UNJOINED')),
-    CONSTRAINT ck_brewery_liquor_status     CHECK (liquor_status IN ('TAGGED', 'UNTAGGED', 'NA'))
+    CONSTRAINT ck_brewery_liquor_status     CHECK (liquor_status IN ('TAGGED', 'UNTAGGED', 'NA')),
+    CONSTRAINT ck_brewery_coord_source      CHECK (coord_source IN
+                ('KAKAO_ADDRESS', 'KAKAO_ADDRESS_NORMALIZED', 'KAKAO_ADDRESS_SEED'))
 );
+-- 기존 DB 마이그레이션(#28 8단계 좌표) — 신규 설치는 위 CREATE TABLE로 좌표 4컬럼·CHECK가 반영되지만,
+-- brewery 테이블이 이미 존재하는 DB는 CREATE TABLE IF NOT EXISTS가 통째로 건너뛰어 컬럼이 생기지 않는다.
+-- 아래 멱등 문으로 좌표 4컬럼과 CHECK 제약을 보강한다(전례: 아래 terms_definition content_url ALTER).
+ALTER TABLE brewery ADD COLUMN IF NOT EXISTS latitude     NUMERIC(9,6);
+ALTER TABLE brewery ADD COLUMN IF NOT EXISTS longitude    NUMERIC(9,6);
+ALTER TABLE brewery ADD COLUMN IF NOT EXISTS coord_source VARCHAR(32);
+ALTER TABLE brewery ADD COLUMN IF NOT EXISTS geocoded_at  TIMESTAMPTZ;
+-- CHECK는 PostgreSQL이 ADD CONSTRAINT IF NOT EXISTS를 지원하지 않는다. DO/PL-pgSQL 블록은
+-- spring.sql.init(mode:always)의 ScriptUtils가 ';'로 문장을 쪼개며 $$ 달러쿼트를 인식하지 못해 깨진다.
+-- 따라서 내부 세미콜론 없는 단문 2개(DROP IF EXISTS→ADD)로 멱등화한다 — 매 기동 재적용, 재검증(59행) 무시가능.
+ALTER TABLE brewery DROP CONSTRAINT IF EXISTS ck_brewery_coord_source;
+ALTER TABLE brewery ADD CONSTRAINT ck_brewery_coord_source CHECK (coord_source IN ('KAKAO_ADDRESS', 'KAKAO_ADDRESS_NORMALIZED', 'KAKAO_ADDRESS_SEED'));
 CREATE INDEX IF NOT EXISTS ix_brewery_business_name ON brewery (business_name);
 CREATE INDEX IF NOT EXISTS ix_brewery_norm ON brewery (norm);
 

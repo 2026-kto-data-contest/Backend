@@ -21,8 +21,10 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
+import com.jeontongjuro.backend.testsupport.StubGeocodingConfig;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.test.context.TestPropertySource;
 
 /**
@@ -32,6 +34,7 @@ import org.springframework.test.context.TestPropertySource;
  * 서비스가 배선됨을 함께 실증한다.
  */
 @SpringBootTest
+@Import(StubGeocodingConfig.class)  // 8단계 지오코딩이 카카오를 실제 호출하지 않도록 스텁으로 대체
 @TestPropertySource(properties = {
         "spring.datasource.url=jdbc:postgresql://localhost:5432/jeontongjuro_test"
 })
