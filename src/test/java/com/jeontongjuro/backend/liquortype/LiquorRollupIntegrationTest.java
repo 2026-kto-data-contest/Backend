@@ -86,6 +86,10 @@ class LiquorRollupIntegrationTest {
     private BreweryRawRepository breweryRawRepository;
     @Autowired
     private ProductRawRepository productRawRepository;
+    @org.springframework.beans.factory.annotation.Autowired
+    private com.jeontongjuro.backend.tour.BreweryNearbyRepository breweryNearbyRepository;
+    @org.springframework.beans.factory.annotation.Autowired
+    private com.jeontongjuro.backend.tour.TourContentRepository tourContentRepository;
     @Autowired
     private ObjectMapper objectMapper;
 
@@ -94,7 +98,9 @@ class LiquorRollupIntegrationTest {
         liquorTypeRepository.deleteAll();
         linkRepository.deleteAll();
         overrideRepository.deleteAll();
+        breweryNearbyRepository.deleteAll();
         breweryRepository.deleteAll();
+        tourContentRepository.deleteAll();
         breweryRawRepository.deleteAll();
         productRawRepository.deleteAll();
 

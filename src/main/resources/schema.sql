@@ -69,6 +69,10 @@ CREATE TABLE IF NOT EXISTS brewery (
     longitude               NUMERIC(9,6),                   -- 경도(카카오 x). 한국 범위 124~132 검증 후 저장
     coord_source            VARCHAR(32),                    -- 좌표 출처(폴백 단계 식별). 3값 — 실사용만
     geocoded_at             TIMESTAMPTZ,                    -- 카카오 호출로 좌표 확정한 시각(UTC)
+    -- 콘텐츠 매칭 파생 자리 (10단계 TourAPI 매칭이 UPDATE). ★FK는 파일 말미 ALTER로 건다 —
+    --   tour_content가 이 CREATE보다 뒤에 정의되므로 인라인 REFERENCES는 순서상 불가.
+    content_id              TEXT,                           -- 확정 매칭 TourAPI contentid → tour_content.content_id (nullable — 미매칭 정상)
+    content_matched_at      TIMESTAMPTZ,                    -- 매칭 확정 시각(UTC). ★source 컬럼 없음 — content_id IS NOT NULL과 동치라 무정보(수정2)
     created_at              TIMESTAMP NOT NULL,
     updated_at              TIMESTAMP NOT NULL,
     CONSTRAINT ck_brewery_reservation_visit CHECK (reservation_visit_state IN ('Y', 'N', 'UNKNOWN')),
@@ -221,3 +225,71 @@ CREATE TABLE IF NOT EXISTS product_liquor_type (
     CONSTRAINT ck_product_liquor_type_source CHECK (source IN ('AUTO', 'MANUAL'))
 );
 CREATE INDEX IF NOT EXISTS ix_product_liquor_type_brewery ON product_liquor_type (brewery_id);
+
+-- ────────────────────────────────────────────────────────────────────────────
+-- 파생층 (관광 콘텐츠 캐시·매칭, TourAPI KorService2). 9단계 근접 캐싱 + 10단계 매칭.
+-- ★tour_content를 brewery FK ALTER보다 먼저 정의한다(brewery.content_id → tour_content 참조 대상).
+--
+-- content_type_id에 CHECK를 걸지 않는다: 강화 표본 실측 8종 혼재(39/28/12/14/32/38/25/15)이나
+--   표본 1곳 기준이라 타 지역 미관측 타입이 나올 수 있다 — 관측 안 된 값을 배제하지 않는다(교정4).
+-- overview·overview_fetched_at은 컬럼만 만들고 이번 사이클엔 채우지 않는다(둘 다 NULL 유지).
+--   ★이유(수정4): overview_fetched_at은 "이 콘텐츠 상세를 받았는가"의 유일한 판별 컬럼이다. 접지분
+--   일부만 채우면 NULL이 "안 받음"인지 "받았는데 overview 없음"인지 구분 불가 → 판별력이 사라진다.
+--   그래서 detailCommon2로 접지할 때도 overview는 저장하지 않고 둘 다 NULL로 남긴다(후속 전량 사이클 몫).
+CREATE TABLE IF NOT EXISTS tour_content (
+    content_id            TEXT      PRIMARY KEY,             -- TourAPI contentid 자연키 PK(문자열 원문)
+    content_type_id       TEXT      NOT NULL,                -- contenttypeid. ★CHECK 없음(교정4 — 미관측 타입 배제 금지)
+    title                 TEXT,                              -- 콘텐츠명(원문)
+    addr1                 TEXT,                              -- 주소
+    addr2                 TEXT,                              -- 상세주소(빈 문자열 다수)
+    zipcode               TEXT,                              -- 우편번호
+    area_code             TEXT,                              -- areacode(빈 문자열 관측)
+    sigungu_code          TEXT,                              -- sigungucode
+    cat1                  TEXT,                              -- 대분류(type12 목록응답은 빈 문자열 관측)
+    cat2                  TEXT,
+    cat3                  TEXT,
+    lcls_systm1           TEXT,                              -- 분류체계 lclsSystm1~3
+    lcls_systm2           TEXT,
+    lcls_systm3           TEXT,
+    ldong_regn_cd         TEXT,                              -- 법정동 시도/시군구 코드
+    ldong_signgu_cd       TEXT,
+    -- 좌표: mapx=경도/mapy=위도. 저장 직전 위도 33~39·경도 124~132 검증 통과분만(축 전도 fail-fast).
+    latitude              NUMERIC(9,6),                      -- mapy
+    longitude             NUMERIC(9,6),                      -- mapx
+    mlevel                TEXT,                              -- 지도 레벨(원문 문자열)
+    first_image           TEXT,                              -- 대표이미지 원본(결측 다수 — 결측률 리포트)
+    first_image2          TEXT,                              -- 대표이미지 썸네일
+    cpyrht_div_cd         TEXT,                              -- 저작권 구분(Type1/Type3 등)
+    source_created_time   TEXT,                              -- TourAPI createdtime 원문(YYYYMMDDHHMMSS)
+    source_modified_time  TEXT,                              -- TourAPI modifiedtime 원문 — upsert 변경 감지 기준
+    overview              TEXT,                              -- ★컬럼만 — 이번 미충전(NULL 유지, 위 주석 참조)
+    overview_fetched_at   TIMESTAMPTZ,                       -- ★컬럼만 — 이번 미충전(NULL 유지, 판별력 보존)
+    created_at            TIMESTAMP NOT NULL,                -- 최초 적재 시각(UTC)
+    updated_at            TIMESTAMP NOT NULL                 -- 최종 upsert 시각(UTC)
+);
+CREATE INDEX IF NOT EXISTS ix_tour_content_type ON tour_content (content_type_id);
+
+-- 9단계 근접 캐싱 산물: 양조장 반경 내 콘텐츠(20km 실측 캐시). 복합 PK로 (양조장,콘텐츠) 1행.
+-- ★자기 자신 제외는 별도 플래그 컬럼 없이 brewery_nearby.content_id = brewery.content_id 파생으로 판정.
+--   양조장 A가 양조장 B 반경에 섞이는 것은 정상(코스 시나리오) — 파생이라 보존된다.
+CREATE TABLE IF NOT EXISTS brewery_nearby (
+    brewery_id            TEXT      NOT NULL,                -- 반경 기준 양조장 → brewery.brewery_id
+    content_id            TEXT      NOT NULL,                -- 반경 내 콘텐츠 → tour_content.content_id
+    distance_m            NUMERIC,                           -- TourAPI 응답 dist(m). 정렬·200m 검증 근거
+    radius_m              INT       NOT NULL,                -- 이 캐싱에 쓴 반경(tour.api.radius-m 스냅샷)
+    created_at            TIMESTAMP NOT NULL,
+    CONSTRAINT pk_brewery_nearby PRIMARY KEY (brewery_id, content_id),
+    CONSTRAINT fk_brewery_nearby_brewery FOREIGN KEY (brewery_id) REFERENCES brewery (brewery_id),
+    CONSTRAINT fk_brewery_nearby_content FOREIGN KEY (content_id) REFERENCES tour_content (content_id)
+);
+CREATE INDEX IF NOT EXISTS ix_brewery_nearby_brewery ON brewery_nearby (brewery_id);
+CREATE INDEX IF NOT EXISTS ix_brewery_nearby_content ON brewery_nearby (content_id);
+
+-- brewery 콘텐츠 매칭 마이그레이션(기존 DB) — CREATE TABLE brewery는 이미 존재하면 통째로 건너뛰므로
+-- content_id·content_matched_at 컬럼과 FK를 아래 멱등 문으로 보강한다(좌표 4컬럼 ALTER 선례 동일).
+-- ★FK는 tour_content가 위에서 먼저 정의된 뒤에야 걸 수 있다(순서 의존). DO/$$ 미사용 — DROP IF EXISTS→ADD.
+ALTER TABLE brewery ADD COLUMN IF NOT EXISTS content_id         TEXT;
+ALTER TABLE brewery ADD COLUMN IF NOT EXISTS content_matched_at TIMESTAMPTZ;
+ALTER TABLE brewery DROP CONSTRAINT IF EXISTS fk_brewery_content;
+ALTER TABLE brewery ADD CONSTRAINT fk_brewery_content FOREIGN KEY (content_id) REFERENCES tour_content (content_id);
+CREATE INDEX IF NOT EXISTS ix_brewery_content ON brewery (content_id);

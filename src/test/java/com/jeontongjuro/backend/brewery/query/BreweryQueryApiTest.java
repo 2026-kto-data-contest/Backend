@@ -72,6 +72,10 @@ class BreweryQueryApiTest {
     private ProductBreweryLinkRepository linkRepository;
     @Autowired
     private com.jeontongjuro.backend.liquortype.ProductLiquorTypeRepository productLiquorTypeRepository;
+    @org.springframework.beans.factory.annotation.Autowired
+    private com.jeontongjuro.backend.tour.BreweryNearbyRepository breweryNearbyRepository;
+    @org.springframework.beans.factory.annotation.Autowired
+    private com.jeontongjuro.backend.tour.TourContentRepository tourContentRepository;
 
     @BeforeEach
     void seedBreweryWithRegion() {
@@ -79,7 +83,9 @@ class BreweryQueryApiTest {
         productLiquorTypeRepository.deleteAll();
         linkRepository.deleteAll();
         overrideRepository.deleteAll();
+        breweryNearbyRepository.deleteAll();
         breweryRepository.deleteAll();
+        tourContentRepository.deleteAll();
         loadService.load(goldenBreweryAttributeRows());
         regionUpdateService.apply();
     }

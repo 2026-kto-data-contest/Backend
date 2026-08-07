@@ -1,6 +1,7 @@
 package com.jeontongjuro.backend.pipeline.process;
 
 import com.jeontongjuro.backend.liquortype.LiquorAuditReportService;
+import com.jeontongjuro.backend.tour.TourAuditReportService;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.time.LocalDate;
@@ -29,11 +30,14 @@ public class ProcessRunner implements CommandLineRunner {
 
     private final ProcessOrchestrator orchestrator;
     private final LiquorAuditReportService liquorAuditReportService;
+    private final TourAuditReportService tourAuditReportService;
 
     public ProcessRunner(ProcessOrchestrator orchestrator,
-                         LiquorAuditReportService liquorAuditReportService) {
+                         LiquorAuditReportService liquorAuditReportService,
+                         TourAuditReportService tourAuditReportService) {
         this.orchestrator = orchestrator;
         this.liquorAuditReportService = liquorAuditReportService;
+        this.tourAuditReportService = tourAuditReportService;
     }
 
     @Override
@@ -52,6 +56,13 @@ public class ProcessRunner implements CommandLineRunner {
         System.out.println();
         System.out.println(auditReport);
         System.out.println("[주종 검수 리포트 기록] " + auditPath);
+
+        // TourAPI 캐싱·매칭 검수 리포트(unmatched 후보 + §9 통계) — 파일·콘솔.
+        String tourReport = tourAuditReportService.render();
+        Path tourPath = tourAuditReportService.writeReport(snapshotDate);
+        System.out.println();
+        System.out.println(tourReport);
+        System.out.println("[TourAPI 검수 리포트 기록] " + tourPath);
     }
 
     private LocalDate parseSnapshotArg(String... args) {

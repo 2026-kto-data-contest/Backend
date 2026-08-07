@@ -1,0 +1,25 @@
+{
+  "_meta": "brewery ↔ TourAPI contentid 확정 19건(전제 10의 20건 중 BRW-006 제외). MANUAL wins. tour_matched2.tsv의 Y플래그(느슨한 후보)가 아니라 확정 명단이다(저점수 오매치 BRW-011 등 제외, searchKeyword2 확정분 BRW-028/031/035 포함). BRW-005·030은 거리후보이나 미포함(unmatched로 남김 — 거리는 필요조건일 뿐). source_title은 추적용 메타(로더는 brewery_id·content_id만 파싱).",
+  "_removed": "BRW-006(126196 금정산성)은 시드 20건 중 유일하게 200m 검증에 실패(665m)했으며, 대상 콘텐츠 126196이 양조장이 아닌 성곽(문화재)으로 확인되어 시드에서 제거했다(좌표오차가 아니라 대상 상이 — 이름유사도 오탐). 200m 검증이 오탐을 잡은 것이다. 후속에 정확한 contentid를 찾으면 additive로 추가한다.",
+  "seeds": [
+    {"brewery_id": "BRW-004", "content_id": "745328",  "source_title": "국순당 주향로 / 국순당"},
+    {"brewery_id": "BRW-007", "content_id": "2847546", "source_title": "금풍양조장 / 금풍양조"},
+    {"brewery_id": "BRW-012", "content_id": "2609160", "source_title": "도란원 샤토미소 / 도란원"},
+    {"brewery_id": "BRW-015", "content_id": "2469089", "source_title": "명인안동소주"},
+    {"brewery_id": "BRW-021", "content_id": "2464602", "source_title": "배혜정도가"},
+    {"brewery_id": "BRW-023", "content_id": "2608376", "source_title": "산막와이너리"},
+    {"brewery_id": "BRW-024", "content_id": "2708312", "source_title": "산머루농원"},
+    {"brewery_id": "BRW-028", "content_id": "2502595", "source_title": "술샘"},
+    {"brewery_id": "BRW-031", "content_id": "2465889", "source_title": "신평양조장 백련 양조문화원 / 신평양조장"},
+    {"brewery_id": "BRW-033", "content_id": "3468684", "source_title": "양촌 와이너리 / 양촌와이너리"},
+    {"brewery_id": "BRW-035", "content_id": "2468939", "source_title": "예산사과와인 (은성농원)"},
+    {"brewery_id": "BRW-037", "content_id": "2554515", "source_title": "오미나라"},
+    {"brewery_id": "BRW-039", "content_id": "2461702", "source_title": "우리술"},
+    {"brewery_id": "BRW-042", "content_id": "2865402", "source_title": "이원양조장"},
+    {"brewery_id": "BRW-046", "content_id": "2554570", "source_title": "제주샘주 양조장 / 제주샘주"},
+    {"brewery_id": "BRW-049", "content_id": "2372036", "source_title": "중원당 (청명주 양조장)"},
+    {"brewery_id": "BRW-055", "content_id": "2732452", "source_title": "하미앙 와인밸리"},
+    {"brewery_id": "BRW-058", "content_id": "2465928", "source_title": "한산소곡주 양조장 / 한산소곡주"},
+    {"brewery_id": "BRW-059", "content_id": "3008541", "source_title": "해창 주조장 / 해창주조장"}
+  ]
+}

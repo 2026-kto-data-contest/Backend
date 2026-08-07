@@ -114,6 +114,19 @@ public class Brewery {
     @Column(name = "geocoded_at")
     private OffsetDateTime geocodedAt;
 
+    // ── 콘텐츠 매칭 파생 자리 (10단계 TourAPI 매칭이 UPDATE) ────────────────────
+    /**
+     * 확정 매칭 TourAPI contentid → tour_content.content_id(nullable — 미매칭 정상). ★source 컬럼을 두지
+     * 않는다: 실사용 경로가 시드(MANUAL) 하나뿐이라 별도 컬럼은 {@code content_id IS NOT NULL}과 동치라
+     * 무정보(수정2). 후속에 자동 확정 경로가 생기면 그때 additive로 추가한다.
+     */
+    @Column(name = "content_id", columnDefinition = "text")
+    private String contentId;
+
+    /** 매칭 확정 시각(UTC). "언제 확정했는가"가 정보다. */
+    @Column(name = "content_matched_at")
+    private OffsetDateTime contentMatchedAt;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
@@ -182,6 +195,16 @@ public class Brewery {
         this.longitude = longitude;
         this.coordSource = coordSource;
         this.geocodedAt = geocodedAt;
+    }
+
+    /**
+     * 콘텐츠 매칭 확정(파생값 UPDATE, 10단계). 순수 대입 — 호출자(BreweryContentMatchUpdateService)가 이미
+     * 매칭이면 호출하지 않는다(멱등 skip). content_id의 tour_content 존재(FK)·200m 좌표 검증은 산출측
+     * (TourMatchResolveService)이 통과시킨 값만 넘긴다. ★applyCoordinate와 대칭(대입 계층 원칙).
+     */
+    public void applyContentMatch(String contentId, OffsetDateTime contentMatchedAt) {
+        this.contentId = contentId;
+        this.contentMatchedAt = contentMatchedAt;
     }
 
     @PrePersist

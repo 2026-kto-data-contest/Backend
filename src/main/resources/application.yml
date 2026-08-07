@@ -37,6 +37,18 @@ geo:
     api-key: ${KAKAO_REST_API_KEY:}
     base-url: https://dapi.kakao.com
 
+# TourAPI(한국관광공사 KorService2) 근접 캐싱(9단계)·매칭(10단계). 수집/지오코딩/인증과 무충돌 네임스페이스.
+# service-key는 환경변수 AT_SERVICE_KEY(aT·KTO 공용) 로만 주입(코드·yml·로그에 키 문자열 미기재). 미주입 시 첫 호출에서 명확히 중단.
+# ★radius-m은 하드코딩 아님 — 여기서만 조정(기획 피드백 대비). num-of-rows=100 — 상한 미검증(전제 11)이라 페이징을 상시 경로화.
+tour:
+  api:
+    base-url: https://apis.data.go.kr/B551011/KorService2
+    service-key: ${AT_SERVICE_KEY:}
+    radius-m: 20000
+    num-of-rows: 100
+    mobile-app: jeontongjuro
+    throttle-millis: 300
+
 springdoc:
   swagger-ui:
     path: /swagger-ui.html
