@@ -21,8 +21,10 @@ import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
 
 @Configuration
+@ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
 @RequiredArgsConstructor
 @EnableConfigurationProperties({AuthProperties.class, KakaoProperties.class, AppProperties.class})
 public class SecurityConfig {
@@ -32,9 +34,10 @@ public class SecurityConfig {
             "/api/v1/auth/kakao/callback",
             "/api/v1/auth/csrf",
             "/api/v1/breweries",
+            "/api/v1/breweries/**",
             "/swagger-ui.html",
             "/swagger-ui/**",
-            "/v3/api-docs/**"
+            "/v3/api-docs/**",
     };
 
     private final SessionAuthenticationFilter sessionAuthenticationFilter;
