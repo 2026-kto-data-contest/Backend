@@ -53,6 +53,10 @@ class BreweryMasterLoadConsistencyTest {
     private ProductBreweryLinkRepository linkRepository;
     @Autowired
     private com.jeontongjuro.backend.liquortype.ProductLiquorTypeRepository productLiquorTypeRepository;
+    @org.springframework.beans.factory.annotation.Autowired
+    private com.jeontongjuro.backend.tour.BreweryNearbyRepository breweryNearbyRepository;
+    @org.springframework.beans.factory.annotation.Autowired
+    private com.jeontongjuro.backend.tour.TourContentRepository tourContentRepository;
     @Autowired
     private ObjectMapper objectMapper;
 
@@ -64,7 +68,9 @@ class BreweryMasterLoadConsistencyTest {
         productLiquorTypeRepository.deleteAll();
         linkRepository.deleteAll();
         overrideRepository.deleteAll();
+        breweryNearbyRepository.deleteAll();
         breweryRepository.deleteAll();
+        tourContentRepository.deleteAll();
         firstResult = loadService.load(goldenBreweryAttributeRows());
     }
 

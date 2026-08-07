@@ -15,6 +15,9 @@ import com.jeontongjuro.backend.pipeline.process.ProcessOrchestrator;
 import com.jeontongjuro.backend.pipeline.process.ProcessReport;
 import com.jeontongjuro.backend.product.ProductBreweryLinkRepository;
 import com.jeontongjuro.backend.testsupport.StubGeocodingConfig;
+import com.jeontongjuro.backend.testsupport.StubTourApiConfig;
+import com.jeontongjuro.backend.tour.BreweryNearbyRepository;
+import com.jeontongjuro.backend.tour.TourContentRepository;
 import java.time.LocalDate;
 import java.util.Map;
 import java.util.TreeMap;
@@ -38,7 +41,7 @@ import org.springframework.test.context.TestPropertySource;
  * (단정 1~4의 실측 분포·시드 실좌표는 실기동 산물 골든 TSV로 {@link BreweryCoordGoldenTest}가 검증.)
  */
 @SpringBootTest
-@Import(StubGeocodingConfig.class)
+@Import({StubGeocodingConfig.class, StubTourApiConfig.class})
 @TestPropertySource(properties = {
         "spring.datasource.url=jdbc:postgresql://localhost:5432/jeontongjuro_test"
 })
@@ -69,6 +72,10 @@ class BreweryGeocodingGoldenTest {
     @Autowired
     private ProductRawRepository productRawRepository;
     @Autowired
+    private BreweryNearbyRepository breweryNearbyRepository;
+    @Autowired
+    private TourContentRepository tourContentRepository;
+    @Autowired
     private ObjectMapper objectMapper;
 
     @BeforeEach
@@ -76,7 +83,9 @@ class BreweryGeocodingGoldenTest {
         productLiquorTypeRepository.deleteAll();
         linkRepository.deleteAll();
         overrideRepository.deleteAll();
+        breweryNearbyRepository.deleteAll();   // brewery·tour_content FK 자식 — brewery보다 먼저
         breweryRepository.deleteAll();
+        tourContentRepository.deleteAll();     // 부모 — brewery·nearby 삭제 후 마지막
         breweryRawRepository.deleteAll();
         productRawRepository.deleteAll();
         FixtureRawSnapshotSource source = new FixtureRawSnapshotSource(objectMapper);

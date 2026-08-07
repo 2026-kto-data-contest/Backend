@@ -1,5 +1,6 @@
 package com.jeontongjuro.backend.pipeline.process;
 
+import com.jeontongjuro.backend.brewery.BreweryContentMatchUpdateService;
 import com.jeontongjuro.backend.brewery.BreweryCoordinateUpdateService;
 import com.jeontongjuro.backend.brewery.BreweryJoinStatusUpdateService;
 import com.jeontongjuro.backend.brewery.BreweryLiquorStatusUpdateService;
@@ -8,6 +9,8 @@ import com.jeontongjuro.backend.brewery.BreweryRegionUpdateService;
 import com.jeontongjuro.backend.liquortype.LiquorRollupResult;
 import com.jeontongjuro.backend.override.ManualOverrideSeedLoadService;
 import com.jeontongjuro.backend.product.ProductBreweryJoinService;
+import com.jeontongjuro.backend.tour.TourMatchResolveService;
+import com.jeontongjuro.backend.tour.TourNearbyCollectService;
 import java.time.LocalDate;
 import java.util.List;
 
@@ -30,6 +33,9 @@ public record ProcessReport(
         LiquorRollupResult liquor,
         BreweryLiquorStatusUpdateService.UpdateResult liquorStatus,
         BreweryCoordinateUpdateService.GeoResult geo,
+        TourNearbyCollectService.NearbyResult nearby,
+        TourMatchResolveService.ResolveResult matchResolve,
+        BreweryContentMatchUpdateService.MatchResult match,
         List<StaleOverride> staleOverrides
 ) {
 
@@ -78,6 +84,27 @@ public record ProcessReport(
                 .append(" skipped=").append(geo.skipped())
                 .append(" failed=").append(geo.failed())
                 .append(" (total=").append(geo.total()).append(")\n");
+        sb.append("tour nearby withContent=").append(nearby.withContent())
+                .append(" emptyRadius=").append(nearby.emptyRadius())
+                .append(" (합=").append(nearby.withContent() + nearby.emptyRadius())
+                .append("==").append(nearby.breweries())
+                .append(") | contentUpsert(pair-wise, not distinct) ins=").append(nearby.contentUpsertInserted())
+                .append(" upd=").append(nearby.contentUpsertUpdated())
+                .append(" unch=").append(nearby.contentUpsertUnchanged())
+                .append(" noCoord=").append(nearby.contentSkippedNoCoord())
+                .append(" | distinctContent=").append(nearby.distinctContentTotal())
+                .append(" | nearby ins=").append(nearby.nearbyInserted())
+                .append(" unch=").append(nearby.nearbyUnchanged()).append('\n');
+        sb.append("tour match seeds=").append(matchResolve.seeds())
+                .append(" (cacheCovered=").append(matchResolve.cacheCovered())
+                .append("·cachedNotCovered=").append(matchResolve.cachedNotCovered())
+                .append("·grounded=").append(matchResolve.grounded()).append(")")
+                .append(" | matched=").append(match.matched())
+                .append(" unmatched=").append(match.unmatched())
+                .append(" (합=").append(match.matched() + match.unmatched())
+                .append("==").append(match.breweries()).append(")")
+                .append(" changed=").append(match.changed())
+                .append(" unchanged=").append(match.unchanged()).append('\n');
         sb.append("⚠ override 미적중: ");
         if (staleOverrides.isEmpty()) {
             sb.append("없음");

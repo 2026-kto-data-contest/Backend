@@ -1,5 +1,6 @@
 package com.jeontongjuro.backend.pipeline.process;
 
+import com.jeontongjuro.backend.brewery.BreweryContentMatchUpdateService;
 import com.jeontongjuro.backend.brewery.BreweryCoordinateUpdateService;
 import com.jeontongjuro.backend.brewery.BreweryJoinStatusUpdateService;
 import com.jeontongjuro.backend.brewery.BreweryLiquorStatusUpdateService;
@@ -17,6 +18,8 @@ import com.jeontongjuro.backend.pipeline.collect.raw.BreweryRawRepository;
 import com.jeontongjuro.backend.pipeline.collect.raw.ProductRaw;
 import com.jeontongjuro.backend.pipeline.collect.raw.ProductRawRepository;
 import com.jeontongjuro.backend.product.ProductBreweryJoinService;
+import com.jeontongjuro.backend.tour.TourMatchResolveService;
+import com.jeontongjuro.backend.tour.TourNearbyCollectService;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
@@ -53,6 +56,9 @@ public class ProcessOrchestrator {
     private final LiquorRollupStatusService liquorRollupStatusService;
     private final BreweryLiquorStatusUpdateService liquorStatusUpdateService;
     private final BreweryCoordinateUpdateService coordinateUpdateService;
+    private final TourNearbyCollectService nearbyCollectService;
+    private final TourMatchResolveService matchResolveService;
+    private final BreweryContentMatchUpdateService contentMatchUpdateService;
     private final BreweryRawRepository breweryRawRepository;
     private final ProductRawRepository productRawRepository;
     private final ManualOverrideRepository overrideRepository;
@@ -67,6 +73,9 @@ public class ProcessOrchestrator {
                                LiquorRollupStatusService liquorRollupStatusService,
                                BreweryLiquorStatusUpdateService liquorStatusUpdateService,
                                BreweryCoordinateUpdateService coordinateUpdateService,
+                               TourNearbyCollectService nearbyCollectService,
+                               TourMatchResolveService matchResolveService,
+                               BreweryContentMatchUpdateService contentMatchUpdateService,
                                BreweryRawRepository breweryRawRepository,
                                ProductRawRepository productRawRepository,
                                ManualOverrideRepository overrideRepository) {
@@ -80,6 +89,9 @@ public class ProcessOrchestrator {
         this.liquorRollupStatusService = liquorRollupStatusService;
         this.liquorStatusUpdateService = liquorStatusUpdateService;
         this.coordinateUpdateService = coordinateUpdateService;
+        this.nearbyCollectService = nearbyCollectService;
+        this.matchResolveService = matchResolveService;
+        this.contentMatchUpdateService = contentMatchUpdateService;
         this.breweryRawRepository = breweryRawRepository;
         this.productRawRepository = productRawRepository;
         this.overrideRepository = overrideRepository;
@@ -146,6 +158,16 @@ public class ProcessOrchestrator {
         //    ★brewery 마스터(1단계 산출)에 의존하므로 collect가 아니라 process에 편입한다(계층 정합).
         BreweryCoordinateUpdateService.GeoResult geo =
                 step(8, "좌표 지오코딩", coordinateUpdateService::apply);
+        // 9. 근접 캐싱(TourAPI) — 양조장 반경 20km 콘텐츠를 tour_content·brewery_nearby에 캐시.
+        //    대표 좌표는 brewery 좌표(8단계 산물). 멱등·항등식 withContent+emptyRadius==59.
+        TourNearbyCollectService.NearbyResult nearby =
+                step(9, "근접 캐싱", nearbyCollectService::collect);
+        // 10. 매칭 — 확정 시드 20건을 접지(200m 검증, >200m fail-fast)한 뒤 brewery.content_id 대입.
+        //     산출(tour: tour_content 접지)과 대입(brewery: content_id) 분리 — 산출 먼저 커밋해 FK 만족.
+        TourMatchResolveService.ResolveResult matchResolve =
+                step(10, "매칭 산출", matchResolveService::resolve);
+        BreweryContentMatchUpdateService.MatchResult match =
+                step(10, "매칭 대입", () -> contentMatchUpdateService.apply(matchResolve.confirmed()));
 
         // [4] override 스테일 경고 — hit==0 override는 WARN-and-continue(예외 던지지 않음).
         //     새 uddi 재수집 시 제품명 한 글자 바뀌어 override 스테일 나는 건 정상 시나리오 — 사람이 요약 보고 판단.
@@ -156,7 +178,8 @@ public class ProcessOrchestrator {
         }
 
         return new ProcessReport(snapshotDate, breweryRawCount, productRawCount,
-                master, seed, join, status, region, liquor, liquorStatus, geo, stale);
+                master, seed, join, status, region, liquor, liquorStatus, geo,
+                nearby, matchResolve, match, stale);
     }
 
     /** overrideHitCounts에 없는(=적중 0건) override를 골라 경고 목록으로. */

@@ -22,6 +22,9 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
 import com.jeontongjuro.backend.testsupport.StubGeocodingConfig;
+import com.jeontongjuro.backend.testsupport.StubTourApiConfig;
+import com.jeontongjuro.backend.tour.BreweryNearbyRepository;
+import com.jeontongjuro.backend.tour.TourContentRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
@@ -34,7 +37,7 @@ import org.springframework.test.context.TestPropertySource;
  * 서비스가 배선됨을 함께 실증한다.
  */
 @SpringBootTest
-@Import(StubGeocodingConfig.class)  // 8단계 지오코딩이 카카오를 실제 호출하지 않도록 스텁으로 대체
+@Import({StubGeocodingConfig.class, StubTourApiConfig.class})  // 8단계 카카오·9/10단계 TourAPI를 스텁으로 대체(실호출 금지)
 @TestPropertySource(properties = {
         "spring.datasource.url=jdbc:postgresql://localhost:5432/jeontongjuro_test"
 })
@@ -66,6 +69,10 @@ class ProcessOrchestratorIntegrationTest {
     @Autowired
     private com.jeontongjuro.backend.liquortype.ProductLiquorTypeRepository productLiquorTypeRepository;
     @Autowired
+    private BreweryNearbyRepository breweryNearbyRepository;
+    @Autowired
+    private TourContentRepository tourContentRepository;
+    @Autowired
     private ObjectMapper objectMapper;
 
     @BeforeEach
@@ -74,7 +81,9 @@ class ProcessOrchestratorIntegrationTest {
         productLiquorTypeRepository.deleteAll();   // link·brewery FK 자식 — 가장 먼저 비움
         linkRepository.deleteAll();
         overrideRepository.deleteAll();
+        breweryNearbyRepository.deleteAll();   // brewery·tour_content FK 자식 — brewery보다 먼저
         breweryRepository.deleteAll();
+        tourContentRepository.deleteAll();     // 부모 — brewery·nearby 삭제 후 마지막
         breweryRawRepository.deleteAll();
         productRawRepository.deleteAll();
         FixtureRawSnapshotSource source = new FixtureRawSnapshotSource(objectMapper);
@@ -128,6 +137,22 @@ class ProcessOrchestratorIntegrationTest {
         Map<String, Integer> chip = new TreeMap<>();
         breweryRepository.findAll().forEach(b -> chip.merge(b.getRegion(), 1, Integer::sum));
         assertThat(chip).containsExactlyInAnyOrderEntriesOf(GOLDEN_CHIP);
+
+        // 9단계 근접 캐싱: 스텁이 전 양조장에 콘텐츠 1건 → withContent=59, emptyRadius=0 (항등식)
+        assertThat(report.nearby().breweries()).isEqualTo(59);
+        assertThat(report.nearby().withContent()).isEqualTo(59);
+        assertThat(report.nearby().emptyRadius()).isZero();
+        assertThat(report.nearby().withContent() + report.nearby().emptyRadius()).isEqualTo(59);
+
+        // 10단계 매칭: 확정 시드 19건 전부 캐시 미커버(스텁 콘텐츠 id 상이) → detailCommon 접지 19건 확정
+        //   (BRW-006은 실기동 665m 검증 실패로 시드에서 제거 — matched=19)
+        assertThat(report.matchResolve().seeds()).isEqualTo(19);
+        assertThat(report.matchResolve().grounded()).isEqualTo(19);
+        assertThat(report.match().matched()).isEqualTo(19);
+        assertThat(report.match().unmatched()).isEqualTo(40);
+        assertThat(report.match().matched() + report.match().unmatched()).isEqualTo(59);
+        assertThat(breweryRepository.findAll().stream()
+                .filter(b -> b.getContentId() != null).count()).isEqualTo(19);
     }
 
     /** 3차 MANUAL 시드로 조인 제품이 전건 확정된 양조장 12곳(→ TAGGED 전이 예상). */
@@ -205,6 +230,15 @@ class ProcessOrchestratorIntegrationTest {
         assertThat(overrideRepository.count()).isEqualTo(overrideBefore);
         assertThat(breweryRepository.findAll().stream()
                 .filter(b -> b.getJoinStatus() == JoinStatus.JOINED).count()).isEqualTo(59);
+
+        // 9·10단계 멱등: 근접캐시 신규 0(전량 unchanged), 매칭 변화 0(전량 unchanged), 접지 재적재 0
+        assertThat(again.nearby().withContent()).isEqualTo(59);
+        assertThat(again.nearby().contentUpsertInserted()).isZero();
+        assertThat(again.nearby().nearbyInserted()).isZero();
+        assertThat(again.matchResolve().grounded()).isZero();
+        assertThat(again.match().matched()).isEqualTo(19);
+        assertThat(again.match().changed()).isZero();
+        assertThat(again.match().unchanged()).isEqualTo(19);
     }
 
     @Test

@@ -71,6 +71,10 @@ class ProductBreweryJoinConsistencyTest {
     private ProductBreweryLinkRepository linkRepository;
     @Autowired
     private com.jeontongjuro.backend.liquortype.ProductLiquorTypeRepository productLiquorTypeRepository;
+    @org.springframework.beans.factory.annotation.Autowired
+    private com.jeontongjuro.backend.tour.BreweryNearbyRepository breweryNearbyRepository;
+    @org.springframework.beans.factory.annotation.Autowired
+    private com.jeontongjuro.backend.tour.TourContentRepository tourContentRepository;
     @Autowired
     private BreweryJoinStatusUpdateService statusUpdateService;
     @Autowired
@@ -83,7 +87,9 @@ class ProductBreweryJoinConsistencyTest {
         productLiquorTypeRepository.deleteAll();
         linkRepository.deleteAll();
         overrideRepository.deleteAll();
+        breweryNearbyRepository.deleteAll();
         breweryRepository.deleteAll();
+        tourContentRepository.deleteAll();
         breweryLoadService.load(goldenBreweryAttributeRows());
         overrideLoadService.load();
         joinResult = joinService.join(goldenProductRows());
