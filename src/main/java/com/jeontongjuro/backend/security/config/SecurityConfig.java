@@ -1,7 +1,6 @@
 package com.jeontongjuro.backend.security.config;
 
 import com.jeontongjuro.backend.auth.config.AppProperties;
-import com.jeontongjuro.backend.auth.kakao.KakaoProperties;
 import com.jeontongjuro.backend.security.filter.SessionAuthenticationFilter;
 import com.jeontongjuro.backend.security.handler.RestAccessDeniedHandler;
 import com.jeontongjuro.backend.security.handler.RestAuthenticationEntryPoint;
@@ -9,7 +8,7 @@ import com.jeontongjuro.backend.security.session.AuthProperties;
 import java.net.URI;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
-import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpHeaders;
@@ -21,12 +20,10 @@ import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
 
 @Configuration
 @ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
 @RequiredArgsConstructor
-@EnableConfigurationProperties({AuthProperties.class, KakaoProperties.class, AppProperties.class})
 public class SecurityConfig {
 
     private static final String[] PUBLIC_ENDPOINTS = {
