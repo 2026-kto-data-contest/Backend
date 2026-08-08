@@ -2,6 +2,7 @@ package com.jeontongjuro.backend.auth.controller;
 
 import com.jeontongjuro.backend.auth.config.AppProperties;
 import com.jeontongjuro.backend.auth.dto.response.MemberResponse;
+import com.jeontongjuro.backend.auth.dto.response.NextPathResponse;
 import com.jeontongjuro.backend.auth.exception.AuthException;
 import com.jeontongjuro.backend.auth.service.AuthService;
 import com.jeontongjuro.backend.security.session.AuthCookieManager;
@@ -148,6 +149,21 @@ public class AuthController {
         String sessionToken = cookieManager.read(request, AuthCookieManager.SESSION_COOKIE);
         sessionService.revoke(sessionToken);
         cookieManager.clearSession(response);
+    }
+
+    @Operation(
+            summary = "로그인 후 다음 화면 결정",
+            description = """
+                    약관 저장 또는 온보딩 완료 후 호출하면 다음 이동 경로를 반환합니다.
+                    필수 약관이 남아 있으면 /terms, 온보딩이 남아 있으면 /onboarding을 반환합니다.
+                    모두 완료되면 로그인 직전의 안전한 서비스 내부 경로를 한 번 반환하고 삭제합니다.
+                    """)
+    @SecurityRequirement(name = "sessionCookie")
+    @Parameter(name = "X-XSRF-TOKEN", in = ParameterIn.HEADER, required = true,
+            description = "GET /api/v1/auth/csrf에서 발급받은 CSRF 토큰")
+    @PostMapping("/continue")
+    public NextPathResponse continueLogin(@AuthenticationPrincipal AuthenticatedMember member) {
+        return new NextPathResponse(authService.continueLogin(member.id()));
     }
 
     private boolean sameValue(String expected, String actual) {
