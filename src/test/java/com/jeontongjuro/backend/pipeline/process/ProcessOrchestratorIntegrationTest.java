@@ -114,6 +114,14 @@ class ProcessOrchestratorIntegrationTest {
         assertThat(report.join().skippedExisting()).isZero();
         assertThat(report.join().autoOverrideConflicts()).isZero();
 
+        // 도수 파싱(#35): 신규 적재 366 전건 파싱 성공·실패 0, 항등식 parsed+failed==linked
+        assertThat(report.join().alcoholParsed()).isEqualTo(366);
+        assertThat(report.join().alcoholFailed()).isZero();
+        assertThat(report.join().alcoholParsed() + report.join().alcoholFailed())
+                .isEqualTo(report.join().linked());
+        // 전건 신규 적재 경로이므로 백필은 0 (백필은 기존 링크 대상 — 별도 재현 테스트는 consistency 참조)
+        assertThat(report.join().alcoholBackfilled()).isZero();
+
         // join_status: 후보 59(distinct 연결 brewery) 전부 JOINED로 승격
         assertThat(report.status().candidateBreweries()).isEqualTo(59);
         assertThat(report.status().updatedToJoined()).isEqualTo(59);

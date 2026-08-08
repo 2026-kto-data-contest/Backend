@@ -311,9 +311,9 @@ class BreweryQueryApiTest {
      * A는 한 제품(9001)에 4개 주종 태그 — uq는 (source_row_ref, liquor_type)이라 정상이고 1:N 중복을 만든다.
      */
     private void seedLiquorTags() {
-        linkRepository.save(ProductBreweryLink.of(9001, "제품-A", "국순당", "국순당", BREWERY_A, JoinSource.AUTO));
-        linkRepository.save(ProductBreweryLink.of(9002, "제품-B", "고도리", "고도리", BREWERY_B, JoinSource.AUTO));
-        linkRepository.save(ProductBreweryLink.of(9003, "제품-C", "금정산성", "금정산성", BREWERY_C, JoinSource.AUTO));
+        linkRepository.save(ProductBreweryLink.of(9001, "제품-A", "국순당", "국순당", BREWERY_A, JoinSource.AUTO, null, null));
+        linkRepository.save(ProductBreweryLink.of(9002, "제품-B", "고도리", "고도리", BREWERY_B, JoinSource.AUTO, null, null));
+        linkRepository.save(ProductBreweryLink.of(9003, "제품-C", "금정산성", "금정산성", BREWERY_C, JoinSource.AUTO, null, null));
 
         productLiquorTypeRepository.save(ProductLiquorType.manual(9001, BREWERY_A, LiquorType.탁주));
         productLiquorTypeRepository.save(ProductLiquorType.manual(9001, BREWERY_A, LiquorType.약주));

@@ -128,12 +128,19 @@ CREATE TABLE IF NOT EXISTS product_brewery_link (
     product_norm      TEXT,                               -- brewery_name_raw 정규화 결과(3d 재계산 방지 저장값)
     brewery_id        TEXT,                               -- 연결 확정 BRW → brewery.brewery_id. ★nullable(미래 UNMATCHED 확장 대비)
     join_source       TEXT      NOT NULL,                -- AUTO / OVERRIDE_NAME / OVERRIDE_ROW / UNMATCHED(정의만, 이번 미적재)
+    alcohol_min       NUMERIC(4,1),                       -- 도수 파싱 최솟값(#35). nullable — 파싱 실패 시 null. 단일값은 min==max
+    alcohol_max       NUMERIC(4,1),                       -- 도수 파싱 최댓값(#35). nullable. 구간(저/중/고)은 조회 시점 계산(미저장)
     created_at        TIMESTAMP NOT NULL,
     CONSTRAINT fk_product_brewery_link_brewery FOREIGN KEY (brewery_id) REFERENCES brewery (brewery_id),
     CONSTRAINT uq_product_brewery_link_source_row UNIQUE (source_row_ref),
     CONSTRAINT ck_product_brewery_link_join_source CHECK (join_source IN ('AUTO', 'OVERRIDE_NAME', 'OVERRIDE_ROW', 'UNMATCHED'))
 );
 CREATE INDEX IF NOT EXISTS ix_product_brewery_link_brewery ON product_brewery_link (brewery_id);
+
+-- 도수 파싱 마이그레이션(#35) — product_brewery_link가 이미 존재하는 DB는 CREATE TABLE IF NOT EXISTS가
+-- 통째로 건너뛰어 위 두 컬럼이 생기지 않는다. 신규 설치는 CREATE TABLE로 반영되고, 기존 DB는 아래 멱등 ALTER로 반영.
+ALTER TABLE product_brewery_link ADD COLUMN IF NOT EXISTS alcohol_min NUMERIC(4,1);
+ALTER TABLE product_brewery_link ADD COLUMN IF NOT EXISTS alcohol_max NUMERIC(4,1);
 
 -- ────────────────────────────────────────────────────────────────────────────
 -- 회원·인증 도메인. 카카오 회원번호가 외부 인증 식별자이며 카카오 토큰은 저장하지 않는다.
