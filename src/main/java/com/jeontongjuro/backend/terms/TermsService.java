@@ -4,6 +4,7 @@ import com.jeontongjuro.backend.auth.exception.AuthException;
 import com.jeontongjuro.backend.member.Member;
 import com.jeontongjuro.backend.member.MemberRepository;
 import com.jeontongjuro.backend.terms.dto.TermsAgreementRequest;
+import com.jeontongjuro.backend.terms.dto.OptionalTermsAgreementRequest;
 import com.jeontongjuro.backend.terms.dto.TermsResponse;
 import java.util.HashMap;
 import java.util.List;
@@ -78,6 +79,30 @@ public class TermsService {
         return activeTerms().stream()
                 .filter(TermsDefinition::isRequired)
                 .allMatch(term -> Boolean.TRUE.equals(choices.get(key(term))));
+    }
+
+    @Transactional
+    public TermsResponse updateOptionalAgreement(
+            Long memberId,
+            String code,
+            OptionalTermsAgreementRequest request
+    ) {
+        Member member = memberRepository.findById(memberId)
+                .orElseThrow(() -> new AuthException(
+                        HttpStatus.UNAUTHORIZED, "MEMBER_NOT_FOUND", "회원 정보를 찾을 수 없습니다."));
+        TermsDefinition term = activeTerms().stream()
+                .filter(definition -> definition.getId().code().equals(code))
+                .findFirst()
+                .orElseThrow(() -> invalidTerms("알 수 없거나 현재 사용하지 않는 약관 코드입니다."));
+        if (term.isRequired()) {
+            throw invalidTerms("필수 약관은 이 API에서 철회할 수 없습니다.");
+        }
+        TermsAgreement agreement = termsAgreementRepository
+                .findByMemberIdAndTermCodeAndTermVersion(memberId, code, term.getId().version())
+                .orElseGet(() -> TermsAgreement.record(member, term, request.agreed()));
+        agreement.update(request.agreed());
+        termsAgreementRepository.save(agreement);
+        return TermsResponse.from(term, request.agreed());
     }
 
     private List<TermsDefinition> activeTerms() {
