@@ -27,6 +27,7 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 public class SecurityConfig {
 
     private static final String[] PUBLIC_ENDPOINTS = {
+            "/actuator/health",
             "/api/v1/auth/kakao",
             "/api/v1/auth/kakao/callback",
             "/api/v1/auth/csrf",
