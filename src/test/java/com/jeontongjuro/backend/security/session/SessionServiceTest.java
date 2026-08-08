@@ -16,7 +16,8 @@ import org.mockito.ArgumentCaptor;
 class SessionServiceTest {
 
     private final AuthSessionRepository repository = mock(AuthSessionRepository.class);
-    private final SessionService service = new SessionService(repository, new AuthProperties(Duration.ofDays(14), false));
+    private final SessionService service =
+            new SessionService(repository, new AuthProperties(Duration.ofDays(14), false, "Lax"));
 
     @Test
     void storesOnlyHashWhenCreatingSession() {
