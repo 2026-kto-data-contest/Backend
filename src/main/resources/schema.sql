@@ -145,11 +145,13 @@ CREATE TABLE IF NOT EXISTS member_account (
     email         TEXT,
     role          TEXT      NOT NULL DEFAULT 'USER',
     onboarding_completed BOOLEAN NOT NULL DEFAULT FALSE,
+    post_login_return_to TEXT,
     created_at    TIMESTAMP NOT NULL,
     updated_at    TIMESTAMP NOT NULL,
     CONSTRAINT uq_member_account_kakao_user_id UNIQUE (kakao_user_id),
     CONSTRAINT ck_member_account_role CHECK (role IN ('USER', 'ADMIN'))
 );
+ALTER TABLE member_account ADD COLUMN IF NOT EXISTS post_login_return_to TEXT;
 
 CREATE TABLE IF NOT EXISTS auth_session (
     id            BIGSERIAL PRIMARY KEY,
@@ -190,16 +192,17 @@ CREATE TABLE IF NOT EXISTS terms_agreement (
     CONSTRAINT uq_terms_agreement_member_term UNIQUE (member_id, term_code, term_version)
 );
 
-INSERT INTO terms_definition (code, version, title, required, display_order)
+INSERT INTO terms_definition (code, version, title, required, display_order, content_url)
 VALUES
-    ('SERVICE_USE', '1.0', '서비스 이용약관 동의', TRUE, 1),
-    ('PRIVACY', '1.0', '개인정보 수집 및 이용 동의', TRUE, 2),
-    ('LOCATION', '1.0', '위치기반 서비스 이용약관', FALSE, 3),
-    ('MARKETING', '1.0', '마케팅 정보 수신 동의 (카카오톡, 이메일 등)', FALSE, 4)
+    ('SERVICE_USE', '1.0', '서비스 이용약관 동의', TRUE, 1, '/terms/service-use'),
+    ('PRIVACY', '1.0', '개인정보 수집 및 이용 동의', TRUE, 2, '/terms/privacy'),
+    ('LOCATION', '1.0', '위치기반 서비스 이용약관', FALSE, 3, '/terms/location'),
+    ('MARKETING', '1.0', '마케팅 정보 수신 동의 (카카오톡, 이메일 등)', FALSE, 4, '/terms/marketing')
 ON CONFLICT (code, version) DO UPDATE SET
     title = EXCLUDED.title,
     required = EXCLUDED.required,
-    display_order = EXCLUDED.display_order;
+    display_order = EXCLUDED.display_order,
+    content_url = EXCLUDED.content_url;
 
 -- ────────────────────────────────────────────────────────────────────────────
 -- 파생층 (3d, 이슈 #15 1차). 주종 추론 결과 태깅 — product_brewery_link로 연결된 제품(366)만 대상.
