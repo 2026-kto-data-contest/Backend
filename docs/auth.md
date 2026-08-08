@@ -20,7 +20,10 @@ Spring Boot는 프로젝트 루트의 `.env`를 선택적으로 읽는다.
 
 DB·Redirect URI·프론트 주소·세션 기간·쿠키 보안은 `application.yml`의 로컬 기본값을 사용한다. 프론트 포트가
 다르거나 서버에 배포할 때만 `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `KAKAO_REDIRECT_URI`,
-`FRONTEND_BASE_URL`, `AUTH_SESSION_DURATION`, `AUTH_COOKIE_SECURE` 환경변수로 기본값을 덮어쓴다.
+`FRONTEND_BASE_URL`, `CORS_ALLOWED_ORIGINS`, `AUTH_SESSION_DURATION`, `AUTH_COOKIE_SECURE`,
+`AUTH_COOKIE_SAME_SITE` 환경변수로 기본값을 덮어쓴다. `CORS_ALLOWED_ORIGINS`는 쉼표로 여러 origin을
+등록할 수 있으며 경로를 포함하지 않는다. 서로 다른 사이트의 프론트와 연동할 때는 HTTPS 환경에서
+`AUTH_COOKIE_SECURE=true`, `AUTH_COOKIE_SAME_SITE=None`을 함께 사용한다.
 운영·개발 서버에서는 `.env` 파일을 배포하지 않고 배포 플랫폼의 Secret/Environment Variables에 등록한다.
 운영 환경에서는 HTTPS를 사용하고 `AUTH_COOKIE_SECURE=true`로 설정한다.
 

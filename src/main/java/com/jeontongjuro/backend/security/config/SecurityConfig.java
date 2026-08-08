@@ -1,11 +1,9 @@
 package com.jeontongjuro.backend.security.config;
 
-import com.jeontongjuro.backend.auth.config.AppProperties;
 import com.jeontongjuro.backend.security.filter.SessionAuthenticationFilter;
 import com.jeontongjuro.backend.security.handler.RestAccessDeniedHandler;
 import com.jeontongjuro.backend.security.handler.RestAuthenticationEntryPoint;
 import com.jeontongjuro.backend.security.session.AuthProperties;
-import java.net.URI;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
@@ -49,7 +47,7 @@ public class SecurityConfig {
         csrfRepository.setCookiePath("/");
         csrfRepository.setCookieCustomizer(cookie -> cookie
                 .secure(authProperties.cookieSecure())
-                .sameSite("Lax"));
+                .sameSite(authProperties.cookieSameSite()));
 
         return http
                 .cors(cors -> { })
@@ -68,11 +66,9 @@ public class SecurityConfig {
     }
 
     @Bean
-    CorsConfigurationSource corsConfigurationSource(AppProperties properties) {
-        URI frontend = URI.create(properties.frontendBaseUrl());
-        String origin = frontend.getScheme() + "://" + frontend.getAuthority();
+    CorsConfigurationSource corsConfigurationSource(CorsProperties properties) {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(List.of(origin));
+        configuration.setAllowedOrigins(properties.allowedOrigins());
         configuration.setAllowedMethods(List.of("GET", "POST", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of(HttpHeaders.CONTENT_TYPE, "X-XSRF-TOKEN"));
         configuration.setAllowCredentials(true);
