@@ -21,6 +21,7 @@ import com.jeontongjuro.backend.pipeline.collect.source.FixtureRawSnapshotSource
 import com.jeontongjuro.backend.pipeline.collect.source.RawSnapshot;
 import com.jeontongjuro.backend.pipeline.normalize.BusinessNameNormalizer;
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -221,6 +222,65 @@ class ProductBreweryJoinConsistencyTest {
             assertThat(link.getProductNorm())
                     .isEqualTo(BusinessNameNormalizer.normalize(link.getBreweryNameRaw()));
         }
+    }
+
+    @Test
+    @DisplayName("도수 파싱 골든(link 366 기준): parsed 366 / failed 0, 항등식 parsed+failed==linked, "
+            + "min!=max 9건, 전체 min의 최솟값 3.5 / max의 최댓값 61")
+    void alcoholParsingGolden() {
+        // 카운터: 신규 적재 366행 전부 파싱 성공, 실패 0 (실측 3.5~61이라 fail-fast 미발동)
+        assertThat(joinResult.alcoholParsed()).isEqualTo(366);
+        assertThat(joinResult.alcoholFailed()).isZero();
+        assertThat(joinResult.alcoholParsed() + joinResult.alcoholFailed())
+                .as("항등식 parsed+failed==linked")
+                .isEqualTo(joinResult.linked());
+
+        // 적재값 골든: 실패 0이므로 366행 min/max 전건 non-null
+        List<ProductBreweryLink> links = linkRepository.findAll();
+        assertThat(links).hasSize(366);
+        for (ProductBreweryLink link : links) {
+            assertThat(link.getAlcoholMin()).as("source_row_ref=%d min", link.getSourceRowRef()).isNotNull();
+            assertThat(link.getAlcoholMax()).as("source_row_ref=%d max", link.getSourceRowRef()).isNotNull();
+        }
+        long minNeqMax = links.stream()
+                .filter(l -> l.getAlcoholMin().compareTo(l.getAlcoholMax()) != 0)
+                .count();
+        assertThat(minNeqMax).as("min != max 제품 수").isEqualTo(9);
+
+        BigDecimal globalMin = links.stream()
+                .map(ProductBreweryLink::getAlcoholMin).min(BigDecimal::compareTo).orElseThrow();
+        BigDecimal globalMax = links.stream()
+                .map(ProductBreweryLink::getAlcoholMax).max(BigDecimal::compareTo).orElseThrow();
+        assertThat(globalMin).as("전체 min의 최솟값").isEqualByComparingTo("3.5");
+        assertThat(globalMax).as("전체 max의 최댓값").isEqualByComparingTo("61");
+    }
+
+    @Test
+    @DisplayName("도수 백필(#35 결함 재현): 기존 링크(도수 null) 재조인 시 366행 채움, 재실행 멱등(0)")
+    void alcoholBackfillFillsExistingNullLinks() {
+        // @BeforeEach가 이미 366행을 도수까지 채워 적재함. 증분 조인은 기존 링크를 재적재하지 않으므로,
+        // 파이프라인이 이미 돈 기존 DB(도수 컬럼만 뒤늦게 추가된 상태)를 재현하려면 전건을 null로 되돌린다.
+        List<ProductBreweryLink> links = linkRepository.findAll();
+        assertThat(links).hasSize(366);
+        for (ProductBreweryLink link : links) {
+            link.backfillAlcohol(null, null);
+        }
+        linkRepository.saveAll(links);
+        long nulledBefore = linkRepository.findAll().stream()
+                .filter(l -> l.getAlcoholMin() == null && l.getAlcoholMax() == null).count();
+        assertThat(nulledBefore).as("도수 전건 null 되돌림 확인(기존 DB 상태 재현)").isEqualTo(366);
+
+        // 재조인: 신규 적재 0(멱등 skip)이지만 백필 경로로 366행을 채운다(실패 0이라 전건 채워짐)
+        ProductBreweryJoinService.JoinResult refill = joinService.join(goldenProductRows());
+        assertThat(refill.linked()).as("신규 적재 없음").isZero();
+        assertThat(refill.alcoholBackfilled()).as("백필 건수").isEqualTo(366);
+        long filledAfter = linkRepository.findAll().stream()
+                .filter(l -> l.getAlcoholMin() != null).count();
+        assertThat(filledAfter).as("백필 후 alcohol_min 채워진 행").isEqualTo(366);
+
+        // 한 번 더 재조인: 이미 채워져 있으므로 백필 0 (멱등 — 채워진 값은 건드리지 않음)
+        ProductBreweryJoinService.JoinResult again = joinService.join(goldenProductRows());
+        assertThat(again.alcoholBackfilled()).as("멱등 — 재백필 없음").isZero();
     }
 
     @Test
