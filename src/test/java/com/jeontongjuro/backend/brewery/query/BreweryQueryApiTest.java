@@ -21,6 +21,7 @@ import com.jeontongjuro.backend.product.JoinSource;
 import com.jeontongjuro.backend.product.ProductBreweryLink;
 import com.jeontongjuro.backend.product.ProductBreweryLinkRepository;
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
@@ -304,7 +305,144 @@ class BreweryQueryApiTest {
                 .andExpect(jsonPath("$.code").value("INVALID_QUERY_PARAMETER"));
     }
 
+    // ── 도수 필터(이슈 #41) ────────────────────────────────────────────────────
+    // ★파이프라인(366 링크)을 적재하지 않는 테스트이므로 라이브 골든(52/30/31)은 재현 불가하다.
+    //   전용 ABV 픽스처를 심고 그 픽스처 기준으로 산출한 값을 단정한다(전제4 억지 대입 금지).
+    //   판정은 겹침(방식A): product.alcohol_max >= minAbv AND product.alcohol_min <= maxAbv.
+    //   A=BRW-004(강원) 6.0~6.0 / B=BRW-002(경상) 25.0~54.0(겹침 핵심) / C=BRW-006(부산) 40.0~40.0(중복 링크로 dedup 검증)
+    //   D=BRW-001 null~null(도수 미상 → 어떤 도수 필터에도 안 걸림)
+    private static final String BREWERY_D = "BRW-001";
+
+    @Test
+    @DisplayName("maxAbv=6 단독(6도 이하 취급) → A만 1건")
+    void abvMaxOnly() throws Exception {
+        seedAbvLinks();
+        mockMvc.perform(get("/api/v1/breweries").param("maxAbv", "6").param("size", "100"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(1))
+                .andExpect(jsonPath("$.content[0].breweryId").value(BREWERY_A));
+    }
+
+    @Test
+    @DisplayName("minAbv=30 단독(30도 이상 취급) → B·C 2건")
+    void abvMinOnly() throws Exception {
+        seedAbvLinks();
+        mockMvc.perform(get("/api/v1/breweries").param("minAbv", "30").param("size", "100"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(2));
+    }
+
+    @Test
+    @DisplayName("★겹침 판정: minAbv=20&maxAbv=30 → B(25~54)가 포함되어야 한다(완전 포함 구현이면 0건으로 깨짐)")
+    void abvOverlapNotContainment() throws Exception {
+        seedAbvLinks();
+        mockMvc.perform(get("/api/v1/breweries")
+                        .param("minAbv", "20").param("maxAbv", "30").param("size", "100"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(1))
+                .andExpect(jsonPath("$.content[0].breweryId").value(BREWERY_B));
+    }
+
+    @Test
+    @DisplayName("범위 minAbv=25&maxAbv=54 → B·C 2건")
+    void abvRangeBoth() throws Exception {
+        seedAbvLinks();
+        mockMvc.perform(get("/api/v1/breweries")
+                        .param("minAbv", "25").param("maxAbv", "54").param("size", "100"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(2));
+    }
+
+    @Test
+    @DisplayName("도수 미상(null) 링크는 제외: maxAbv=100 → A·B·C 3건(D 없음)")
+    void abvNullLinkExcluded() throws Exception {
+        seedAbvLinks();
+        mockMvc.perform(get("/api/v1/breweries").param("maxAbv", "100").param("size", "100"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(3));
+    }
+
+    @Test
+    @DisplayName("★EXISTS dedup: C에 매칭 링크 2개여도 minAbv=40 → B·C 2건(join이면 3)")
+    void abvExistsDeduped() throws Exception {
+        seedAbvLinks();
+        mockMvc.perform(get("/api/v1/breweries").param("minAbv", "40").param("size", "100"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(2))
+                .andExpect(jsonPath("$.content.length()").value(2));
+    }
+
+    @Test
+    @DisplayName("AND 조합: region=경상 & minAbv=30 → 경상이면서 30도↑ 취급하는 B 1건")
+    void abvAndRegion() throws Exception {
+        seedAbvLinks();
+        mockMvc.perform(get("/api/v1/breweries")
+                        .param("region", "경상").param("minAbv", "30").param("size", "100"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(1))
+                .andExpect(jsonPath("$.content[0].breweryId").value(BREWERY_B));
+    }
+
+    @Test
+    @DisplayName("도수 미지정 → 필터 미적용, 전체 59")
+    void abvAbsentReturnsAll() throws Exception {
+        seedAbvLinks();
+        mockMvc.perform(get("/api/v1/breweries").param("size", "100"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(59));
+    }
+
+    @Test
+    @DisplayName("minAbv > maxAbv → 400")
+    void abvMinGreaterThanMaxYields400() throws Exception {
+        mockMvc.perform(get("/api/v1/breweries").param("minAbv", "30").param("maxAbv", "10"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("INVALID_QUERY_PARAMETER"))
+                .andExpect(jsonPath("$.message").isNotEmpty());
+    }
+
+    @Test
+    @DisplayName("음수 도수(minAbv=-1) → 400")
+    void abvNegativeYields400() throws Exception {
+        mockMvc.perform(get("/api/v1/breweries").param("minAbv", "-1"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("INVALID_QUERY_PARAMETER"));
+    }
+
+    @Test
+    @DisplayName("100 초과 도수(maxAbv=101) → 400")
+    void abvOver100Yields400() throws Exception {
+        mockMvc.perform(get("/api/v1/breweries").param("maxAbv", "101"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("INVALID_QUERY_PARAMETER"));
+    }
+
+    @Test
+    @DisplayName("파싱 불가 도수(minAbv=abc) → 400(타입 불일치 경로)")
+    void abvUnparseableYields400() throws Exception {
+        mockMvc.perform(get("/api/v1/breweries").param("minAbv", "abc"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("INVALID_QUERY_PARAMETER"));
+    }
+
     // ── helpers ──────────────────────────────────────────────────────────────
+    /**
+     * 도수 필터 검증용 최소 픽스처(주종 픽스처와 독립 — @BeforeEach가 link를 비우므로 각 테스트가 이것만 심는다).
+     * C(BRW-006)에 매칭 링크를 2개 심어 EXISTS dedup을 검증하고, D(BRW-001)는 null 도수로 제외를 검증한다.
+     */
+    private void seedAbvLinks() {
+        linkRepository.save(ProductBreweryLink.of(9101, "도수-A", "국순당", "국순당", BREWERY_A, JoinSource.AUTO,
+                new BigDecimal("6.0"), new BigDecimal("6.0")));
+        linkRepository.save(ProductBreweryLink.of(9102, "도수-B", "고도리", "고도리", BREWERY_B, JoinSource.AUTO,
+                new BigDecimal("25.0"), new BigDecimal("54.0")));
+        linkRepository.save(ProductBreweryLink.of(9103, "도수-C", "금정산성", "금정산성", BREWERY_C, JoinSource.AUTO,
+                new BigDecimal("40.0"), new BigDecimal("40.0")));
+        linkRepository.save(ProductBreweryLink.of(9106, "도수-C2", "금정산성", "금정산성", BREWERY_C, JoinSource.AUTO,
+                new BigDecimal("40.0"), new BigDecimal("40.0")));
+        linkRepository.save(ProductBreweryLink.of(9104, "도수-D", "미상", "미상", BREWERY_D, JoinSource.AUTO,
+                null, null));
+    }
+
     /**
      * 주종 필터 검증용 최소 픽스처. product_liquor_type.source_row_ref → product_brewery_link.source_row_ref
      * FK를 만족시키려 link도 함께 심는다(@BeforeEach가 link를 비우므로 여기서 세우지 않으면 FK 위반).
