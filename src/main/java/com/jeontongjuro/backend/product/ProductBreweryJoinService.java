@@ -13,7 +13,10 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -27,6 +30,8 @@ import org.springframework.transaction.annotation.Transactional;
  */
 @Service
 public class ProductBreweryJoinService {
+
+    private static final Logger log = LoggerFactory.getLogger(ProductBreweryJoinService.class);
 
     private final ProductBreweryLinkRepository linkRepository;
     private final BreweryRepository breweryRepository;
@@ -48,7 +53,10 @@ public class ProductBreweryJoinService {
             int overrideNameLinked,
             int overrideRowLinked,
             int autoOverrideConflicts,
-            Map<Long, Integer> overrideHitCounts
+            Map<Long, Integer> overrideHitCounts,
+            int alcoholParsed,
+            int alcoholFailed,
+            int alcoholBackfilled
     ) {
     }
 
@@ -81,6 +89,9 @@ public class ProductBreweryJoinService {
         int overrideName = 0;
         int overrideRow = 0;
         int conflicts = 0;
+        int alcoholParsed = 0;
+        int alcoholFailed = 0;
+        int alcoholBackfilled = 0;
 
         for (ProductRaw p : productRows) {
             String breweryNameRaw = p.getBreweryName();
@@ -122,18 +133,43 @@ public class ProductBreweryJoinService {
                 overrideHitCounts.merge(hitOverride.getId(), 1, Integer::sum);
             }
 
-            if (linkRepository.existsBySourceRowRef(p.getSourceRowIndex())) {
+            Optional<ProductBreweryLink> existing = linkRepository.findBySourceRowRef(p.getSourceRowIndex());
+            if (existing.isPresent()) {
                 skipped++;
+                // 백필(#35): 증분 조인은 기존 링크를 재적재하지 않으므로, 이미 링크가 존재하는 DB는 신규 경로를
+                // 못 타 도수가 null로 남는다. 재적재/TRUNCATE 없이 코드가 스스로 채운다.
+                //  - alcohol_min/max가 둘 다 null일 때만 파싱해 채움(하나라도 있으면 멱등 유지 — 건드리지 않음)
+                //  - 파싱이 (null,null)이면 채울 값이 없으므로 백필 카운트 제외(매 실행 재시도되나 행 수가 작아 무해).
+                //    별도 플래그 컬럼은 만들지 않는다(현재 파싱 실패 0건이라 정보를 담지 못함).
+                ProductBreweryLink link = existing.get();
+                if (link.getAlcoholMin() == null && link.getAlcoholMax() == null) {
+                    AlcoholContentParser.AlcoholRange range = AlcoholContentParser.parse(p.getAlcoholContent());
+                    if (range.min() != null) {
+                        link.backfillAlcohol(range.min(), range.max());
+                        alcoholBackfilled++;
+                    }
+                }
                 continue;
             }
 
+            // 도수 파싱은 3단계에 흡수(#35) — 별도 파이프라인 단계 없음. 신규 적재 행에 대해서만 카운트해
+            // alcoholParsed + alcoholFailed == linked(=toInsert.size()) 항등식을 유지한다(skippedExisting 제외).
+            AlcoholContentParser.AlcoholRange alcohol = AlcoholContentParser.parse(p.getAlcoholContent());
+            if (alcohol.min() != null) {
+                alcoholParsed++;
+            } else {
+                alcoholFailed++;
+                log.warn("도수 파싱 실패(매치 0개 — null 적재, 진행): source_row_ref={} 원문='{}'",
+                        p.getSourceRowIndex(), p.getAlcoholContent());
+            }
+
             toInsert.add(ProductBreweryLink.of(p.getSourceRowIndex(), p.getProductName(),
-                    breweryNameRaw, productNorm, finalBreweryId, joinSource));
+                    breweryNameRaw, productNorm, finalBreweryId, joinSource, alcohol.min(), alcohol.max()));
         }
 
         linkRepository.saveAll(toInsert);
         return new JoinResult(productRows.size(), toInsert.size(), skipped, auto, overrideName, overrideRow,
-                conflicts, overrideHitCounts);
+                conflicts, overrideHitCounts, alcoholParsed, alcoholFailed, alcoholBackfilled);
     }
 
     /** 조인으로 연결된(AUTO∪MANUAL) 고유 brewery_id 집합. brewery join_status UPDATE 입력. */

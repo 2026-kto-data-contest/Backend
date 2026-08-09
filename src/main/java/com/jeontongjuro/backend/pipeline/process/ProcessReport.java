@@ -59,6 +59,12 @@ public record ProcessReport(
                 .append("·OVERRIDE_NAME ").append(join.overrideNameLinked())
                 .append("·OVERRIDE_ROW ").append(join.overrideRowLinked())
                 .append(") skippedExisting=").append(join.skippedExisting()).append('\n');
+        sb.append("alcohol parsed=").append(join.alcoholParsed())
+                .append(" failed=").append(join.alcoholFailed())
+                .append(" (합=").append(join.alcoholParsed() + join.alcoholFailed())
+                .append("==").append(join.linked()).append(")")
+                .append(" backfilled=").append(join.alcoholBackfilled())
+                .append(" (기존 링크 도수 채움)\n");
         sb.append("status candidate=").append(status.candidateBreweries())
                 .append(" updatedToJoined=").append(status.updatedToJoined())
                 .append(" alreadyJoined=").append(status.alreadyJoined()).append('\n');

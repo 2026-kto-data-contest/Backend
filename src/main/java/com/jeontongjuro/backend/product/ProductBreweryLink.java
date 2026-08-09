@@ -11,6 +11,7 @@ import jakarta.persistence.Index;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import lombok.AccessLevel;
@@ -62,11 +63,20 @@ public class ProductBreweryLink {
     @Column(name = "join_source", nullable = false, columnDefinition = "text")
     private JoinSource joinSource;
 
+    /** 도수 파싱 최솟값(#35). ★nullable — 파싱 실패 시 null. 단일값 제품은 min==max. */
+    @Column(name = "alcohol_min", precision = 4, scale = 1)
+    private BigDecimal alcoholMin;
+
+    /** 도수 파싱 최댓값(#35). ★nullable. 저/중/고 구간은 DB에 저장하지 않고 조회 시점에 계산한다. */
+    @Column(name = "alcohol_max", precision = 4, scale = 1)
+    private BigDecimal alcoholMax;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
     public static ProductBreweryLink of(Integer sourceRowRef, String productName, String breweryNameRaw,
-                                        String productNorm, String breweryId, JoinSource joinSource) {
+                                        String productNorm, String breweryId, JoinSource joinSource,
+                                        BigDecimal alcoholMin, BigDecimal alcoholMax) {
         ProductBreweryLink link = new ProductBreweryLink();
         link.sourceRowRef = sourceRowRef;
         link.productName = productName;
@@ -74,7 +84,19 @@ public class ProductBreweryLink {
         link.productNorm = productNorm;
         link.breweryId = breweryId;
         link.joinSource = joinSource;
+        link.alcoholMin = alcoholMin;
+        link.alcoholMax = alcoholMax;
         return link;
+    }
+
+    /**
+     * 도수 백필(#35). 증분 조인이 기존 링크를 skippedExisting으로 건너뛰므로, 이미 링크가 존재하는 DB는
+     * 신규 적재 경로를 못 타 alcohol_min/max가 null로 남는다. 이를 채우는 멱등 경로 — 호출 측에서 둘 다
+     * null일 때만 부른다. @Transactional 안에서 managed 엔티티를 갱신하면 dirty checking으로 flush된다.
+     */
+    public void backfillAlcohol(BigDecimal alcoholMin, BigDecimal alcoholMax) {
+        this.alcoholMin = alcoholMin;
+        this.alcoholMax = alcoholMax;
     }
 
     @PrePersist
