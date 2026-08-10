@@ -67,6 +67,8 @@ class BreweryGeocodingGoldenTest {
     private ProductBreweryLinkRepository linkRepository;
     @Autowired
     private ProductLiquorTypeRepository productLiquorTypeRepository;
+    @org.springframework.beans.factory.annotation.Autowired
+    private com.jeontongjuro.backend.feature.BreweryFeatureTagRepository featureTagRepository;
     @Autowired
     private BreweryRawRepository breweryRawRepository;
     @Autowired
@@ -80,6 +82,7 @@ class BreweryGeocodingGoldenTest {
 
     @BeforeEach
     void resetAndSeedRaw() {
+        featureTagRepository.deleteAll();
         productLiquorTypeRepository.deleteAll();
         linkRepository.deleteAll();
         overrideRepository.deleteAll();

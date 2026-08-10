@@ -83,6 +83,8 @@ class LiquorRollupIntegrationTest {
     @Autowired
     private ProductLiquorTypeRepository liquorTypeRepository;
     @Autowired
+    private com.jeontongjuro.backend.feature.BreweryFeatureTagRepository featureTagRepository;
+    @Autowired
     private BreweryRawRepository breweryRawRepository;
     @Autowired
     private ProductRawRepository productRawRepository;
@@ -95,6 +97,7 @@ class LiquorRollupIntegrationTest {
 
     @BeforeEach
     void seedThroughJoin() {
+        featureTagRepository.deleteAll();
         liquorTypeRepository.deleteAll();
         linkRepository.deleteAll();
         overrideRepository.deleteAll();

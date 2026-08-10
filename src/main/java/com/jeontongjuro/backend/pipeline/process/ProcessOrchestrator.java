@@ -6,6 +6,7 @@ import com.jeontongjuro.backend.brewery.BreweryJoinStatusUpdateService;
 import com.jeontongjuro.backend.brewery.BreweryLiquorStatusUpdateService;
 import com.jeontongjuro.backend.brewery.BreweryMasterLoadService;
 import com.jeontongjuro.backend.brewery.BreweryRegionUpdateService;
+import com.jeontongjuro.backend.feature.FeatureRollupService;
 import com.jeontongjuro.backend.liquortype.LiquorInferenceService;
 import com.jeontongjuro.backend.liquortype.LiquorManualSeedLoadService;
 import com.jeontongjuro.backend.liquortype.LiquorRollupResult;
@@ -59,6 +60,7 @@ public class ProcessOrchestrator {
     private final TourNearbyCollectService nearbyCollectService;
     private final TourMatchResolveService matchResolveService;
     private final BreweryContentMatchUpdateService contentMatchUpdateService;
+    private final FeatureRollupService featureRollupService;
     private final BreweryRawRepository breweryRawRepository;
     private final ProductRawRepository productRawRepository;
     private final ManualOverrideRepository overrideRepository;
@@ -76,6 +78,7 @@ public class ProcessOrchestrator {
                                TourNearbyCollectService nearbyCollectService,
                                TourMatchResolveService matchResolveService,
                                BreweryContentMatchUpdateService contentMatchUpdateService,
+                               FeatureRollupService featureRollupService,
                                BreweryRawRepository breweryRawRepository,
                                ProductRawRepository productRawRepository,
                                ManualOverrideRepository overrideRepository) {
@@ -92,6 +95,7 @@ public class ProcessOrchestrator {
         this.nearbyCollectService = nearbyCollectService;
         this.matchResolveService = matchResolveService;
         this.contentMatchUpdateService = contentMatchUpdateService;
+        this.featureRollupService = featureRollupService;
         this.breweryRawRepository = breweryRawRepository;
         this.productRawRepository = productRawRepository;
         this.overrideRepository = overrideRepository;
@@ -168,6 +172,10 @@ public class ProcessOrchestrator {
                 step(10, "매칭 산출", matchResolveService::resolve);
         BreweryContentMatchUpdateService.MatchResult match =
                 step(10, "매칭 대입", () -> contentMatchUpdateService.apply(matchResolve.confirmed()));
+        // 11. 특징 롤업(#43) — 연결 제품의 서술 컬럼에 확정 규칙 적용 → brewery_feature_tag(양조장 grain).
+        //     step1 brewery·step3 link에만 의존(4~10과 독립). 삭제형 diff라 규칙 축소·원본 갱신 시 유령 없음.
+        FeatureRollupService.RollupResult feature =
+                step(11, "특징 롤업", () -> featureRollupService.rollup(productRaws));
 
         // [4] override 스테일 경고 — hit==0 override는 WARN-and-continue(예외 던지지 않음).
         //     새 uddi 재수집 시 제품명 한 글자 바뀌어 override 스테일 나는 건 정상 시나리오 — 사람이 요약 보고 판단.
@@ -179,7 +187,7 @@ public class ProcessOrchestrator {
 
         return new ProcessReport(snapshotDate, breweryRawCount, productRawCount,
                 master, seed, join, status, region, liquor, liquorStatus, geo,
-                nearby, matchResolve, match, stale);
+                nearby, matchResolve, match, feature, stale);
     }
 
     /** overrideHitCounts에 없는(=적중 0건) override를 골라 경고 목록으로. */

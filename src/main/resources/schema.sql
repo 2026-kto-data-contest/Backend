@@ -234,6 +234,29 @@ CREATE TABLE IF NOT EXISTS product_liquor_type (
 CREATE INDEX IF NOT EXISTS ix_product_liquor_type_brewery ON product_liquor_type (brewery_id);
 
 -- ────────────────────────────────────────────────────────────────────────────
+-- 파생층 (11단계, 이슈 #43). 양조장 특징 태그 5종 — product_brewery_link로 연결된 제품의 서술 컬럼
+-- (product_raw)에 확정 규칙을 적용해 양조장으로 롤업한다. 양조장 grain: (brewery_id, feature_type) 1행.
+-- ★확정 파생(주종과 달리 검수·MANUAL 없음) → 삭제형 diff로 유령 행 없음(FeatureRollupService).
+--   골든(snapshot 2026-08-01, DISTINCT brewery_id): 수상이력 36·식품명인 9·유기농 7·무형문화재 3·대통령상 2.
+CREATE TABLE IF NOT EXISTS brewery_feature_tag (
+    id              BIGSERIAL PRIMARY KEY,             -- 서러게이트 PK(의미 없음)
+    brewery_id      TEXT      NOT NULL,                -- 태그 소유 양조장 → brewery.brewery_id
+    feature_type    TEXT      NOT NULL,                -- 수상이력/식품명인/유기농/무형문화재/대통령상
+    source_row_ref  INT       NOT NULL,                -- 이 특징 유발 대표 제품 raw 참조(= product_brewery_link.source_row_ref)
+    matched_keyword TEXT,                              -- 걸린 키워드(디버깅). 수상이력은 presence 규칙이라 null
+    created_at      TIMESTAMP NOT NULL,
+    CONSTRAINT fk_brewery_feature_tag_brewery FOREIGN KEY (brewery_id) REFERENCES brewery (brewery_id),
+    CONSTRAINT uq_brewery_feature_tag_brewery_type UNIQUE (brewery_id, feature_type),
+    CONSTRAINT ck_brewery_feature_tag_type CHECK (feature_type IN ('수상이력', '식품명인', '유기농', '무형문화재', '대통령상'))
+);
+CREATE INDEX IF NOT EXISTS ix_brewery_feature_tag_brewery ON brewery_feature_tag (brewery_id);
+-- CHECK 멱등화(전례: ck_brewery_coord_source). CREATE TABLE IF NOT EXISTS는 테이블이 이미 있으면 통째로
+-- 건너뛰므로, 특징 종류가 추가돼도 CHECK가 옛 목록에 머문다. DROP IF EXISTS→ADD 단문 2개로 매 기동 재적용한다
+-- (DO/$$ 미사용 — ScriptUtils가 ';'로 쪼개며 달러쿼트를 깨뜨림).
+ALTER TABLE brewery_feature_tag DROP CONSTRAINT IF EXISTS ck_brewery_feature_tag_type;
+ALTER TABLE brewery_feature_tag ADD CONSTRAINT ck_brewery_feature_tag_type CHECK (feature_type IN ('수상이력', '식품명인', '유기농', '무형문화재', '대통령상'));
+
+-- ────────────────────────────────────────────────────────────────────────────
 -- 파생층 (관광 콘텐츠 캐시·매칭, TourAPI KorService2). 9단계 근접 캐싱 + 10단계 매칭.
 -- ★tour_content를 brewery FK ALTER보다 먼저 정의한다(brewery.content_id → tour_content 참조 대상).
 --

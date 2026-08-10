@@ -2,8 +2,15 @@ package com.jeontongjuro.backend.brewery.query;
 
 import com.jeontongjuro.backend.brewery.Brewery;
 import com.jeontongjuro.backend.brewery.BreweryRepository;
+import com.jeontongjuro.backend.feature.BreweryFeatureTag;
+import com.jeontongjuro.backend.feature.BreweryFeatureTagRepository;
+import com.jeontongjuro.backend.feature.FeatureType;
 import com.jeontongjuro.backend.global.web.PageResponse;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -37,9 +44,12 @@ public class BreweryQueryService {
             Sort.by(Sort.Order.asc("businessName"), Sort.Order.asc("breweryId"));
 
     private final BreweryRepository breweryRepository;
+    private final BreweryFeatureTagRepository featureTagRepository;
 
-    public BreweryQueryService(BreweryRepository breweryRepository) {
+    public BreweryQueryService(BreweryRepository breweryRepository,
+                               BreweryFeatureTagRepository featureTagRepository) {
         this.breweryRepository = breweryRepository;
+        this.featureTagRepository = featureTagRepository;
     }
 
     public PageResponse<BreweryListItemResponse> search(BrewerySearchCondition condition, int page, int size) {
@@ -47,10 +57,29 @@ public class BreweryQueryService {
         Specification<Brewery> spec = BreweryQuerySpecifications.build(condition);
 
         Page<Brewery> result = breweryRepository.findAll(spec, pageable);
+        Map<String, List<FeatureType>> tagsByBrewery = featureTagsFor(result.getContent());
         List<BreweryListItemResponse> content = result.getContent().stream()
-                .map(BreweryListItemResponse::from)
+                .map(b -> BreweryListItemResponse.from(b,
+                        tagsByBrewery.getOrDefault(b.getBreweryId(), List.of())))
                 .toList();
         return PageResponse.of(content, result);
+    }
+
+    /**
+     * 이 페이지 양조장들의 특징 태그를 한 번의 IN 조회로 배치 로딩(N+1 회피) → brewery_id별 그룹.
+     * 각 리스트는 FeatureType 선언 순서로 정렬해 응답 배열 순서를 결정론화한다(수상이력→…→대통령상).
+     */
+    private Map<String, List<FeatureType>> featureTagsFor(List<Brewery> breweries) {
+        if (breweries.isEmpty()) {
+            return Map.of();
+        }
+        List<String> ids = breweries.stream().map(Brewery::getBreweryId).toList();
+        Map<String, List<FeatureType>> byBrewery = new HashMap<>();
+        for (BreweryFeatureTag t : featureTagRepository.findByBreweryIdIn(ids)) {
+            byBrewery.computeIfAbsent(t.getBreweryId(), k -> new ArrayList<>()).add(t.getFeatureType());
+        }
+        byBrewery.values().forEach(list -> list.sort(Comparator.comparingInt(Enum::ordinal)));
+        return byBrewery;
     }
 
     /** 음수 페이지는 0으로 클램프(PageRequest 계약 위반 방지). */

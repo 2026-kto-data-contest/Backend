@@ -6,6 +6,7 @@ import com.jeontongjuro.backend.brewery.BreweryJoinStatusUpdateService;
 import com.jeontongjuro.backend.brewery.BreweryLiquorStatusUpdateService;
 import com.jeontongjuro.backend.brewery.BreweryMasterLoadService;
 import com.jeontongjuro.backend.brewery.BreweryRegionUpdateService;
+import com.jeontongjuro.backend.feature.FeatureRollupService;
 import com.jeontongjuro.backend.liquortype.LiquorRollupResult;
 import com.jeontongjuro.backend.override.ManualOverrideSeedLoadService;
 import com.jeontongjuro.backend.product.ProductBreweryJoinService;
@@ -36,6 +37,7 @@ public record ProcessReport(
         TourNearbyCollectService.NearbyResult nearby,
         TourMatchResolveService.ResolveResult matchResolve,
         BreweryContentMatchUpdateService.MatchResult match,
+        FeatureRollupService.RollupResult feature,
         List<StaleOverride> staleOverrides
 ) {
 
@@ -111,6 +113,11 @@ public record ProcessReport(
                 .append("==").append(match.breweries()).append(")")
                 .append(" changed=").append(match.changed())
                 .append(" unchanged=").append(match.unchanged()).append('\n');
+        sb.append("feature 롤업 targetBreweries=").append(feature.targetBreweries())
+                .append(" inserted=").append(feature.inserted())
+                .append(" deleted=").append(feature.deleted())
+                .append(" unchanged=").append(feature.unchanged())
+                .append(" (삭제형 diff — 유령 없음)\n");
         sb.append("⚠ override 미적중: ");
         if (staleOverrides.isEmpty()) {
             sb.append("없음");
