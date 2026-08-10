@@ -73,6 +73,8 @@ class BreweryQueryApiTest {
     private ProductBreweryLinkRepository linkRepository;
     @Autowired
     private com.jeontongjuro.backend.liquortype.ProductLiquorTypeRepository productLiquorTypeRepository;
+    @Autowired
+    private com.jeontongjuro.backend.feature.BreweryFeatureTagRepository featureTagRepository;
     @org.springframework.beans.factory.annotation.Autowired
     private com.jeontongjuro.backend.tour.BreweryNearbyRepository breweryNearbyRepository;
     @org.springframework.beans.factory.annotation.Autowired
@@ -80,7 +82,8 @@ class BreweryQueryApiTest {
 
     @BeforeEach
     void seedBreweryWithRegion() {
-        // FK 자식(link·override) 먼저 비운 뒤 brewery 재적재 → sido/region 채움(파생 UPDATE)
+        // FK 자식(link·override·feature) 먼저 비운 뒤 brewery 재적재 → sido/region 채움(파생 UPDATE)
+        featureTagRepository.deleteAll();
         productLiquorTypeRepository.deleteAll();
         linkRepository.deleteAll();
         overrideRepository.deleteAll();
@@ -185,6 +188,41 @@ class BreweryQueryApiTest {
         assertThat(content).isNotEmpty();
         content.forEach(item ->
                 assertThat(item.get("businessName").asText()).contains("안동소주"));
+    }
+
+    // ── 특징 태그 노출(이슈 #43) ──────────────────────────────────────────────
+    // ★필터가 아니라 응답 직렬화 계약만 검증한다(파이프라인·골든 미의존 — brewery_feature_tag를 직접 심는다).
+    //   태그 배열은 FeatureType 선언 순서(수상이력→…→대통령상)로 결정론 정렬, 태그 없으면 빈 배열([]).
+    @Test
+    @DisplayName("특징 태그 직렬화: 보유 양조장은 배지 배열(선언 순서), 미보유는 빈 배열")
+    void featureTagsAreSerialized() throws Exception {
+        // BRW-004에 유기농·수상이력을 (선언 역순으로) 심어 서비스가 선언 순서로 정렬하는지 확인
+        featureTagRepository.save(com.jeontongjuro.backend.feature.BreweryFeatureTag.of(
+                "BRW-004", com.jeontongjuro.backend.feature.FeatureType.유기농, 8001, "유기농"));
+        featureTagRepository.save(com.jeontongjuro.backend.feature.BreweryFeatureTag.of(
+                "BRW-004", com.jeontongjuro.backend.feature.FeatureType.수상이력, 8002, null));
+
+        JsonNode content = readContent(get("/api/v1/breweries").param("size", "100"));
+
+        JsonNode tagged = findById(content, "BRW-004");
+        assertThat(tagged.get("featureTags")).isNotNull();
+        List<String> tags = new ArrayList<>();
+        tagged.get("featureTags").forEach(n -> tags.add(n.asText()));
+        assertThat(tags).containsExactly("수상이력", "유기농"); // ordinal 정렬(수상이력 0 < 유기농 2)
+
+        // 태그를 심지 않은 다른 양조장은 빈 배열
+        JsonNode untagged = findById(content, "BRW-001");
+        assertThat(untagged.get("featureTags")).isNotNull();
+        assertThat(untagged.get("featureTags")).isEmpty();
+    }
+
+    private JsonNode findById(JsonNode content, String breweryId) {
+        for (JsonNode item : content) {
+            if (breweryId.equals(item.get("breweryId").asText())) {
+                return item;
+            }
+        }
+        throw new IllegalStateException("응답에 " + breweryId + " 없음");
     }
 
     // ── 주종 필터(이슈 #24) ────────────────────────────────────────────────────

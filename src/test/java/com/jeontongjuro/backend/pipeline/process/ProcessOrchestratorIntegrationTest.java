@@ -68,6 +68,8 @@ class ProcessOrchestratorIntegrationTest {
     private ProductBreweryLinkRepository linkRepository;
     @Autowired
     private com.jeontongjuro.backend.liquortype.ProductLiquorTypeRepository productLiquorTypeRepository;
+    @org.springframework.beans.factory.annotation.Autowired
+    private com.jeontongjuro.backend.feature.BreweryFeatureTagRepository featureTagRepository;
     @Autowired
     private BreweryNearbyRepository breweryNearbyRepository;
     @Autowired
@@ -78,6 +80,7 @@ class ProcessOrchestratorIntegrationTest {
     @BeforeEach
     void resetAndSeedRaw() {
         // 파생(FK 자식부터) → raw 순으로 비우고, 골든을 raw 테이블에 적재(운영과 동일한 입력 경로)
+        featureTagRepository.deleteAll();          // brewery FK 자식(#43) — brewery보다 먼저
         productLiquorTypeRepository.deleteAll();   // link·brewery FK 자식 — 가장 먼저 비움
         linkRepository.deleteAll();
         overrideRepository.deleteAll();

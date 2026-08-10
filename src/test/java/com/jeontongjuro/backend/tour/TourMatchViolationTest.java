@@ -80,6 +80,7 @@ class TourMatchViolationTest {
     @Autowired private ManualOverrideRepository overrideRepository;
     @Autowired private ProductBreweryLinkRepository linkRepository;
     @Autowired private com.jeontongjuro.backend.liquortype.ProductLiquorTypeRepository productLiquorTypeRepository;
+    @Autowired private com.jeontongjuro.backend.feature.BreweryFeatureTagRepository featureTagRepository;
     @Autowired private BreweryRawRepository breweryRawRepository;
     @Autowired private ProductRawRepository productRawRepository;
     @Autowired private BreweryNearbyRepository breweryNearbyRepository;
@@ -88,6 +89,7 @@ class TourMatchViolationTest {
 
     @BeforeEach
     void resetAndSeedRaw() {
+        featureTagRepository.deleteAll();
         productLiquorTypeRepository.deleteAll();
         linkRepository.deleteAll();
         overrideRepository.deleteAll();

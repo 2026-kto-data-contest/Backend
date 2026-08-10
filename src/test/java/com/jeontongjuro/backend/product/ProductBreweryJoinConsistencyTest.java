@@ -73,6 +73,8 @@ class ProductBreweryJoinConsistencyTest {
     @Autowired
     private com.jeontongjuro.backend.liquortype.ProductLiquorTypeRepository productLiquorTypeRepository;
     @org.springframework.beans.factory.annotation.Autowired
+    private com.jeontongjuro.backend.feature.BreweryFeatureTagRepository featureTagRepository;
+    @org.springframework.beans.factory.annotation.Autowired
     private com.jeontongjuro.backend.tour.BreweryNearbyRepository breweryNearbyRepository;
     @org.springframework.beans.factory.annotation.Autowired
     private com.jeontongjuro.backend.tour.TourContentRepository tourContentRepository;
@@ -85,6 +87,7 @@ class ProductBreweryJoinConsistencyTest {
 
     @BeforeEach
     void loadBreweryOverrideThenJoin() {
+        featureTagRepository.deleteAll();
         productLiquorTypeRepository.deleteAll();
         linkRepository.deleteAll();
         overrideRepository.deleteAll();
