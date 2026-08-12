@@ -80,9 +80,13 @@ class BreweryQueryApiTest {
     @org.springframework.beans.factory.annotation.Autowired
     private com.jeontongjuro.backend.tour.TourContentRepository tourContentRepository;
 
+    @org.springframework.beans.factory.annotation.Autowired
+    private com.jeontongjuro.backend.experience.BreweryExperienceRepository experienceRepository;
+
     @BeforeEach
     void seedBreweryWithRegion() {
         // FK 자식(link·override·feature) 먼저 비운 뒤 brewery 재적재 → sido/region 채움(파생 UPDATE)
+        experienceRepository.deleteAll();   // brewery FK 자식(#52) — brewery보다 먼저
         featureTagRepository.deleteAll();
         productLiquorTypeRepository.deleteAll();
         linkRepository.deleteAll();
