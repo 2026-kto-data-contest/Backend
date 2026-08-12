@@ -127,6 +127,51 @@ public class Brewery {
     @Column(name = "content_matched_at")
     private OffsetDateTime contentMatchedAt;
 
+    // ── 상세 필드 편입 자리 (#50) ──────────────────────────────────────────
+    //   운영시간~수용인원·전화: 12단계(관광공사 detailIntro2)·13단계(카카오 시드)가 UPDATE.
+    //   설립연도~특징서술: 14단계(농림부 2019 지정현황 시드)가 UPDATE. ★전부 전용 UPDATE 단계 —
+    //   마스터 로드(1단계)는 기존 brewery_id를 skip하므로 여기서 채우면 영원히 null(백필 함정, #36 선례).
+    /** 대표 전화(관광공사 우선, 카카오 보충). 없으면 null(union 52/59). */
+    @Column(name = "phone", columnDefinition = "text")
+    private String phone;
+
+    /** 전화 출처(TOUR/KAKAO). phone이 null이면 null. */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "phone_source", columnDefinition = "text")
+    private PhoneSource phoneSource;
+
+    /** 운영시간 원문(관광공사 usetime). 정형화 불가라 원문 보존, {@code <br>}만 개행 정규화. 19/59. */
+    @Column(name = "operating_hours", columnDefinition = "text")
+    private String operatingHours;
+
+    /** 휴무 원문(관광공사 restdate). 17/59. */
+    @Column(name = "rest_date", columnDefinition = "text")
+    private String restDate;
+
+    /** 주차 안내(관광공사 parking). 17/59. */
+    @Column(name = "parking_info", columnDefinition = "text")
+    private String parkingInfo;
+
+    /** 수용인원 원문(관광공사 accomcount). ★"최대 80명" 형태라 TEXT — 숫자 아님. 5/59. */
+    @Column(name = "accom_count", columnDefinition = "text")
+    private String accomCount;
+
+    /** 설립연도(농림부 2019, 4자리). 36/59. */
+    @Column(name = "founded_year")
+    private Integer foundedYear;
+
+    /** 대표자명(농림부 2019). 36/59. */
+    @Column(name = "representative_name", columnDefinition = "text")
+    private String representativeName;
+
+    /** 찾아가는 양조장 선정연도(농림부 2019, 4자리). 36/59. */
+    @Column(name = "designated_year")
+    private Integer designatedYear;
+
+    /** 농림부 '특징' 서술 원문(2019). 36/59. */
+    @Column(name = "designation_note", columnDefinition = "text")
+    private String designationNote;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
@@ -205,6 +250,41 @@ public class Brewery {
     public void applyContentMatch(String contentId, OffsetDateTime contentMatchedAt) {
         this.contentId = contentId;
         this.contentMatchedAt = contentMatchedAt;
+    }
+
+    /**
+     * 관광공사 detailIntro2 상세 확정(파생값 UPDATE, 12단계). 운영시간·휴무·주차·수용인원 순수 대입.
+     * 값 없음은 호출자가 빈 문자열→null 정규화해 넘긴다(빈 문자열 저장 금지). 전화는 {@link #applyPhone}로 분리
+     * (출처 기록이 필요하고 카카오 보충 경로와 대칭이라서).
+     */
+    public void applyTourDetail(String operatingHours, String restDate,
+                                String parkingInfo, String accomCount) {
+        this.operatingHours = operatingHours;
+        this.restDate = restDate;
+        this.parkingInfo = parkingInfo;
+        this.accomCount = accomCount;
+    }
+
+    /**
+     * 전화 확정(파생값 UPDATE). 출처를 함께 기록한다(TOUR 우선). 우선순위는 호출자가 강제한다 —
+     * 12단계(TOUR)가 먼저 채우고, 13단계(카카오)는 {@code phone == null}일 때만 이 메서드를 호출한다.
+     * 여기서는 순수 대입만 하며 우선순위 판정을 하지 않는다(applyCoordinate 대입 계층 원칙과 동일).
+     */
+    public void applyPhone(String phone, PhoneSource phoneSource) {
+        this.phone = phone;
+        this.phoneSource = phoneSource;
+    }
+
+    /**
+     * 농림부 2019 지정현황 확정(파생값 UPDATE, 14단계). 설립연도·대표자·선정연도·특징서술 순수 대입.
+     * ★소재지·주종·업체명은 받지 않는다(2019값이 마스터 오염 — 시드가 애초에 담지 않아 구조적으로 불가).
+     */
+    public void applyNonglim(Integer foundedYear, String representativeName,
+                             Integer designatedYear, String designationNote) {
+        this.foundedYear = foundedYear;
+        this.representativeName = representativeName;
+        this.designatedYear = designatedYear;
+        this.designationNote = designationNote;
     }
 
     @PrePersist

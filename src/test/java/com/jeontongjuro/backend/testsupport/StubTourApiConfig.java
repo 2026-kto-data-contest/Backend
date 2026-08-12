@@ -2,6 +2,7 @@ package com.jeontongjuro.backend.testsupport;
 
 import com.jeontongjuro.backend.tour.TourApiClient;
 import com.jeontongjuro.backend.tour.TourContentRow;
+import com.jeontongjuro.backend.tour.TourIntro;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
@@ -37,6 +38,20 @@ public class StubTourApiConfig {
                 // 시드 접지: 스텁은 전 양조장이 같은 좌표라 서울 시청 부근으로 반환(거리 0).
                 return Optional.of(row(contentId,
                         new BigDecimal("37.566500"), new BigDecimal("126.978000"), null));
+            }
+
+            @Override
+            public Optional<String> detailOverview(String contentId) {
+                // 12단계 백필: 매칭된 콘텐츠 전건 소개글 보유(결정적). 실측 결측 분포는 라이브 verify 몫.
+                return Optional.of("스텁 소개글: " + contentId);
+            }
+
+            @Override
+            public Optional<TourIntro> detailIntro(String contentId, String contentTypeId) {
+                // 12단계 상세: 운영시간·전화(infocenter) 등 결정적 반환. 커버리지(운영시간 19·전화 TOUR 19)는
+                // '어느 양조장이 content_id를 갖는가'로 결정되며 이는 실제 시드·매칭이 재현한다.
+                return Optional.of(new TourIntro(
+                        contentId, "09:00~18:00", "매주 월요일", "02-1234-5678", "가능", "50명"));
             }
         };
     }

@@ -258,7 +258,70 @@ class BreweryDetailApiTest {
                 .andExpect(jsonPath("$.mainImage").doesNotExist());
     }
 
+    // ── 상세 필드 편입(#50, additive) ────────────────────────────────────────────
+    @Test
+    @DisplayName("상세 신규 필드 키 존재: overview·phone·operatingHours·foundedYear 등 11키")
+    void detailExposesNewDetailFieldKeys() throws Exception {
+        JsonNode body = readBody(get("/api/v1/breweries/{id}", BREWERY_D));
+        assertThat(body.has("overview")).isTrue();
+        assertThat(body.has("phone")).isTrue();
+        assertThat(body.has("phoneSource")).isTrue();
+        assertThat(body.has("operatingHours")).isTrue();
+        assertThat(body.has("restDate")).isTrue();
+        assertThat(body.has("parkingInfo")).isTrue();
+        assertThat(body.has("accomCount")).isTrue();
+        assertThat(body.has("foundedYear")).isTrue();
+        assertThat(body.has("representativeName")).isTrue();
+        assertThat(body.has("designatedYear")).isTrue();
+        assertThat(body.has("designationNote")).isTrue();
+    }
+
+    @Test
+    @DisplayName("상세 신규 필드 값: 설정하면 그대로 노출(운영시간·전화·설립연도·소개글)")
+    void detailReturnsNewFieldValuesWhenSet() throws Exception {
+        Brewery b = breweryRepository.findById(BREWERY_A).orElseThrow();
+        b.applyTourDetail("09:00~18:00\n※ 예약 필수", "매주 월요일", "가능", "최대 80명");
+        b.applyPhone("041-363-9063", com.jeontongjuro.backend.brewery.PhoneSource.TOUR);
+        b.applyNonglim(1933, "김동교", 2013, "80년 전통 3대째 양조장 운영");
+        breweryRepository.save(b);
+        attachOverview(BREWERY_A, "CONTENT-OV", "1918년 창업한 유서깊은 양조장 소개글");
+
+        JsonNode body = readBody(get("/api/v1/breweries/{id}", BREWERY_A));
+        assertThat(body.get("phone").asText()).isEqualTo("041-363-9063");
+        assertThat(body.get("phoneSource").asText()).isEqualTo("TOUR");
+        assertThat(body.get("operatingHours").asText()).contains("09:00~18:00");
+        assertThat(body.get("restDate").asText()).isEqualTo("매주 월요일");
+        assertThat(body.get("parkingInfo").asText()).isEqualTo("가능");
+        assertThat(body.get("accomCount").asText()).isEqualTo("최대 80명");
+        assertThat(body.get("foundedYear").asInt()).isEqualTo(1933);
+        assertThat(body.get("representativeName").asText()).isEqualTo("김동교");
+        assertThat(body.get("designatedYear").asInt()).isEqualTo(2013);
+        assertThat(body.get("designationNote").asText()).contains("80년 전통");
+        assertThat(body.get("overview").asText()).contains("1918년");
+    }
+
+    @Test
+    @DisplayName("소개글 미백필(content_id 미매칭) → overview=null")
+    void overviewNullWhenNoContent() throws Exception {
+        JsonNode body = readBody(get("/api/v1/breweries/{id}", BREWERY_D));
+        assertThat(body.get("overview").isNull()).isTrue();
+    }
+
     // ── helpers ──────────────────────────────────────────────────────────────
+    /** tour_content에 overview를 백필하고 brewery.content_id를 매칭한다(상세 소개글 경로 검증용). */
+    private void attachOverview(String breweryId, String contentId, String overview) {
+        TourContentRow row = new TourContentRow(
+                contentId, "12", null, null, null, null, null, null, null, null, null,
+                null, null, null, null, null, null, null, null,
+                null, null, null, null, null, null);
+        TourContent tc = TourContent.create(row, null, null);
+        tc.backfillOverview(overview, OffsetDateTime.now(ZoneOffset.UTC));
+        tourContentRepository.save(tc);
+        Brewery b = breweryRepository.findById(breweryId).orElseThrow();
+        b.applyContentMatch(contentId, OffsetDateTime.now(ZoneOffset.UTC));
+        breweryRepository.save(b);
+    }
+
     /** 도수 픽스처(리스트 테스트와 동일 값). C는 링크 2개(집계 dedup), D는 null(도수 미상). */
     private void seedAbvLinks() {
         linkRepository.save(ProductBreweryLink.of(9101, "도수-A", "국순당", "국순당", BREWERY_A, JoinSource.AUTO,

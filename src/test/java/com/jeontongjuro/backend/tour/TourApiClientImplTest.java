@@ -124,4 +124,40 @@ class TourApiClientImplTest {
         assertThat(row.get().contentId()).isEqualTo("999");
         assertThat(row.get().mapx()).isEqualTo("126.978");
     }
+
+    @Test
+    @DisplayName("detailOverview(#50): detailCommon2에서 overview만 추출")
+    void detailOverview() {
+        Fixture f = newClient(100);
+        String it = "{\"contentid\":\"777\",\"overview\":\"1918년 창업한 양조장\"}";
+        f.server.expect(queryParam("contentId", "777"))
+                .andRespond(withSuccess(body("{\"item\":" + it + "}", 1),
+                        MediaType.APPLICATION_JSON).header("X-RateLimit-Remaining", "900"));
+        Optional<String> overview = f.client.detailOverview("777");
+        assertThat(overview).contains("1918년 창업한 양조장");
+    }
+
+    @Test
+    @DisplayName("detailIntro2(#50): 운영시간·전화 파싱 + <br> 개행 정규화 + 빈 문자열 null")
+    void detailIntroParsesAndNormalizesBr() {
+        Fixture f = newClient(100);
+        // usetime에 <br>\n 혼재, accomcount 빈 문자열(→null), infocenter는 전화
+        String it = "{\"contentid\":\"555\",\"contenttypeid\":\"12\","
+                + "\"usetime\":\"09:00~18:00<br>\\n※ 예약 필수\",\"restdate\":\"매주 월요일\","
+                + "\"infocenter\":\"041-363-9063\",\"parking\":\"가능<br>요금 (무료)\",\"accomcount\":\"\"}";
+        f.server.expect(queryParam("contentId", "555"))
+                .andRespond(withSuccess(body("{\"item\":" + it + "}", 1),
+                        MediaType.APPLICATION_JSON).header("X-RateLimit-Remaining", "900"));
+        Optional<TourIntro> intro = f.client.detailIntro("555", "12");
+        assertThat(intro).isPresent();
+        TourIntro i = intro.get();
+        // <br>\n → 단일 개행(중복 개행 아님), HTML 태그 제거
+        assertThat(i.operatingHours()).isEqualTo("09:00~18:00\n※ 예약 필수");
+        assertThat(i.operatingHours()).doesNotContain("<br>");
+        assertThat(i.restDate()).isEqualTo("매주 월요일");
+        assertThat(i.phone()).isEqualTo("041-363-9063");
+        assertThat(i.parkingInfo()).isEqualTo("가능\n요금 (무료)"); // parking도 <br>→개행 정규화
+        assertThat(i.parkingInfo()).doesNotContain("<br>");
+        assertThat(i.accomCount()).isNull(); // 빈 문자열 → null
+    }
 }

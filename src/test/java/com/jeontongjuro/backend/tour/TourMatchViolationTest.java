@@ -64,6 +64,17 @@ class TourMatchViolationTest {
                             new BigDecimal("35.100000"), new BigDecimal("129.000000"), null));
                 }
 
+                @Override
+                public Optional<String> detailOverview(String contentId) {
+                    // 접지가 200m 실패로 중단되므로 12단계 미도달 — 호출되지 않는다.
+                    return Optional.empty();
+                }
+
+                @Override
+                public Optional<TourIntro> detailIntro(String contentId, String contentTypeId) {
+                    return Optional.empty();
+                }
+
                 private TourContentRow row(String id, BigDecimal lat, BigDecimal lng, Double dist) {
                     return new TourContentRow(id, "12", "먼콘텐츠", "부산", null, null, null, null,
                             null, null, null, null, null, null, null, null,

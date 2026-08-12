@@ -32,6 +32,7 @@ public class TourApiClientImpl implements TourApiClient {
     private static final Logger log = LoggerFactory.getLogger(TourApiClientImpl.class);
     private static final String LOCATION_PATH = "/locationBasedList2";
     private static final String DETAIL_PATH = "/detailCommon2";
+    private static final String INTRO_PATH = "/detailIntro2";
     private static final String RATELIMIT_HEADER = "X-RateLimit-Remaining";
     /** 잔량이 이 값 미만이면 중단(예산 소진 방어 — 사람이 확인 후 다음날 재개). */
     private static final int RATELIMIT_FLOOR = 50;
@@ -121,6 +122,92 @@ public class TourApiClientImpl implements TourApiClient {
             return Optional.empty();
         }
         return Optional.of(rows.get(0));
+    }
+
+    @Override
+    public Optional<String> detailOverview(String contentId) {
+        requireServiceKey();
+        throttle();
+        ResponseEntity<String> resp = restClient.get()
+                .uri(uriBuilder -> uriBuilder
+                        .path(DETAIL_PATH)
+                        .queryParam("serviceKey", properties.serviceKey())
+                        .queryParam("MobileOS", "ETC")
+                        .queryParam("MobileApp", properties.mobileApp())
+                        .queryParam("_type", "json")
+                        .queryParam("contentId", contentId)
+                        .build())
+                .retrieve()
+                .toEntity(String.class);
+        guardRateLimit(resp);
+        JsonNode body = requireBody(resp, DETAIL_PATH + "(overview) contentId=" + contentId);
+        Optional<JsonNode> item = firstItem(body);
+        if (item.isEmpty()) {
+            log.warn("[tour] detailCommon2(overview) 결과 없음 contentId={}", contentId);
+            return Optional.empty();
+        }
+        return Optional.ofNullable(text(item.get(), "overview"));
+    }
+
+    @Override
+    public Optional<TourIntro> detailIntro(String contentId, String contentTypeId) {
+        requireServiceKey();
+        throttle();
+        ResponseEntity<String> resp = restClient.get()
+                .uri(uriBuilder -> uriBuilder
+                        .path(INTRO_PATH)
+                        .queryParam("serviceKey", properties.serviceKey())
+                        .queryParam("MobileOS", "ETC")
+                        .queryParam("MobileApp", properties.mobileApp())
+                        .queryParam("_type", "json")
+                        .queryParam("contentId", contentId)
+                        .queryParam("contentTypeId", contentTypeId)
+                        .build())
+                .retrieve()
+                .toEntity(String.class);
+        guardRateLimit(resp);
+        JsonNode body = requireBody(resp, INTRO_PATH + " contentId=" + contentId);
+        Optional<JsonNode> item = firstItem(body);
+        if (item.isEmpty()) {
+            log.warn("[tour] detailIntro2 결과 없음 contentId={}", contentId);
+            return Optional.empty();
+        }
+        JsonNode n = item.get();
+        // ★usetime뿐 아니라 restdate·parking·accomcount도 <br> 태그가 섞여 온다(실측: parking "가능<br>요금 (무료)").
+        //   데이터 필드에 HTML을 저장하지 않기 위해 개행 정규화를 동일 적용한다. 전화(infocenter)는 태그 없음.
+        return Optional.of(new TourIntro(
+                contentId,
+                normalizeBr(text(n, "usetime")),
+                normalizeBr(text(n, "restdate")),
+                text(n, "infocenter"),
+                normalizeBr(text(n, "parking")),
+                normalizeBr(text(n, "accomcount"))));
+    }
+
+    /** items 첫 item 노드(단건·배열 양쪽). detailCommon2/detailIntro2 단건 파싱 공용(TourContentRow 미경유). */
+    private Optional<JsonNode> firstItem(JsonNode body) {
+        JsonNode items = body.path("items");
+        if (!items.isObject()) {
+            return Optional.empty();
+        }
+        JsonNode item = items.path("item");
+        if (item.isArray()) {
+            return item.isEmpty() ? Optional.empty() : Optional.of(item.get(0));
+        }
+        return item.isObject() ? Optional.of(item) : Optional.empty();
+    }
+
+    /**
+     * {@code <br>} 계열 태그(대소문자·자기닫음 포함)를 개행으로 정규화. 뒤에 붙은 실제 개행은 흡수해
+     * 중복 개행을 만들지 않는다(원문에 {@code <br>\n} 혼재). 데이터 필드에 HTML을 저장하지 않기 위함 —
+     * 프론트는 개행(white-space:pre-line)만 처리하면 된다. null은 그대로.
+     */
+    private static String normalizeBr(String v) {
+        if (v == null) {
+            return null;
+        }
+        String out = v.replaceAll("(?i)<br\\s*/?>\\s*", "\n").trim();
+        return out.isEmpty() ? null : out;
     }
 
     /** response.body 노드 확보 + resultCode 게이트. items 없음(전제 9)은 여기서 판단하지 않는다. */
