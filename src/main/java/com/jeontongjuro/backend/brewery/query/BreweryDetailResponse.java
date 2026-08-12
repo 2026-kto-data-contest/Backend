@@ -1,6 +1,7 @@
 package com.jeontongjuro.backend.brewery.query;
 
 import com.jeontongjuro.backend.brewery.Brewery;
+import com.jeontongjuro.backend.brewery.PhoneSource;
 import com.jeontongjuro.backend.brewery.VisitState;
 import com.jeontongjuro.backend.feature.FeatureType;
 import com.jeontongjuro.backend.liquortype.LiquorType;
@@ -41,12 +42,33 @@ public record BreweryDetailResponse(
         @Schema(description = "취급 주종 목록(탁주·약주·청주·증류주·과실주·기타). 없으면 빈 배열",
                 example = "[\"탁주\",\"증류주\"]")
         List<LiquorType> liquorTypes,
-        @Schema(description = "대표 이미지. 없으면 null") MainImageResponse mainImage) {
+        @Schema(description = "대표 이미지. 없으면 null") MainImageResponse mainImage,
+        // ── 상세 필드 편입(#50, additive). 값 없으면 전부 null. 리스트 API엔 노출하지 않는다(스캔용). ──
+        @Schema(description = "양조장 소개글(관광공사). 콘텐츠 미매칭이면 null", example = "1918년 창업한 …")
+        String overview,
+        @Schema(description = "대표 전화. 없으면 null", example = "041-363-9063") String phone,
+        @Schema(description = "전화 출처: TOUR(관광공사 우선)·KAKAO(보충). phone 없으면 null", example = "TOUR")
+        PhoneSource phoneSource,
+        @Schema(description = "운영시간 원문(정형화 불가·개행 보존). 없으면 null", example = "09:00~18:00")
+        String operatingHours,
+        @Schema(description = "휴무 원문. 없으면 null", example = "매주 일요일") String restDate,
+        @Schema(description = "주차 안내. 없으면 null", example = "가능") String parkingInfo,
+        @Schema(description = "수용인원 원문(숫자 아님). 없으면 null", example = "최대 80명") String accomCount,
+        @Schema(description = "설립연도(농림부 2019). 없으면 null", example = "1933") Integer foundedYear,
+        @Schema(description = "대표자명(농림부 2019). 없으면 null", example = "김동교") String representativeName,
+        @Schema(description = "찾아가는 양조장 선정연도(농림부 2019). 없으면 null", example = "2013")
+        Integer designatedYear,
+        @Schema(description = "농림부 특징 서술(2019). 없으면 null", example = "80년 전통 3대째 양조장 …")
+        String designationNote) {
 
-    /** 엔티티 + 배치 조회로 모은 파생값(태그·도수·주종·대표 이미지)을 합쳐 상세 응답을 만든다. */
+    /**
+     * 엔티티 + 배치 조회로 모은 파생값(태그·도수·주종·대표 이미지·소개글)을 합쳐 상세 응답을 만든다.
+     * overview는 tour_content에서 오므로 별도 인자로 받는다(엔티티 밖 값). 나머지 상세 필드는 brewery 엔티티에 있다.
+     */
     public static BreweryDetailResponse of(Brewery b, List<FeatureType> featureTags,
                                            BigDecimal alcoholMin, BigDecimal alcoholMax,
-                                           List<LiquorType> liquorTypes, MainImageResponse mainImage) {
+                                           List<LiquorType> liquorTypes, MainImageResponse mainImage,
+                                           String overview) {
         return new BreweryDetailResponse(
                 b.getBreweryId(),
                 b.getBusinessName(),
@@ -62,6 +84,17 @@ public record BreweryDetailResponse(
                 alcoholMin,
                 alcoholMax,
                 liquorTypes,
-                mainImage);
+                mainImage,
+                overview,
+                b.getPhone(),
+                b.getPhoneSource(),
+                b.getOperatingHours(),
+                b.getRestDate(),
+                b.getParkingInfo(),
+                b.getAccomCount(),
+                b.getFoundedYear(),
+                b.getRepresentativeName(),
+                b.getDesignatedYear(),
+                b.getDesignationNote());
     }
 }

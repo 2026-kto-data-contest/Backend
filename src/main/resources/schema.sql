@@ -94,6 +94,25 @@ ALTER TABLE brewery ADD COLUMN IF NOT EXISTS geocoded_at  TIMESTAMPTZ;
 -- 따라서 내부 세미콜론 없는 단문 2개(DROP IF EXISTS→ADD)로 멱등화한다 — 매 기동 재적용, 재검증(59행) 무시가능.
 ALTER TABLE brewery DROP CONSTRAINT IF EXISTS ck_brewery_coord_source;
 ALTER TABLE brewery ADD CONSTRAINT ck_brewery_coord_source CHECK (coord_source IN ('KAKAO_ADDRESS', 'KAKAO_ADDRESS_NORMALIZED', 'KAKAO_ADDRESS_SEED'));
+-- 상세 필드 편입(#50) — brewery가 이미 존재하는 DB는 CREATE TABLE IF NOT EXISTS가 통째로 건너뛰어
+-- 아래 컬럼이 생기지 않는다. 신규 설치는 CREATE TABLE로 반영되지 않으므로(위 CREATE에 미포함)
+-- 신규·기존 DB 모두 아래 멱등 ALTER로만 반영한다. 전례: 위 좌표 4컬럼 ALTER.
+--   기준일 분리: operating_hours~accom_count·phone은 관광공사/카카오(현행), founded_year~designation_note는
+--   농림부 2019 지정현황. ★농림부 소재지·주종·업체명은 컬럼으로 만들지 않는다(2019값이 마스터 오염 — 시드에도 미포함).
+ALTER TABLE brewery ADD COLUMN IF NOT EXISTS phone               TEXT;
+ALTER TABLE brewery ADD COLUMN IF NOT EXISTS phone_source        TEXT;
+ALTER TABLE brewery ADD COLUMN IF NOT EXISTS operating_hours     TEXT;
+ALTER TABLE brewery ADD COLUMN IF NOT EXISTS rest_date           TEXT;
+ALTER TABLE brewery ADD COLUMN IF NOT EXISTS parking_info        TEXT;
+ALTER TABLE brewery ADD COLUMN IF NOT EXISTS accom_count         TEXT;
+ALTER TABLE brewery ADD COLUMN IF NOT EXISTS founded_year        INT;
+ALTER TABLE brewery ADD COLUMN IF NOT EXISTS representative_name TEXT;
+ALTER TABLE brewery ADD COLUMN IF NOT EXISTS designated_year     INT;
+ALTER TABLE brewery ADD COLUMN IF NOT EXISTS designation_note    TEXT;
+-- phone_source는 phone 출처(TOUR=관광공사 우선, KAKAO=카카오 보충). phone이 null이면 source도 null.
+-- DO/$$ 금지(ScriptUtils ';' 분할 파손) — 단문 2개(DROP IF EXISTS→ADD)로 멱등화. 위 coord CHECK 선례 동일.
+ALTER TABLE brewery DROP CONSTRAINT IF EXISTS ck_brewery_phone_source;
+ALTER TABLE brewery ADD CONSTRAINT ck_brewery_phone_source CHECK (phone_source IN ('TOUR', 'KAKAO'));
 CREATE INDEX IF NOT EXISTS ix_brewery_business_name ON brewery (business_name);
 CREATE INDEX IF NOT EXISTS ix_brewery_norm ON brewery (norm);
 

@@ -112,11 +112,27 @@ public class BreweryQueryService {
         List<LiquorType> liquors = liquorTypesFor(one).getOrDefault(breweryId, List.of());
         AbvRange abv = abvFor(one).get(breweryId);
         MainImageResponse image = mainImagesFor(one).get(breweryId);
+        String overview = overviewFor(brewery);
 
         return BreweryDetailResponse.of(brewery, tags,
                 abv == null ? null : abv.min(),
                 abv == null ? null : abv.max(),
-                liquors, image);
+                liquors, image, overview);
+    }
+
+    /**
+     * 상세 소개글(#50) — content_id가 있으면 tour_content.overview를 읽어 반환. 미매칭·미백필이면 null.
+     * 빈 문자열은 null로 정규화(백필이 비어 있으면 저장하지 않으나 방어). 상세 전용(리스트엔 노출하지 않는다).
+     */
+    private String overviewFor(Brewery brewery) {
+        String contentId = brewery.getContentId();
+        if (contentId == null) {
+            return null;
+        }
+        return tourContentRepository.findById(contentId)
+                .map(TourContent::getOverview)
+                .filter(s -> !s.isBlank())
+                .orElse(null);
     }
 
     /**

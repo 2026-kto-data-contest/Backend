@@ -6,10 +6,13 @@ import com.jeontongjuro.backend.brewery.BreweryJoinStatusUpdateService;
 import com.jeontongjuro.backend.brewery.BreweryLiquorStatusUpdateService;
 import com.jeontongjuro.backend.brewery.BreweryMasterLoadService;
 import com.jeontongjuro.backend.brewery.BreweryRegionUpdateService;
+import com.jeontongjuro.backend.brewery.KakaoPhoneSeedLoadService;
+import com.jeontongjuro.backend.brewery.NonglimSeedLoadService;
 import com.jeontongjuro.backend.feature.FeatureRollupService;
 import com.jeontongjuro.backend.liquortype.LiquorRollupResult;
 import com.jeontongjuro.backend.override.ManualOverrideSeedLoadService;
 import com.jeontongjuro.backend.product.ProductBreweryJoinService;
+import com.jeontongjuro.backend.tour.TourDetailEnrichService;
 import com.jeontongjuro.backend.tour.TourMatchResolveService;
 import com.jeontongjuro.backend.tour.TourNearbyCollectService;
 import java.time.LocalDate;
@@ -38,6 +41,9 @@ public record ProcessReport(
         TourMatchResolveService.ResolveResult matchResolve,
         BreweryContentMatchUpdateService.MatchResult match,
         FeatureRollupService.RollupResult feature,
+        TourDetailEnrichService.EnrichResult tourDetail,
+        KakaoPhoneSeedLoadService.LoadResult kakaoPhone,
+        NonglimSeedLoadService.LoadResult nonglim,
         List<StaleOverride> staleOverrides
 ) {
 
@@ -118,6 +124,25 @@ public record ProcessReport(
                 .append(" deleted=").append(feature.deleted())
                 .append(" unchanged=").append(feature.unchanged())
                 .append(" (삭제형 diff — 유령 없음)\n");
+        sb.append("tour-detail 대상=").append(tourDetail.contentBreweries())
+                .append(" | overview 백필=").append(tourDetail.overviewBackfilled())
+                .append(" skip=").append(tourDetail.overviewSkipped())
+                .append(" 없음=").append(tourDetail.overviewMissing())
+                .append(" | 상세 채움=").append(tourDetail.tourDetailUpdated())
+                .append(" skip=").append(tourDetail.tourDetailSkipped())
+                .append(" | 전화TOUR=").append(tourDetail.phoneFromTour()).append('\n');
+        sb.append("kakao-phone 시드=").append(kakaoPhone.seedRows())
+                .append(" PHONE=").append(kakaoPhone.phoneEntries())
+                .append(" 적용=").append(kakaoPhone.applied())
+                .append(" TOUR우선skip=").append(kakaoPhone.skippedTourWins())
+                .append(" 비PHONE=").append(kakaoPhone.nonPhone())
+                .append(" (phone 합=").append(tourDetail.phoneFromTour() + kakaoPhone.applied())
+                .append(" = TOUR ").append(tourDetail.phoneFromTour())
+                .append(" + KAKAO ").append(kakaoPhone.applied()).append(")\n");
+        sb.append("nonglim 시드=").append(nonglim.seedRows())
+                .append(" 적용=").append(nonglim.applied())
+                .append(" 기존skip=").append(nonglim.skippedExisting())
+                .append(" (설립연도·대표자·선정연도·특징 — 소재지·주종·업체명 미포함)\n");
         sb.append("⚠ override 미적중: ");
         if (staleOverrides.isEmpty()) {
             sb.append("없음");

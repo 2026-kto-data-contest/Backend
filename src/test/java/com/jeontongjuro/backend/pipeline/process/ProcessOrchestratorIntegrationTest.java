@@ -76,6 +76,8 @@ class ProcessOrchestratorIntegrationTest {
     private TourContentRepository tourContentRepository;
     @Autowired
     private ObjectMapper objectMapper;
+    @Autowired
+    private org.springframework.jdbc.core.JdbcTemplate jdbc;
 
     @BeforeEach
     void resetAndSeedRaw() {
@@ -164,6 +166,85 @@ class ProcessOrchestratorIntegrationTest {
         assertThat(report.match().matched() + report.match().unmatched()).isEqualTo(59);
         assertThat(breweryRepository.findAll().stream()
                 .filter(b -> b.getContentId() != null).count()).isEqualTo(19);
+
+        // 12단계 관광공사 상세: content_id 19곳 전부 소개글·상세 백필(스텁이 전건 반환), 전화 TOUR 19
+        assertThat(report.tourDetail().contentBreweries()).isEqualTo(19);
+        assertThat(report.tourDetail().overviewBackfilled()).isEqualTo(19);
+        assertThat(report.tourDetail().overviewSkipped()).isZero();
+        assertThat(report.tourDetail().tourDetailUpdated()).isEqualTo(19);
+        assertThat(report.tourDetail().phoneFromTour()).isEqualTo(19);
+        // overview 백필: 기존 tour_content 행에 UPDATE(신규 insert 아님) — 채워진 행 19
+        assertThat(tourContentRepository.findAll().stream()
+                .filter(tc -> tc.getOverview() != null).count()).isEqualTo(19);
+
+        // 13단계 카카오 전화: TOUR 19곳(그중 카카오 PHONE 18은 TOUR우선 skip) → 카카오 신규 적용 33, 합 52
+        assertThat(report.kakaoPhone().seedRows()).isEqualTo(59);
+        assertThat(report.kakaoPhone().phoneEntries()).isEqualTo(51);
+        assertThat(report.kakaoPhone().applied()).isEqualTo(33);
+        assertThat(report.kakaoPhone().skippedTourWins()).isEqualTo(18);
+        assertThat(report.tourDetail().phoneFromTour() + report.kakaoPhone().applied()).isEqualTo(52);
+        assertThat(breweryRepository.findAll().stream()
+                .filter(b -> b.getPhone() != null).count()).isEqualTo(52);
+        // phone_source 분포: TOUR 19 / KAKAO 33
+        assertThat(breweryRepository.findAll().stream()
+                .filter(b -> b.getPhoneSource() == com.jeontongjuro.backend.brewery.PhoneSource.TOUR).count())
+                .isEqualTo(19);
+        assertThat(breweryRepository.findAll().stream()
+                .filter(b -> b.getPhoneSource() == com.jeontongjuro.backend.brewery.PhoneSource.KAKAO).count())
+                .isEqualTo(33);
+
+        // 14단계 농림부: 36곳 적용(설립연도). 소재지·주종·업체명 컬럼 자체가 없어 오염 구조 차단
+        assertThat(report.nonglim().seedRows()).isEqualTo(36);
+        assertThat(report.nonglim().applied()).isEqualTo(36);
+        assertThat(breweryRepository.findAll().stream()
+                .filter(b -> b.getFoundedYear() != null).count()).isEqualTo(36);
+    }
+
+    @Test
+    @DisplayName("백필 재현(#50, #36 사고 방지): 기존 행 컬럼 null화 후 재실행 → 전용 UPDATE 단계가 다시 채운다")
+    void backfillsExistingRowsNotOnlyFreshInserts() {
+        // 1) 완주 — 기존 행(brewery 59·tour_content)이 이미 존재하는 상태를 만든다(★fresh insert 아님)
+        orchestrator.run(SNAPSHOT);
+        // 사전 조건: 채워져 있음
+        assertThat(countBrewery("operating_hours IS NOT NULL")).isEqualTo(19);
+        assertThat(countBrewery("phone IS NOT NULL")).isEqualTo(52);
+        assertThat(countBrewery("founded_year IS NOT NULL")).isEqualTo(36);
+        assertThat(countTourContent("overview IS NOT NULL")).isEqualTo(19);
+
+        // 2) 기존 행의 신규 컬럼만 null로 되돌린다 — 행은 그대로 남는다(도수 #36이 놓친 바로 그 경로)
+        jdbc.execute("UPDATE brewery SET operating_hours=NULL, rest_date=NULL, parking_info=NULL, "
+                + "accom_count=NULL, phone=NULL, phone_source=NULL, founded_year=NULL, "
+                + "representative_name=NULL, designated_year=NULL, designation_note=NULL");
+        jdbc.execute("UPDATE tour_content SET overview=NULL, overview_fetched_at=NULL");
+        assertThat(countBrewery("phone IS NOT NULL")).isZero();
+        assertThat(countTourContent("overview IS NOT NULL")).isZero();
+        long breweryRowsBefore = breweryRepository.count();
+        long tourRowsBefore = tourContentRepository.count();
+
+        // 3) 재실행 — 1~11단계는 멱등 skip(신규 insert 0), 12·13·14 전용 UPDATE가 기존 행을 다시 채운다
+        ProcessReport again = orchestrator.run(SNAPSHOT);
+        assertThat(again.master().loaded()).isZero();               // 마스터는 기존 skip(=insert 경로 아님을 확증)
+        assertThat(again.match().changed()).isZero();               // 매칭도 기존 유지
+        assertThat(again.tourDetail().overviewBackfilled()).isEqualTo(19);
+        assertThat(again.tourDetail().tourDetailUpdated()).isEqualTo(19);
+        assertThat(again.kakaoPhone().applied()).isEqualTo(33);
+        assertThat(again.nonglim().applied()).isEqualTo(36);
+
+        // 행수 불변(UPDATE지 insert 아님) + 값 재충전 확인
+        assertThat(breweryRepository.count()).isEqualTo(breweryRowsBefore);
+        assertThat(tourContentRepository.count()).isEqualTo(tourRowsBefore);
+        assertThat(countBrewery("operating_hours IS NOT NULL")).isEqualTo(19);
+        assertThat(countBrewery("phone IS NOT NULL")).isEqualTo(52);
+        assertThat(countBrewery("founded_year IS NOT NULL")).isEqualTo(36);
+        assertThat(countTourContent("overview IS NOT NULL")).isEqualTo(19);
+    }
+
+    private long countBrewery(String whereClause) {
+        return jdbc.queryForObject("SELECT count(*) FROM brewery WHERE " + whereClause, Long.class);
+    }
+
+    private long countTourContent(String whereClause) {
+        return jdbc.queryForObject("SELECT count(*) FROM tour_content WHERE " + whereClause, Long.class);
     }
 
     /** 3차 MANUAL 시드로 조인 제품이 전건 확정된 양조장 12곳(→ TAGGED 전이 예상). */
@@ -250,6 +331,16 @@ class ProcessOrchestratorIntegrationTest {
         assertThat(again.match().matched()).isEqualTo(19);
         assertThat(again.match().changed()).isZero();
         assertThat(again.match().unchanged()).isEqualTo(19);
+
+        // 12·13·14단계 멱등: 이미 채워진 상태라 전부 skip(신규 0)
+        assertThat(again.tourDetail().overviewBackfilled()).isZero();
+        assertThat(again.tourDetail().overviewSkipped()).isEqualTo(19);
+        assertThat(again.tourDetail().tourDetailUpdated()).isZero();
+        assertThat(again.tourDetail().tourDetailSkipped()).isEqualTo(19);
+        assertThat(again.kakaoPhone().applied()).isZero();
+        assertThat(again.kakaoPhone().skippedTourWins()).isEqualTo(51);
+        assertThat(again.nonglim().applied()).isZero();
+        assertThat(again.nonglim().skippedExisting()).isEqualTo(36);
     }
 
     @Test

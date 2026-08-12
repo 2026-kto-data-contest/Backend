@@ -144,6 +144,21 @@ public class TourContent {
         return Objects.equals(this.sourceModifiedTime, modifiedTime);
     }
 
+    /**
+     * overview 백필(#50 12단계). 기존 행이 이미 존재해 upsert가 건너뛰는 함정을 피해 별도 UPDATE 경로로
+     * 소개글을 채운다. {@code overviewFetchedAt}을 함께 찍어 "채웠음"을 표시한다 — 재실행 시 멱등 skip 근거.
+     * ★upsert(applyUpdate)는 overview를 손대지 않으므로 여기서 채운 값이 재수집에도 보존된다.
+     */
+    public void backfillOverview(String overview, java.time.OffsetDateTime fetchedAt) {
+        this.overview = overview;
+        this.overviewFetchedAt = fetchedAt;
+    }
+
+    /** overview 백필 완료 여부(fetchedAt 존재 = 이미 채움 → 멱등 skip). */
+    public boolean isOverviewFetched() {
+        return this.overviewFetchedAt != null;
+    }
+
     private void applyMutable(TourContentRow row, BigDecimal latitude, BigDecimal longitude) {
         this.contentTypeId = row.contentTypeId();
         this.title = row.title();

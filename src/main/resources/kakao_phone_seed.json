@@ -1,0 +1,484 @@
+{
+  "_meta": {
+    "purpose": "카카오 로컬 검색으로 얻은 양조장 전화번호 → brewery_id (#50 13단계)",
+    "source": "Kakao Local keyword search + 200m 좌표 게이트(상호명 검색 후 좌표 근접 확인)",
+    "sourceReferenceDate": "2026-08-10",
+    "note": "카카오 상호검색+좌표게이트는 비결정적이라 매 호출이 흔들린다 → 시드로 고정(experience_match_seed 선례). status=PHONE 행만 적용한다. NO_MATCH(후보 0건)·NO_PHONE(장소는 찾았으나 전화 없음)도 왜 비었는지 판별력 위해 status로 보존한다. 전화 우선순위 TOUR>KAKAO: 12단계(관광공사)가 채운 phone은 덮지 않고 phone==null인 곳만 채운다. kakaoPlaceName·distanceM·searchName은 추적용 메타(로더는 breweryId·status·phone만 읽는다).",
+    "matchedAt": "2026-08-10",
+    "appendOnly": true
+  },
+  "entries": [
+    {
+      "breweryId": "BRW-001",
+      "searchName": "갈기산",
+      "status": "PHONE",
+      "phone": "043-743-8733",
+      "kakaoPlaceName": "갈기산포도농원 농업회사법인",
+      "distanceM": 0
+    },
+    {
+      "breweryId": "BRW-002",
+      "searchName": "고도리 와이너리",
+      "status": "PHONE",
+      "phone": "054-335-3174",
+      "kakaoPlaceName": "고도리 와이너리",
+      "distanceM": 57
+    },
+    {
+      "breweryId": "BRW-003",
+      "searchName": "국가유산·명인 조옥화 안동소주",
+      "status": "NO_MATCH",
+      "phone": null,
+      "kakaoPlaceName": null,
+      "distanceM": null
+    },
+    {
+      "breweryId": "BRW-004",
+      "searchName": "국순당",
+      "status": "PHONE",
+      "phone": "033-340-4300",
+      "kakaoPlaceName": "국순당 주향로",
+      "distanceM": 147
+    },
+    {
+      "breweryId": "BRW-005",
+      "searchName": "그린영농조합",
+      "status": "PHONE",
+      "phone": "032-886-9873",
+      "kakaoPlaceName": "그랑꼬또와이너리",
+      "distanceM": 36
+    },
+    {
+      "breweryId": "BRW-006",
+      "searchName": "금정산성 토산주",
+      "status": "PHONE",
+      "phone": "051-517-0202",
+      "kakaoPlaceName": "금정산성막걸리 본점",
+      "distanceM": 8
+    },
+    {
+      "breweryId": "BRW-007",
+      "searchName": "금풍양조",
+      "status": "PHONE",
+      "phone": "070-4400-1931",
+      "kakaoPlaceName": "금풍양조장",
+      "distanceM": 0
+    },
+    {
+      "breweryId": "BRW-008",
+      "searchName": "다도참주가",
+      "status": "PHONE",
+      "phone": "080-280-2211",
+      "kakaoPlaceName": "다도참주가",
+      "distanceM": 65
+    },
+    {
+      "breweryId": "BRW-009",
+      "searchName": "대강양조장",
+      "status": "PHONE",
+      "phone": "043-422-0077",
+      "kakaoPlaceName": "대강양조장",
+      "distanceM": 17
+    },
+    {
+      "breweryId": "BRW-010",
+      "searchName": "대대로영농조합법인",
+      "status": "PHONE",
+      "phone": "061-542-3399",
+      "kakaoPlaceName": "대대로영농조합",
+      "distanceM": 33
+    },
+    {
+      "breweryId": "BRW-011",
+      "searchName": "덕유양조",
+      "status": "PHONE",
+      "phone": "063-323-2355",
+      "kakaoPlaceName": "덕유양조",
+      "distanceM": 12
+    },
+    {
+      "breweryId": "BRW-012",
+      "searchName": "도란원",
+      "status": "PHONE",
+      "phone": "043-743-2109",
+      "kakaoPlaceName": "도란원",
+      "distanceM": 18
+    },
+    {
+      "breweryId": "BRW-013",
+      "searchName": "두레양조",
+      "status": "PHONE",
+      "phone": "041-585-8213",
+      "kakaoPlaceName": "두례양조",
+      "distanceM": 0
+    },
+    {
+      "breweryId": "BRW-014",
+      "searchName": "맑은내일",
+      "status": "PHONE",
+      "phone": "010-4595-6353",
+      "kakaoPlaceName": "농업회사법인 맑은내일",
+      "distanceM": 7
+    },
+    {
+      "breweryId": "BRW-015",
+      "searchName": "명인안동소주",
+      "status": "PHONE",
+      "phone": "054-856-6903",
+      "kakaoPlaceName": "명인안동소주",
+      "distanceM": 0
+    },
+    {
+      "breweryId": "BRW-016",
+      "searchName": "모월",
+      "status": "PHONE",
+      "phone": "033-748-8008",
+      "kakaoPlaceName": "모월양조장",
+      "distanceM": 4
+    },
+    {
+      "breweryId": "BRW-017",
+      "searchName": "문경주조",
+      "status": "PHONE",
+      "phone": "0507-1444-8258",
+      "kakaoPlaceName": "문경주조",
+      "distanceM": 39
+    },
+    {
+      "breweryId": "BRW-018",
+      "searchName": "밀과노닐다",
+      "status": "NO_PHONE",
+      "phone": null,
+      "kakaoPlaceName": "밀과노닐다",
+      "distanceM": 21
+    },
+    {
+      "breweryId": "BRW-019",
+      "searchName": "밝은세상영농조합",
+      "status": "NO_PHONE",
+      "phone": null,
+      "kakaoPlaceName": "밝은세상 녹색농촌체험마을 영농조합법인",
+      "distanceM": 2
+    },
+    {
+      "breweryId": "BRW-020",
+      "searchName": "배상면주가",
+      "status": "PHONE",
+      "phone": "031-531-0440",
+      "kakaoPlaceName": "배상면주가 포천점",
+      "distanceM": 85
+    },
+    {
+      "breweryId": "BRW-021",
+      "searchName": "배혜정도가",
+      "status": "PHONE",
+      "phone": "031-354-9376",
+      "kakaoPlaceName": "배혜정도가",
+      "distanceM": 23
+    },
+    {
+      "breweryId": "BRW-022",
+      "searchName": "복순도가",
+      "status": "PHONE",
+      "phone": "1577-6746",
+      "kakaoPlaceName": "복순도가",
+      "distanceM": 2
+    },
+    {
+      "breweryId": "BRW-023",
+      "searchName": "산막와이너리",
+      "status": "PHONE",
+      "phone": "043-745-3888",
+      "kakaoPlaceName": "산막와이너리",
+      "distanceM": 1
+    },
+    {
+      "breweryId": "BRW-024",
+      "searchName": "산머루농원",
+      "status": "PHONE",
+      "phone": "031-958-4558",
+      "kakaoPlaceName": "산머루농원영농조합법인",
+      "distanceM": 51
+    },
+    {
+      "breweryId": "BRW-025",
+      "searchName": "솔송주",
+      "status": "PHONE",
+      "phone": "055-963-8992",
+      "kakaoPlaceName": "농업회사법인 솔송주",
+      "distanceM": 30
+    },
+    {
+      "breweryId": "BRW-026",
+      "searchName": "수도산와이너리",
+      "status": "PHONE",
+      "phone": "054-439-1518",
+      "kakaoPlaceName": "수도산산머루농원",
+      "distanceM": 155
+    },
+    {
+      "breweryId": "BRW-027",
+      "searchName": "술빚는 전가네",
+      "status": "NO_MATCH",
+      "phone": null,
+      "kakaoPlaceName": null,
+      "distanceM": null
+    },
+    {
+      "breweryId": "BRW-028",
+      "searchName": "술샘",
+      "status": "PHONE",
+      "phone": "070-4218-5225",
+      "kakaoPlaceName": "술샘",
+      "distanceM": 1
+    },
+    {
+      "breweryId": "BRW-029",
+      "searchName": "술아원",
+      "status": "NO_PHONE",
+      "phone": null,
+      "kakaoPlaceName": "농업회사법인 술아원",
+      "distanceM": 0
+    },
+    {
+      "breweryId": "BRW-030",
+      "searchName": "시나브로 와이너리",
+      "status": "PHONE",
+      "phone": "043-742-5275",
+      "kakaoPlaceName": "시나브로와이너리 불휘농장",
+      "distanceM": 49
+    },
+    {
+      "breweryId": "BRW-031",
+      "searchName": "신평양조장",
+      "status": "PHONE",
+      "phone": "041-363-9063",
+      "kakaoPlaceName": "신평양조뮤지엄",
+      "distanceM": 15
+    },
+    {
+      "breweryId": "BRW-032",
+      "searchName": "양촌양조",
+      "status": "PHONE",
+      "phone": "041-741-2011",
+      "kakaoPlaceName": "양촌양조장",
+      "distanceM": 0
+    },
+    {
+      "breweryId": "BRW-033",
+      "searchName": "양촌와이너리",
+      "status": "NO_PHONE",
+      "phone": null,
+      "kakaoPlaceName": "양촌와이너리",
+      "distanceM": 3
+    },
+    {
+      "breweryId": "BRW-034",
+      "searchName": "여포와인농장",
+      "status": "PHONE",
+      "phone": "043-744-7702",
+      "kakaoPlaceName": "여포농장",
+      "distanceM": 18
+    },
+    {
+      "breweryId": "BRW-035",
+      "searchName": "예산사과와인",
+      "status": "PHONE",
+      "phone": "041-337-9584",
+      "kakaoPlaceName": "농업회사법인 예산사과와인",
+      "distanceM": 9
+    },
+    {
+      "breweryId": "BRW-036",
+      "searchName": "예술주조",
+      "status": "NO_MATCH",
+      "phone": null,
+      "kakaoPlaceName": null,
+      "distanceM": null
+    },
+    {
+      "breweryId": "BRW-037",
+      "searchName": "오미나라",
+      "status": "PHONE",
+      "phone": "054-572-0601",
+      "kakaoPlaceName": "오미나라",
+      "distanceM": 0
+    },
+    {
+      "breweryId": "BRW-038",
+      "searchName": "오산양조",
+      "status": "PHONE",
+      "phone": "031-374-2139",
+      "kakaoPlaceName": "농업회사법인 오산양조",
+      "distanceM": 0
+    },
+    {
+      "breweryId": "BRW-039",
+      "searchName": "우리술",
+      "status": "PHONE",
+      "phone": "031-585-8525",
+      "kakaoPlaceName": "우리술 1공장",
+      "distanceM": 1
+    },
+    {
+      "breweryId": "BRW-040",
+      "searchName": "울진술도가",
+      "status": "PHONE",
+      "phone": "054-782-1855",
+      "kakaoPlaceName": "울진술도가",
+      "distanceM": 36
+    },
+    {
+      "breweryId": "BRW-041",
+      "searchName": "은척양조장",
+      "status": "PHONE",
+      "phone": "054-541-6409",
+      "kakaoPlaceName": "은척양조장",
+      "distanceM": 54
+    },
+    {
+      "breweryId": "BRW-042",
+      "searchName": "이원양조장",
+      "status": "PHONE",
+      "phone": "043-732-2177",
+      "kakaoPlaceName": "이원양조장",
+      "distanceM": 25
+    },
+    {
+      "breweryId": "BRW-043",
+      "searchName": "인천탁주",
+      "status": "PHONE",
+      "phone": "032-524-5016",
+      "kakaoPlaceName": "인천탁주",
+      "distanceM": 28
+    },
+    {
+      "breweryId": "BRW-044",
+      "searchName": "장희도가",
+      "status": "PHONE",
+      "phone": "070-4415-6567",
+      "kakaoPlaceName": "장희도가",
+      "distanceM": 4
+    },
+    {
+      "breweryId": "BRW-045",
+      "searchName": "제주고소리술익는집",
+      "status": "PHONE",
+      "phone": "064-787-5046",
+      "kakaoPlaceName": "제주술익는집",
+      "distanceM": 0
+    },
+    {
+      "breweryId": "BRW-046",
+      "searchName": "제주샘주",
+      "status": "PHONE",
+      "phone": "064-799-4225",
+      "kakaoPlaceName": "제주샘주",
+      "distanceM": 11
+    },
+    {
+      "breweryId": "BRW-047",
+      "searchName": "조은술 세종",
+      "status": "PHONE",
+      "phone": "043-218-7689",
+      "kakaoPlaceName": "조은술세종",
+      "distanceM": 0
+    },
+    {
+      "breweryId": "BRW-048",
+      "searchName": "좋은술",
+      "status": "PHONE",
+      "phone": "031-681-8929",
+      "kakaoPlaceName": "농업회사법인 좋은술",
+      "distanceM": 5
+    },
+    {
+      "breweryId": "BRW-049",
+      "searchName": "중원당",
+      "status": "PHONE",
+      "phone": "043-842-5005",
+      "kakaoPlaceName": "중원당 본사",
+      "distanceM": 26
+    },
+    {
+      "breweryId": "BRW-050",
+      "searchName": "지리산 운봉주조",
+      "status": "PHONE",
+      "phone": "063-634-0009",
+      "kakaoPlaceName": "지리산운봉주조",
+      "distanceM": 7
+    },
+    {
+      "breweryId": "BRW-051",
+      "searchName": "청산녹수",
+      "status": "NO_MATCH",
+      "phone": null,
+      "kakaoPlaceName": null,
+      "distanceM": null
+    },
+    {
+      "breweryId": "BRW-052",
+      "searchName": "추성고을",
+      "status": "PHONE",
+      "phone": "061-383-3011",
+      "kakaoPlaceName": "추성고을 농업회사법인",
+      "distanceM": 2
+    },
+    {
+      "breweryId": "BRW-053",
+      "searchName": "태인합동주조장",
+      "status": "PHONE",
+      "phone": "063-534-4018",
+      "kakaoPlaceName": "태인합동주조장",
+      "distanceM": 7
+    },
+    {
+      "breweryId": "BRW-054",
+      "searchName": "풍정사계",
+      "status": "PHONE",
+      "phone": "043-214-9424",
+      "kakaoPlaceName": "풍정사계",
+      "distanceM": 0
+    },
+    {
+      "breweryId": "BRW-055",
+      "searchName": "하미앙 와인밸리",
+      "status": "PHONE",
+      "phone": "055-964-2500",
+      "kakaoPlaceName": "하미앙",
+      "distanceM": 1
+    },
+    {
+      "breweryId": "BRW-056",
+      "searchName": "한국애플리즈",
+      "status": "PHONE",
+      "phone": "054-834-7800",
+      "kakaoPlaceName": "한국애플리즈",
+      "distanceM": 32
+    },
+    {
+      "breweryId": "BRW-057",
+      "searchName": "한국와인",
+      "status": "PHONE",
+      "phone": "054-333-3010",
+      "kakaoPlaceName": "농업회사법인 한국와인",
+      "distanceM": 10
+    },
+    {
+      "breweryId": "BRW-058",
+      "searchName": "한산소곡주",
+      "status": "PHONE",
+      "phone": "041-951-0290",
+      "kakaoPlaceName": "한산소곡주",
+      "distanceM": 3
+    },
+    {
+      "breweryId": "BRW-059",
+      "searchName": "해창주조장",
+      "status": "PHONE",
+      "phone": "061-532-5152",
+      "kakaoPlaceName": "해창주조장",
+      "distanceM": 3
+    }
+  ]
+}

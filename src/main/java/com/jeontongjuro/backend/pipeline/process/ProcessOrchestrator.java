@@ -6,6 +6,8 @@ import com.jeontongjuro.backend.brewery.BreweryJoinStatusUpdateService;
 import com.jeontongjuro.backend.brewery.BreweryLiquorStatusUpdateService;
 import com.jeontongjuro.backend.brewery.BreweryMasterLoadService;
 import com.jeontongjuro.backend.brewery.BreweryRegionUpdateService;
+import com.jeontongjuro.backend.brewery.KakaoPhoneSeedLoadService;
+import com.jeontongjuro.backend.brewery.NonglimSeedLoadService;
 import com.jeontongjuro.backend.feature.FeatureRollupService;
 import com.jeontongjuro.backend.liquortype.LiquorInferenceService;
 import com.jeontongjuro.backend.liquortype.LiquorManualSeedLoadService;
@@ -19,6 +21,7 @@ import com.jeontongjuro.backend.pipeline.collect.raw.BreweryRawRepository;
 import com.jeontongjuro.backend.pipeline.collect.raw.ProductRaw;
 import com.jeontongjuro.backend.pipeline.collect.raw.ProductRawRepository;
 import com.jeontongjuro.backend.product.ProductBreweryJoinService;
+import com.jeontongjuro.backend.tour.TourDetailEnrichService;
 import com.jeontongjuro.backend.tour.TourMatchResolveService;
 import com.jeontongjuro.backend.tour.TourNearbyCollectService;
 import java.time.LocalDate;
@@ -61,6 +64,9 @@ public class ProcessOrchestrator {
     private final TourMatchResolveService matchResolveService;
     private final BreweryContentMatchUpdateService contentMatchUpdateService;
     private final FeatureRollupService featureRollupService;
+    private final TourDetailEnrichService tourDetailEnrichService;
+    private final KakaoPhoneSeedLoadService kakaoPhoneSeedLoadService;
+    private final NonglimSeedLoadService nonglimSeedLoadService;
     private final BreweryRawRepository breweryRawRepository;
     private final ProductRawRepository productRawRepository;
     private final ManualOverrideRepository overrideRepository;
@@ -79,6 +85,9 @@ public class ProcessOrchestrator {
                                TourMatchResolveService matchResolveService,
                                BreweryContentMatchUpdateService contentMatchUpdateService,
                                FeatureRollupService featureRollupService,
+                               TourDetailEnrichService tourDetailEnrichService,
+                               KakaoPhoneSeedLoadService kakaoPhoneSeedLoadService,
+                               NonglimSeedLoadService nonglimSeedLoadService,
                                BreweryRawRepository breweryRawRepository,
                                ProductRawRepository productRawRepository,
                                ManualOverrideRepository overrideRepository) {
@@ -96,6 +105,9 @@ public class ProcessOrchestrator {
         this.matchResolveService = matchResolveService;
         this.contentMatchUpdateService = contentMatchUpdateService;
         this.featureRollupService = featureRollupService;
+        this.tourDetailEnrichService = tourDetailEnrichService;
+        this.kakaoPhoneSeedLoadService = kakaoPhoneSeedLoadService;
+        this.nonglimSeedLoadService = nonglimSeedLoadService;
         this.breweryRawRepository = breweryRawRepository;
         this.productRawRepository = productRawRepository;
         this.overrideRepository = overrideRepository;
@@ -176,6 +188,17 @@ public class ProcessOrchestrator {
         //     step1 brewery·step3 link에만 의존(4~10과 독립). 삭제형 diff라 규칙 축소·원본 갱신 시 유령 없음.
         FeatureRollupService.RollupResult feature =
                 step(11, "특징 롤업", () -> featureRollupService.rollup(productRaws));
+        // 12. 관광공사 상세 편입(#50) — content_id 확정 양조장(19)에 detailCommon2/detailIntro2로 소개글·운영시간·
+        //     전화(TOUR) 편입. ★10단계(content_id 대입) 이후여야 함(content_id 의존). 기존 행 UPDATE(백필 함정 방어).
+        TourDetailEnrichService.EnrichResult tourDetail =
+                step(12, "관광공사 상세 편입", tourDetailEnrichService::enrich);
+        // 13. 카카오 전화 시드(#50) — TOUR 우선. 12단계가 채운 phone은 두고 빈 곳만 KAKAO로 보충하므로 12단계 뒤.
+        KakaoPhoneSeedLoadService.LoadResult kakaoPhone =
+                step(13, "카카오 전화 시드", kakaoPhoneSeedLoadService::load);
+        // 14. 농림부 지정현황 시드(#50) — 설립연도·대표자·선정연도·특징. 1단계 마스터에만 의존(순서 무관, 말미).
+        //     ★소재지·주종·업체명은 시드에 없어 편입 불가(2019 기준일 오염 구조 차단).
+        NonglimSeedLoadService.LoadResult nonglim =
+                step(14, "농림부 지정현황 시드", nonglimSeedLoadService::load);
 
         // [4] override 스테일 경고 — hit==0 override는 WARN-and-continue(예외 던지지 않음).
         //     새 uddi 재수집 시 제품명 한 글자 바뀌어 override 스테일 나는 건 정상 시나리오 — 사람이 요약 보고 판단.
@@ -187,7 +210,7 @@ public class ProcessOrchestrator {
 
         return new ProcessReport(snapshotDate, breweryRawCount, productRawCount,
                 master, seed, join, status, region, liquor, liquorStatus, geo,
-                nearby, matchResolve, match, feature, stale);
+                nearby, matchResolve, match, feature, tourDetail, kakaoPhone, nonglim, stale);
     }
 
     /** overrideHitCounts에 없는(=적중 0건) override를 골라 경고 목록으로. */
