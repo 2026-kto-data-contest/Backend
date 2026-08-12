@@ -1,0 +1,192 @@
+{
+  "_meta": {
+    "purpose": "aT 전통주 체험 프로그램 데이터의 양조장명 → brewery_id 매칭",
+    "source": "공공데이터포털 15089109 한국농수산식품유통공사_전통주 체험 프로그램",
+    "sourceReferenceDate": "2021-09-17",
+    "note": "매칭 키만 보관한다. 체험 상세값은 API에서 읽는다. 주소·연락처 등은 마스터가 진실원천이다.",
+    "matchedAt": "2026-08-11",
+    "appendOnly": true
+  },
+  "matches": [
+    {
+      "experienceBreweryName": "고도리 와이너리",
+      "breweryId": "BRW-002",
+      "matchMethod": "NAME",
+      "evidence": null
+    },
+    {
+      "experienceBreweryName": "국순당",
+      "breweryId": "BRW-004",
+      "matchMethod": "NAME",
+      "evidence": null
+    },
+    {
+      "experienceBreweryName": "그린영농조합",
+      "breweryId": "BRW-005",
+      "matchMethod": "NAME",
+      "evidence": null
+    },
+    {
+      "experienceBreweryName": "금정산성 토산주",
+      "breweryId": "BRW-006",
+      "matchMethod": "NAME",
+      "evidence": null
+    },
+    {
+      "experienceBreweryName": "대대로영농조합법인",
+      "breweryId": "BRW-010",
+      "matchMethod": "NAME",
+      "evidence": null
+    },
+    {
+      "experienceBreweryName": "도란원",
+      "breweryId": "BRW-012",
+      "matchMethod": "NAME",
+      "evidence": null
+    },
+    {
+      "experienceBreweryName": "명가원",
+      "breweryId": "BRW-025",
+      "matchMethod": "ADDRESS",
+      "evidence": "체험주소=경상남도 함양군 지곡면 지곡창촌길 3 ↔ 마스터 솔송주 주소=경상남도 함양군 지곡면 지곡창촌길 3 (전체주소 동일)"
+    },
+    {
+      "experienceBreweryName": "명인안동소주",
+      "breweryId": "BRW-015",
+      "matchMethod": "NAME",
+      "evidence": null
+    },
+    {
+      "experienceBreweryName": "문경주조",
+      "breweryId": "BRW-017",
+      "matchMethod": "NAME",
+      "evidence": null
+    },
+    {
+      "experienceBreweryName": "밝은세상영농조합",
+      "breweryId": "BRW-019",
+      "matchMethod": "NAME",
+      "evidence": null
+    },
+    {
+      "experienceBreweryName": "배상면주가",
+      "breweryId": "BRW-020",
+      "matchMethod": "NAME",
+      "evidence": null
+    },
+    {
+      "experienceBreweryName": "배혜정도가",
+      "breweryId": "BRW-021",
+      "matchMethod": "NAME",
+      "evidence": null
+    },
+    {
+      "experienceBreweryName": "산머루농원",
+      "breweryId": "BRW-024",
+      "matchMethod": "NAME",
+      "evidence": null
+    },
+    {
+      "experienceBreweryName": "수도산와이너리",
+      "breweryId": "BRW-026",
+      "matchMethod": "NAME",
+      "evidence": null
+    },
+    {
+      "experienceBreweryName": "술샘",
+      "breweryId": "BRW-028",
+      "matchMethod": "NAME",
+      "evidence": null
+    },
+    {
+      "experienceBreweryName": "신평양조장",
+      "breweryId": "BRW-031",
+      "matchMethod": "NAME",
+      "evidence": null
+    },
+    {
+      "experienceBreweryName": "예산사과와인",
+      "breweryId": "BRW-035",
+      "matchMethod": "NAME",
+      "evidence": null
+    },
+    {
+      "experienceBreweryName": "예술주조",
+      "breweryId": "BRW-036",
+      "matchMethod": "NAME",
+      "evidence": "이름 일치. 단 주소 상이 — 체험주소=강원도 홍천군 내촌면 물걸리 508-2 / 마스터=강원도 춘천시 신동면 풍류1길 6-3. 홍천→춘천 이전으로 확인(더술닷컴 현행 등재 주소가 춘천). 동일 업체."
+    },
+    {
+      "experienceBreweryName": "오미나라",
+      "breweryId": "BRW-037",
+      "matchMethod": "NAME",
+      "evidence": null
+    },
+    {
+      "experienceBreweryName": "울진술도가",
+      "breweryId": "BRW-040",
+      "matchMethod": "NAME",
+      "evidence": null
+    },
+    {
+      "experienceBreweryName": "이원양조장",
+      "breweryId": "BRW-042",
+      "matchMethod": "NAME",
+      "evidence": null
+    },
+    {
+      "experienceBreweryName": "제주고소리술익는집",
+      "breweryId": "BRW-045",
+      "matchMethod": "NAME",
+      "evidence": null
+    },
+    {
+      "experienceBreweryName": "제주샘주",
+      "breweryId": "BRW-046",
+      "matchMethod": "NAME",
+      "evidence": null
+    },
+    {
+      "experienceBreweryName": "조은술 세종",
+      "breweryId": "BRW-047",
+      "matchMethod": "NAME",
+      "evidence": null
+    },
+    {
+      "experienceBreweryName": "좋은술",
+      "breweryId": "BRW-048",
+      "matchMethod": "NAME",
+      "evidence": null
+    },
+    {
+      "experienceBreweryName": "지리산 운봉주조",
+      "breweryId": "BRW-050",
+      "matchMethod": "NAME",
+      "evidence": null
+    },
+    {
+      "experienceBreweryName": "청산녹수",
+      "breweryId": "BRW-051",
+      "matchMethod": "NAME",
+      "evidence": null
+    },
+    {
+      "experienceBreweryName": "추성고을",
+      "breweryId": "BRW-052",
+      "matchMethod": "NAME",
+      "evidence": null
+    },
+    {
+      "experienceBreweryName": "태인합동주조장",
+      "breweryId": "BRW-053",
+      "matchMethod": "NAME",
+      "evidence": null
+    },
+    {
+      "experienceBreweryName": "화양",
+      "breweryId": "BRW-054",
+      "matchMethod": "ADDRESS",
+      "evidence": "체험주소=충청북도 청주시 청원구 내수읍 풍정1길 8-2 ↔ 마스터 풍정사계 주소=충청북도 청주시 청원구 내수읍 풍정1길 8-2 (전체주소 동일)"
+    }
+  ]
+}
