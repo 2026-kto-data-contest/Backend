@@ -64,9 +64,13 @@ class BreweryMasterLoadConsistencyTest {
 
     private BreweryMasterLoadService.LoadResult firstResult;
 
+    @org.springframework.beans.factory.annotation.Autowired
+    private com.jeontongjuro.backend.experience.BreweryExperienceRepository experienceRepository;
+
     @BeforeEach
     void loadBreweryMaster() {
         // FK 자식(product_brewery_link·override)이 brewery를 참조하므로 자식 먼저 비운 뒤 brewery 비우고 재적재
+        experienceRepository.deleteAll();   // brewery FK 자식(#52) — brewery보다 먼저
         featureTagRepository.deleteAll();
         productLiquorTypeRepository.deleteAll();
         linkRepository.deleteAll();

@@ -8,6 +8,7 @@ import com.jeontongjuro.backend.brewery.BreweryMasterLoadService;
 import com.jeontongjuro.backend.brewery.BreweryRegionUpdateService;
 import com.jeontongjuro.backend.brewery.KakaoPhoneSeedLoadService;
 import com.jeontongjuro.backend.brewery.NonglimSeedLoadService;
+import com.jeontongjuro.backend.experience.ExperienceRollupService;
 import com.jeontongjuro.backend.feature.FeatureRollupService;
 import com.jeontongjuro.backend.liquortype.LiquorRollupResult;
 import com.jeontongjuro.backend.override.ManualOverrideSeedLoadService;
@@ -44,6 +45,7 @@ public record ProcessReport(
         TourDetailEnrichService.EnrichResult tourDetail,
         KakaoPhoneSeedLoadService.LoadResult kakaoPhone,
         NonglimSeedLoadService.LoadResult nonglim,
+        ExperienceRollupService.RollupResult experience,
         List<StaleOverride> staleOverrides
 ) {
 
@@ -143,6 +145,19 @@ public record ProcessReport(
                 .append(" 적용=").append(nonglim.applied())
                 .append(" 기존skip=").append(nonglim.skippedExisting())
                 .append(" (설립연도·대표자·선정연도·특징 — 소재지·주종·업체명 미포함)\n");
+        sb.append("experience 체험 seed=").append(experience.seedRows());
+        if (experience.skipped()) {
+            sb.append(" ⚠SKIP(odcloud 실패 — 기존 행 보존, 나머지 완주): ").append(experience.skipReason());
+        } else {
+            sb.append(" api=").append(experience.apiRows())
+                    .append(" targetBreweries=").append(experience.targetBreweries())
+                    .append(" inserted=").append(experience.inserted())
+                    .append(" updated=").append(experience.updated())
+                    .append(" deleted=").append(experience.deleted())
+                    .append(" unchanged=").append(experience.unchanged())
+                    .append(" (값 인지 삭제형 diff — 유령 없음)");
+        }
+        sb.append('\n');
         sb.append("⚠ override 미적중: ");
         if (staleOverrides.isEmpty()) {
             sb.append("없음");

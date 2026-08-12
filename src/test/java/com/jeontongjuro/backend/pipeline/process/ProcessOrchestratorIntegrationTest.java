@@ -21,6 +21,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
+import com.jeontongjuro.backend.experience.BreweryExperienceRepository;
+import com.jeontongjuro.backend.testsupport.StubExperienceApiConfig;
 import com.jeontongjuro.backend.testsupport.StubGeocodingConfig;
 import com.jeontongjuro.backend.testsupport.StubTourApiConfig;
 import com.jeontongjuro.backend.tour.BreweryNearbyRepository;
@@ -37,7 +39,7 @@ import org.springframework.test.context.TestPropertySource;
  * 서비스가 배선됨을 함께 실증한다.
  */
 @SpringBootTest
-@Import({StubGeocodingConfig.class, StubTourApiConfig.class})  // 8단계 카카오·9/10단계 TourAPI를 스텁으로 대체(실호출 금지)
+@Import({StubGeocodingConfig.class, StubTourApiConfig.class, StubExperienceApiConfig.class})  // 8·9/10·15단계 외부 API 스텁 대체(실호출 금지)
 @TestPropertySource(properties = {
         "spring.datasource.url=jdbc:postgresql://localhost:5432/jeontongjuro_test"
 })
@@ -75,6 +77,8 @@ class ProcessOrchestratorIntegrationTest {
     @Autowired
     private TourContentRepository tourContentRepository;
     @Autowired
+    private BreweryExperienceRepository experienceRepository;
+    @Autowired
     private ObjectMapper objectMapper;
     @Autowired
     private org.springframework.jdbc.core.JdbcTemplate jdbc;
@@ -82,6 +86,7 @@ class ProcessOrchestratorIntegrationTest {
     @BeforeEach
     void resetAndSeedRaw() {
         // 파생(FK 자식부터) → raw 순으로 비우고, 골든을 raw 테이블에 적재(운영과 동일한 입력 경로)
+        experienceRepository.deleteAll();          // brewery FK 자식(#52) — brewery보다 먼저
         featureTagRepository.deleteAll();          // brewery FK 자식(#43) — brewery보다 먼저
         productLiquorTypeRepository.deleteAll();   // link·brewery FK 자식 — 가장 먼저 비움
         linkRepository.deleteAll();
@@ -198,6 +203,16 @@ class ProcessOrchestratorIntegrationTest {
         assertThat(report.nonglim().applied()).isEqualTo(36);
         assertThat(breweryRepository.findAll().stream()
                 .filter(b -> b.getFoundedYear() != null).count()).isEqualTo(36);
+
+        // 15단계 체험(#52): 스텁 픽스처 52행 전건 신규 삽입, 30 양조장에 매핑, 갱신·삭제 0. skip 아님.
+        assertThat(report.experience().skipped()).isFalse();
+        assertThat(report.experience().apiRows()).isEqualTo(52);
+        assertThat(report.experience().targetBreweries()).isEqualTo(30);
+        assertThat(report.experience().inserted()).isEqualTo(52);
+        assertThat(report.experience().updated()).isZero();
+        assertThat(report.experience().deleted()).isZero();
+        assertThat(report.experience().unchanged()).isZero();
+        assertThat(experienceRepository.count()).isEqualTo(52);
     }
 
     @Test
@@ -341,6 +356,14 @@ class ProcessOrchestratorIntegrationTest {
         assertThat(again.kakaoPhone().skippedTourWins()).isEqualTo(51);
         assertThat(again.nonglim().applied()).isZero();
         assertThat(again.nonglim().skippedExisting()).isEqualTo(36);
+
+        // 15단계 체험 멱등: 목표·현재 동일 → 삽입·갱신·삭제 0, 전건 unchanged, 행수 불변
+        assertThat(again.experience().skipped()).isFalse();
+        assertThat(again.experience().inserted()).isZero();
+        assertThat(again.experience().updated()).isZero();
+        assertThat(again.experience().deleted()).isZero();
+        assertThat(again.experience().unchanged()).isEqualTo(52);
+        assertThat(experienceRepository.count()).isEqualTo(52);
     }
 
     @Test

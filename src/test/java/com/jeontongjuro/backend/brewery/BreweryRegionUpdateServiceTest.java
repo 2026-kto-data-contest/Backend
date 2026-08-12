@@ -63,8 +63,12 @@ class BreweryRegionUpdateServiceTest {
     @Autowired
     private ObjectMapper objectMapper;
 
+    @org.springframework.beans.factory.annotation.Autowired
+    private com.jeontongjuro.backend.experience.BreweryExperienceRepository experienceRepository;
+
     @BeforeEach
     void seedMaster() {
+        experienceRepository.deleteAll();   // brewery FK 자식(#52) — brewery보다 먼저
         featureTagRepository.deleteAll();
         productLiquorTypeRepository.deleteAll();
         linkRepository.deleteAll();

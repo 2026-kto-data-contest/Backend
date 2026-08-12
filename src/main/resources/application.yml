@@ -49,6 +49,17 @@ tour:
     mobile-app: jeontongjuro
     throttle-millis: 300
 
+# aT 전통주 체험 프로그램(15단계, 이슈 #52) — odcloud 15089109. tour/geo처럼 도메인 전용 네임스페이스
+# (pipeline.collect.*는 raw 수집용이라 재사용하지 않는다 — 프로퍼티 충돌 금지). dataset-id·uddi는 여기서만.
+# service-key는 환경변수 AT_SERVICE_KEY 로만 주입(코드·yml·로그에 키 문자열 미기재). 미주입 시 15단계 skip(중단 아님).
+experience:
+  api:
+    api-base: https://api.odcloud.kr/api
+    service-key: ${AT_SERVICE_KEY:}
+    dataset-id: "15089109"
+    uddi: "c7468573-84ff-4a92-a84b-884439ce23d3"
+    per-page: 100
+
 springdoc:
   swagger-ui:
     path: /swagger-ui.html

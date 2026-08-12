@@ -97,9 +97,12 @@ class BreweryDetailApiTest {
     private com.jeontongjuro.backend.tour.BreweryNearbyRepository breweryNearbyRepository;
     @Autowired
     private TourContentRepository tourContentRepository;
+    @Autowired
+    private com.jeontongjuro.backend.experience.BreweryExperienceRepository experienceRepository;
 
     @BeforeEach
     void seedBreweryWithRegion() {
+        experienceRepository.deleteAll();   // brewery FK 자식(#52) — brewery보다 먼저
         featureTagRepository.deleteAll();
         productLiquorTypeRepository.deleteAll();
         linkRepository.deleteAll();
@@ -305,6 +308,42 @@ class BreweryDetailApiTest {
     void overviewNullWhenNoContent() throws Exception {
         JsonNode body = readBody(get("/api/v1/breweries/{id}", BREWERY_D));
         assertThat(body.get("overview").isNull()).isTrue();
+    }
+
+    // ── 체험 프로그램 편입(#52, additive) ─────────────────────────────────────────
+    @Test
+    @DisplayName("체험 없는 양조장 → experiences 빈 배열(키는 존재)")
+    void experiencesEmptyWhenNone() throws Exception {
+        JsonNode body = readBody(get("/api/v1/breweries/{id}", BREWERY_D));
+        assertThat(body.has("experiences")).isTrue();
+        assertThat(body.get("experiences").isArray()).isTrue();
+        assertThat(body.get("experiences")).isEmpty();
+    }
+
+    @Test
+    @DisplayName("체험 보유: program_name 오름차순 배열 + cost 0(무료)·null(미입력) 구분 노출")
+    void experiencesSortedAndCostZeroVsNull() throws Exception {
+        // 역순·혼합 cost로 심어도 응답은 program_name 오름차순
+        experienceRepository.save(com.jeontongjuro.backend.experience.BreweryExperience.of(
+                BREWERY_A, "칵테일 체험", "내용1", "장소", "1:30", 15000));
+        experienceRepository.save(com.jeontongjuro.backend.experience.BreweryExperience.of(
+                BREWERY_A, "시음 및 관람", "내용2", "장소", "0:20", 0));        // 무료
+        experienceRepository.save(com.jeontongjuro.backend.experience.BreweryExperience.of(
+                BREWERY_A, "누룩만들기", "내용3", "장소", null, null));          // duration·cost 미입력
+
+        JsonNode body = readBody(get("/api/v1/breweries/{id}", BREWERY_A));
+        JsonNode exp = body.get("experiences");
+        assertThat(exp).hasSize(3);
+        // program_name 오름차순: 누룩만들기 < 시음 및 관람 < 칵테일 체험
+        assertThat(exp.get(0).get("programName").asText()).isEqualTo("누룩만들기");
+        assertThat(exp.get(1).get("programName").asText()).isEqualTo("시음 및 관람");
+        assertThat(exp.get(2).get("programName").asText()).isEqualTo("칵테일 체험");
+
+        // cost 0(무료)은 숫자 0으로, 미입력은 null로 — 절대 같게 다루지 않는다
+        assertThat(exp.get(0).get("cost").isNull()).isTrue();      // 누룩만들기: 미입력
+        assertThat(exp.get(0).get("duration").isNull()).isTrue();  // 소요시간 미입력
+        assertThat(exp.get(1).get("cost").asInt()).isEqualTo(0);   // 시음: 무료(0)
+        assertThat(exp.get(2).get("cost").asInt()).isEqualTo(15000);
     }
 
     // ── helpers ──────────────────────────────────────────────────────────────

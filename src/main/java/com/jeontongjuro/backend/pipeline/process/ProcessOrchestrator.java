@@ -8,6 +8,7 @@ import com.jeontongjuro.backend.brewery.BreweryMasterLoadService;
 import com.jeontongjuro.backend.brewery.BreweryRegionUpdateService;
 import com.jeontongjuro.backend.brewery.KakaoPhoneSeedLoadService;
 import com.jeontongjuro.backend.brewery.NonglimSeedLoadService;
+import com.jeontongjuro.backend.experience.ExperienceRollupService;
 import com.jeontongjuro.backend.feature.FeatureRollupService;
 import com.jeontongjuro.backend.liquortype.LiquorInferenceService;
 import com.jeontongjuro.backend.liquortype.LiquorManualSeedLoadService;
@@ -67,6 +68,7 @@ public class ProcessOrchestrator {
     private final TourDetailEnrichService tourDetailEnrichService;
     private final KakaoPhoneSeedLoadService kakaoPhoneSeedLoadService;
     private final NonglimSeedLoadService nonglimSeedLoadService;
+    private final ExperienceRollupService experienceRollupService;
     private final BreweryRawRepository breweryRawRepository;
     private final ProductRawRepository productRawRepository;
     private final ManualOverrideRepository overrideRepository;
@@ -88,6 +90,7 @@ public class ProcessOrchestrator {
                                TourDetailEnrichService tourDetailEnrichService,
                                KakaoPhoneSeedLoadService kakaoPhoneSeedLoadService,
                                NonglimSeedLoadService nonglimSeedLoadService,
+                               ExperienceRollupService experienceRollupService,
                                BreweryRawRepository breweryRawRepository,
                                ProductRawRepository productRawRepository,
                                ManualOverrideRepository overrideRepository) {
@@ -108,6 +111,7 @@ public class ProcessOrchestrator {
         this.tourDetailEnrichService = tourDetailEnrichService;
         this.kakaoPhoneSeedLoadService = kakaoPhoneSeedLoadService;
         this.nonglimSeedLoadService = nonglimSeedLoadService;
+        this.experienceRollupService = experienceRollupService;
         this.breweryRawRepository = breweryRawRepository;
         this.productRawRepository = productRawRepository;
         this.overrideRepository = overrideRepository;
@@ -199,6 +203,12 @@ public class ProcessOrchestrator {
         //     ★소재지·주종·업체명은 시드에 없어 편입 불가(2019 기준일 오염 구조 차단).
         NonglimSeedLoadService.LoadResult nonglim =
                 step(14, "농림부 지정현황 시드", nonglimSeedLoadService::load);
+        // 15. aT 체험 프로그램 편입(#52) — 시드 매칭 30·API 52행을 값 인지 삭제형 diff로 brewery_experience 편입.
+        //     1단계 brewery FK에만 의존(말미, 4~14와 독립). ★두 실패 경로 구분: odcloud 호출 실패는 서비스가
+        //     내부에서 잡아 skip 결과로 반환(파이프라인 완주·기존 행 보존) — step()의 fail-fast를 타지 않는다.
+        //     시드 미매칭은 서비스가 예외로 던져 여기 step() fail-fast로 중단된다(원본 갱신 신호).
+        ExperienceRollupService.RollupResult experience =
+                step(15, "체험 프로그램 편입", experienceRollupService::rollup);
 
         // [4] override 스테일 경고 — hit==0 override는 WARN-and-continue(예외 던지지 않음).
         //     새 uddi 재수집 시 제품명 한 글자 바뀌어 override 스테일 나는 건 정상 시나리오 — 사람이 요약 보고 판단.
@@ -210,7 +220,7 @@ public class ProcessOrchestrator {
 
         return new ProcessReport(snapshotDate, breweryRawCount, productRawCount,
                 master, seed, join, status, region, liquor, liquorStatus, geo,
-                nearby, matchResolve, match, feature, tourDetail, kakaoPhone, nonglim, stale);
+                nearby, matchResolve, match, feature, tourDetail, kakaoPhone, nonglim, experience, stale);
     }
 
     /** overrideHitCounts에 없는(=적중 0건) override를 골라 경고 목록으로. */

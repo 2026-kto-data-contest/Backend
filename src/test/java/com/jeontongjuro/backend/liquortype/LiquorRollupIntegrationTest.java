@@ -95,8 +95,12 @@ class LiquorRollupIntegrationTest {
     @Autowired
     private ObjectMapper objectMapper;
 
+    @org.springframework.beans.factory.annotation.Autowired
+    private com.jeontongjuro.backend.experience.BreweryExperienceRepository experienceRepository;
+
     @BeforeEach
     void seedThroughJoin() {
+        experienceRepository.deleteAll();   // brewery FK 자식(#52) — brewery보다 먼저
         featureTagRepository.deleteAll();
         liquorTypeRepository.deleteAll();
         linkRepository.deleteAll();

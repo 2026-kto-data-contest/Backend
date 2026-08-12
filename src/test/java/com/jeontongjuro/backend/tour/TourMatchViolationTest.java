@@ -98,8 +98,12 @@ class TourMatchViolationTest {
     @Autowired private TourContentRepository tourContentRepository;
     @Autowired private ObjectMapper objectMapper;
 
+    @org.springframework.beans.factory.annotation.Autowired
+    private com.jeontongjuro.backend.experience.BreweryExperienceRepository experienceRepository;
+
     @BeforeEach
     void resetAndSeedRaw() {
+        experienceRepository.deleteAll();   // brewery FK 자식(#52) — brewery보다 먼저
         featureTagRepository.deleteAll();
         productLiquorTypeRepository.deleteAll();
         linkRepository.deleteAll();

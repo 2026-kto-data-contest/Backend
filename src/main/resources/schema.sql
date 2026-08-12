@@ -342,3 +342,27 @@ ALTER TABLE brewery ADD COLUMN IF NOT EXISTS content_matched_at TIMESTAMPTZ;
 ALTER TABLE brewery DROP CONSTRAINT IF EXISTS fk_brewery_content;
 ALTER TABLE brewery ADD CONSTRAINT fk_brewery_content FOREIGN KEY (content_id) REFERENCES tour_content (content_id);
 CREATE INDEX IF NOT EXISTS ix_brewery_content ON brewery (content_id);
+
+-- ────────────────────────────────────────────────────────────────────────────
+-- 파생층 (15단계, 이슈 #52). aT 전통주 체험 프로그램(공공데이터 15089109, 기준일 2021-09-17)을
+-- experience_match_seed.json(양조장명→brewery_id)으로 매칭해 편입한다. 양조장 1:N.
+-- ★자연키 (brewery_id, program_name) — 원본 52행 전수 실측 중복 0(program_name·place·전필드 모두).
+--   100% 외부 API 파생·검수 워크플로 없음 → 삭제형 diff로 유령 방지(FeatureRollupService 선례).
+--   payload(내용·장소·소요시간·비용)가 있어 값 인지 diff(insert/update/delete) — 특징 태그와 다른 점.
+-- ★주소·연락처·홈페이지·주종·상시/예약방문 컬럼을 만들지 않는다: 전부 2021 값이라 마스터(2024-12-31)를
+--   오염시킨다. 컬럼 부재로 구조적으로 봉쇄한다(예술주조 이전·제주샘주 애언로/애원로 오타 실증). 전화번호도 금지.
+-- ★CHECK 없음: cost는 자유 정수(0=무료·null=미입력 구분), duration은 자유 텍스트("H:MM" 원문). enum 컬럼 부재.
+CREATE TABLE IF NOT EXISTS brewery_experience (
+    id            BIGSERIAL PRIMARY KEY,             -- 서러게이트 PK(의미 없음)
+    brewery_id    TEXT      NOT NULL,                -- 체험 소유 양조장 → brewery.brewery_id (시드 매칭 결과)
+    program_name  TEXT      NOT NULL,                -- 체험프로그램명(원문). 자연키 일부
+    content       TEXT,                              -- 내용(원문, 실측 결측 0 — 방어적 nullable)
+    place         TEXT,                              -- 장소(원문, 결측 1 → null 정규화)
+    duration      TEXT,                              -- 소요시간 원문 "H:MM"(결측 9 → null). 분 변환 안 함(원문 보존)
+    cost          INTEGER,                           -- 투어비용(원). 0=무료·null=미입력 엄격 구분(최대 350000)
+    created_at    TIMESTAMP NOT NULL,                -- 최초 적재 시각(UTC)
+    updated_at    TIMESTAMP NOT NULL,                -- 값 갱신(update path) 최종 반영 시각(UTC)
+    CONSTRAINT fk_brewery_experience_brewery FOREIGN KEY (brewery_id) REFERENCES brewery (brewery_id),
+    CONSTRAINT uq_brewery_experience_brewery_program UNIQUE (brewery_id, program_name)
+);
+CREATE INDEX IF NOT EXISTS ix_brewery_experience_brewery ON brewery_experience (brewery_id);

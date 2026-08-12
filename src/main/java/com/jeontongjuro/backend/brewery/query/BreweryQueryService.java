@@ -2,6 +2,8 @@ package com.jeontongjuro.backend.brewery.query;
 
 import com.jeontongjuro.backend.brewery.Brewery;
 import com.jeontongjuro.backend.brewery.BreweryRepository;
+import com.jeontongjuro.backend.experience.BreweryExperience;
+import com.jeontongjuro.backend.experience.BreweryExperienceRepository;
 import com.jeontongjuro.backend.feature.BreweryFeatureTag;
 import com.jeontongjuro.backend.feature.BreweryFeatureTagRepository;
 import com.jeontongjuro.backend.feature.FeatureType;
@@ -59,17 +61,20 @@ public class BreweryQueryService {
     private final ProductLiquorTypeRepository liquorTypeRepository;
     private final ProductBreweryLinkRepository linkRepository;
     private final TourContentRepository tourContentRepository;
+    private final BreweryExperienceRepository experienceRepository;
 
     public BreweryQueryService(BreweryRepository breweryRepository,
                                BreweryFeatureTagRepository featureTagRepository,
                                ProductLiquorTypeRepository liquorTypeRepository,
                                ProductBreweryLinkRepository linkRepository,
-                               TourContentRepository tourContentRepository) {
+                               TourContentRepository tourContentRepository,
+                               BreweryExperienceRepository experienceRepository) {
         this.breweryRepository = breweryRepository;
         this.featureTagRepository = featureTagRepository;
         this.liquorTypeRepository = liquorTypeRepository;
         this.linkRepository = linkRepository;
         this.tourContentRepository = tourContentRepository;
+        this.experienceRepository = experienceRepository;
     }
 
     public PageResponse<BreweryListItemResponse> search(BrewerySearchCondition condition, int page, int size) {
@@ -113,11 +118,24 @@ public class BreweryQueryService {
         AbvRange abv = abvFor(one).get(breweryId);
         MainImageResponse image = mainImagesFor(one).get(breweryId);
         String overview = overviewFor(brewery);
+        List<ExperienceResponse> experiences = experiencesFor(breweryId);
 
         return BreweryDetailResponse.of(brewery, tags,
                 abv == null ? null : abv.min(),
                 abv == null ? null : abv.max(),
-                liquors, image, overview);
+                liquors, image, overview, experiences);
+    }
+
+    /**
+     * 체험 프로그램(#52) — 상세 전용. program_name 오름차순으로 읽어 응답 배열 순서를 결정론화한다(삽입 순서와
+     * 무관하게 안정). 체험이 없으면 빈 배열. 리스트 API엔 노출하지 않는다(스캔용).
+     */
+    private List<ExperienceResponse> experiencesFor(String breweryId) {
+        List<ExperienceResponse> out = new ArrayList<>();
+        for (BreweryExperience e : experienceRepository.findByBreweryIdOrderByProgramNameAsc(breweryId)) {
+            out.add(ExperienceResponse.from(e));
+        }
+        return out;
     }
 
     /**

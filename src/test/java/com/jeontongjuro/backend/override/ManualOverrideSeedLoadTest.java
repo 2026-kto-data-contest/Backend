@@ -64,9 +64,13 @@ class ManualOverrideSeedLoadTest {
 
     private ManualOverrideSeedLoadService.LoadResult firstResult;
 
+    @org.springframework.beans.factory.annotation.Autowired
+    private com.jeontongjuro.backend.experience.BreweryExperienceRepository experienceRepository;
+
     @BeforeEach
     void loadBreweryThenOverride() {
         // FK 자식(product_brewery_link)이 brewery를 참조하므로 자식 먼저 비운 뒤 override·brewery 비우고 재적재
+        experienceRepository.deleteAll();   // brewery FK 자식(#52) — brewery보다 먼저
         featureTagRepository.deleteAll();
         productLiquorTypeRepository.deleteAll();
         linkRepository.deleteAll();
@@ -154,6 +158,7 @@ class ManualOverrideSeedLoadTest {
     @Test
     @DisplayName("FK 미충족 시 멈춤: brewery 비운 뒤 적재 시도 → 예외(누락 BRW 보고)")
     void stopsWhenBreweryMissing() {
+        experienceRepository.deleteAll();   // brewery FK 자식(#52) — brewery보다 먼저
         featureTagRepository.deleteAll();
         productLiquorTypeRepository.deleteAll();
         linkRepository.deleteAll();

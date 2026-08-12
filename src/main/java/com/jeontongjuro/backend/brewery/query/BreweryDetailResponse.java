@@ -59,7 +59,10 @@ public record BreweryDetailResponse(
         @Schema(description = "찾아가는 양조장 선정연도(농림부 2019). 없으면 null", example = "2013")
         Integer designatedYear,
         @Schema(description = "농림부 특징 서술(2019). 없으면 null", example = "80년 전통 3대째 양조장 …")
-        String designationNote) {
+        String designationNote,
+        // ── 체험 프로그램 편입(#52, additive). 체험 없으면 빈 배열. 리스트 API엔 노출하지 않는다(스캔용). ──
+        @Schema(description = "aT 전통주 체험 프로그램 목록(program_name 오름차순). 없으면 빈 배열")
+        List<ExperienceResponse> experiences) {
 
     /**
      * 엔티티 + 배치 조회로 모은 파생값(태그·도수·주종·대표 이미지·소개글)을 합쳐 상세 응답을 만든다.
@@ -68,7 +71,7 @@ public record BreweryDetailResponse(
     public static BreweryDetailResponse of(Brewery b, List<FeatureType> featureTags,
                                            BigDecimal alcoholMin, BigDecimal alcoholMax,
                                            List<LiquorType> liquorTypes, MainImageResponse mainImage,
-                                           String overview) {
+                                           String overview, List<ExperienceResponse> experiences) {
         return new BreweryDetailResponse(
                 b.getBreweryId(),
                 b.getBusinessName(),
@@ -95,6 +98,7 @@ public record BreweryDetailResponse(
                 b.getFoundedYear(),
                 b.getRepresentativeName(),
                 b.getDesignatedYear(),
-                b.getDesignationNote());
+                b.getDesignationNote(),
+                experiences);
     }
 }
