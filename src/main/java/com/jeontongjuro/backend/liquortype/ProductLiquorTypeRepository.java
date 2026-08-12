@@ -1,5 +1,6 @@
 package com.jeontongjuro.backend.liquortype;
 
+import java.util.Collection;
 import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -30,4 +31,19 @@ public interface ProductLiquorTypeRepository extends JpaRepository<ProductLiquor
             ORDER BY t.breweryId, t.liquorType
             """)
     List<Object[]> aggregateByBreweryAndType(@Param("onlyConfirmed") boolean onlyConfirmed);
+
+    /**
+     * 조회 API 배치 로딩용 — 페이지의 brewery_id 집합으로 취급 주종(distinct)을 한 번에 읽어 N+1을 피한다.
+     * ★검수 상태(recheck_flag)·억제(suppressed_from_tab) 무관 전체 태깅을 대상으로 한다 — 이는 주종 필터
+     * (?liquorType=)가 EXISTS로 recheck 무관하게 판정하는 것과 동일한 의미라, 필터로 걸린 양조장이 응답에서
+     * 그 주종을 반드시 노출하도록 일치시킨다(육안 실측: AUTO 태깅도 제품명과 정합 확인).
+     *
+     * @return {@code [breweryId(String), liquorType(LiquorType)]} 튜플 목록(양조장·주종 조합별 1행)
+     */
+    @Query("""
+            SELECT DISTINCT t.breweryId, t.liquorType
+            FROM ProductLiquorType t
+            WHERE t.breweryId IN :breweryIds
+            """)
+    List<Object[]> findDistinctTypesByBreweryIdIn(@Param("breweryIds") Collection<String> breweryIds);
 }

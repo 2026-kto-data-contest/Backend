@@ -225,6 +225,42 @@ class BreweryQueryApiTest {
         throw new IllegalStateException("응답에 " + breweryId + " 없음");
     }
 
+    // ── 리스트 additive 필드(도수·주종·대표 이미지) ────────────────────────────────
+    // ★기존 7필드(breweryId~featureTags)는 유지하고 도수·주종·mainImage만 추가됨을 검증한다.
+    //   스캔용 리스트라 주소·좌표·홈페이지는 노출하지 않는다(그건 상세 응답 몫).
+    @Test
+    @DisplayName("리스트 additive: A에 도수(6.0)·주종(4종) 노출, mainImage=null, 주소·좌표·홈페이지 미노출")
+    void listExposesAdditiveFields() throws Exception {
+        seedAbvLinks();   // A=6.0 링크
+        seedLiquorTags(); // A에 4종 주종
+
+        JsonNode content = readContent(get("/api/v1/breweries").param("size", "100"));
+        JsonNode a = findById(content, BREWERY_A);
+
+        // 기존 7필드 유지(계약 불변)
+        assertThat(a.get("breweryId").asText()).isEqualTo(BREWERY_A);
+        assertThat(a.has("businessName")).isTrue();
+        assertThat(a.has("sido")).isTrue();
+        assertThat(a.has("region")).isTrue();
+        assertThat(a.has("reservationVisitState")).isTrue();
+        assertThat(a.has("alwaysVisitState")).isTrue();
+        assertThat(a.get("featureTags").isArray()).isTrue();
+
+        // additive 필드
+        assertThat(a.get("alcoholMin").asDouble()).isEqualTo(6.0);
+        assertThat(a.get("alcoholMax").asDouble()).isEqualTo(6.0);
+        List<String> types = new ArrayList<>();
+        a.get("liquorTypes").forEach(n -> types.add(n.asText()));
+        assertThat(types).containsExactly("탁주", "약주", "청주", "증류주");
+        assertThat(a.get("mainImage").isNull()).isTrue();
+
+        // 스캔용: 상세 전용 필드는 리스트에 없다
+        assertThat(a.has("address")).isFalse();
+        assertThat(a.has("latitude")).isFalse();
+        assertThat(a.has("longitude")).isFalse();
+        assertThat(a.has("homepageUrl")).isFalse();
+    }
+
     // ── 주종 필터(이슈 #24) ────────────────────────────────────────────────────
     // 골든 59행 중 실재 3곳에 최소 픽스처를 심는다(시드/추론 파이프라인 미의존 — "주어진 데이터에 대한 필터 정확성"만 검증):
     //   A=BRW-004(강원, 국순당)  : 탁주·약주·청주·증류주 4행 — 1:N 중복 유발원

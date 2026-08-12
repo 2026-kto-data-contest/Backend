@@ -9,25 +9,24 @@ import java.math.BigDecimal;
 import java.util.List;
 
 /**
- * 양조장 리스트 아이템 응답 DTO(엔티티 직노출 금지 — 명시 프로젝션).
+ * 양조장 상세 응답 DTO(엔티티 직노출 금지 — 명시 프로젝션). GET /api/v1/breweries/{breweryId}.
  * <p>
- * 노출 필드는 리스트 조회에 필요한 것만: 식별자·상호명·지역(sido/region)·방문 3-state·특징 태그.
- * visit 상태는 enum 그대로 직렬화되어 "Y"/"N"/"UNKNOWN" 문자열이 된다.
- * featureTags는 특징 배지 문자열 배열(예: ["수상이력","유기농"]) — 특징 없으면 빈 배열([]).
- * ★필터(?feature=)는 이 PR 범위 밖 — 데이터 노출(배지)만 한다.
+ * 리스트(스캔용)와 달리 상세는 지도·연락 정보까지 전부 노출한다: 주소·좌표(latitude/longitude)·홈페이지.
+ * 도수(alcoholMin/alcoholMax)·주종(liquorTypes)·특징 태그·대표 이미지는 배치 조회로 주입한다(엔티티만으론 불가).
  * <p>
- * ★리스트는 스캔용이라 주소·좌표·홈페이지는 넣지 않는다(그건 상세 응답 몫). 대신 카드에서 바로 쓰는
- * 도수(alcoholMin/alcoholMax)·주종(liquorTypes)·대표 이미지(mainImage)를 additive로 추가한다 —
- * 기존 7필드(breweryId~featureTags)의 이름·타입·순서는 그대로 유지한다(계약 불변).
- * <p>
- * image_url(brewery 컬럼)은 여전히 쓰지 않는다 — 전행 null인 격리 컬럼(C-10)이고, 대표 이미지는
- * tour_content(TourAPI 캐시)에서 온다({@link MainImageResponse}). 대표 이미지가 없으면 mainImage=null.
+ * 도수는 이 양조장 제품(product_brewery_link)의 alcohol_min 최솟값·alcohol_max 최댓값이다.
+ * 도수 정보가 있는 제품이 하나도 없으면 둘 다 {@code null}(현재 전 양조장이 도수를 가지므로 실데이터엔 없음).
+ * liquorTypes는 검수 상태(recheck_flag) 무관 전체 태깅의 distinct 집합이라 주종 필터(?liquorType=) 결과와 일치한다.
  */
-public record BreweryListItemResponse(
+public record BreweryDetailResponse(
         @Schema(description = "양조장 고유 ID", example = "BRW-001") String breweryId,
         @Schema(description = "화면에 표시할 양조장 이름", example = "해남 장독대 양조장") String businessName,
         @Schema(description = "시·도 단위 주소", example = "전라남도") String sido,
         @Schema(description = "서비스 지역 필터 분류", example = "전라") String region,
+        @Schema(description = "도로명/지번 주소 원문", example = "전라남도 해남군 ...") String address,
+        @Schema(description = "위도(WGS84). 지오코딩 실패 시 null", example = "34.573933") BigDecimal latitude,
+        @Schema(description = "경도(WGS84). 지오코딩 실패 시 null", example = "126.598912") BigDecimal longitude,
+        @Schema(description = "홈페이지 URL. 없으면 null", example = "http://example.co.kr") String homepageUrl,
         @Schema(description = "예약 방문 가능 여부: Y(가능), N(불가), UNKNOWN(정보 없음)", example = "Y")
         VisitState reservationVisitState,
         @Schema(description = "상시 방문 가능 여부: Y(가능), N(불가), UNKNOWN(정보 없음)", example = "UNKNOWN")
@@ -44,15 +43,19 @@ public record BreweryListItemResponse(
         List<LiquorType> liquorTypes,
         @Schema(description = "대표 이미지. 없으면 null") MainImageResponse mainImage) {
 
-    /** 태그·도수·주종·대표 이미지는 서비스가 배치 조회해 주입한다(Brewery 엔티티만으로는 알 수 없다). */
-    public static BreweryListItemResponse from(Brewery b, List<FeatureType> featureTags,
-                                               BigDecimal alcoholMin, BigDecimal alcoholMax,
-                                               List<LiquorType> liquorTypes, MainImageResponse mainImage) {
-        return new BreweryListItemResponse(
+    /** 엔티티 + 배치 조회로 모은 파생값(태그·도수·주종·대표 이미지)을 합쳐 상세 응답을 만든다. */
+    public static BreweryDetailResponse of(Brewery b, List<FeatureType> featureTags,
+                                           BigDecimal alcoholMin, BigDecimal alcoholMax,
+                                           List<LiquorType> liquorTypes, MainImageResponse mainImage) {
+        return new BreweryDetailResponse(
                 b.getBreweryId(),
                 b.getBusinessName(),
                 b.getSido(),
                 b.getRegion(),
+                b.getAddress(),
+                b.getLatitude(),
+                b.getLongitude(),
+                b.getHomepageUrl(),
                 b.getReservationVisitState(),
                 b.getAlwaysVisitState(),
                 featureTags,
