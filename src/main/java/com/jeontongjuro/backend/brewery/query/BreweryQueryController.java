@@ -9,6 +9,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import java.math.BigDecimal;
 import java.util.List;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -70,5 +71,24 @@ public class BreweryQueryController {
         BrewerySearchCondition condition = BrewerySearchCondition.of(
                 region, reservationVisit, alwaysVisit, keyword, liquorType, minAbv, maxAbv);
         return breweryQueryService.search(condition, page, size);
+    }
+
+    @GetMapping("/{breweryId}")
+    @Operation(summary = "양조장 상세 조회", description = """
+            양조장 상세 화면에서 사용하는 단건 조회 API입니다.
+            경로의 breweryId(BRW-xxx)로 한 곳을 조회하며, 리스트에 없는 주소·좌표·홈페이지까지 함께 내려줍니다.
+
+            도수(alcoholMin/alcoholMax)는 그 양조장 제품의 최소·최대 도수이고, 도수 정보가 있는 제품이
+            하나도 없으면 둘 다 null입니다. 취급 주종(liquorTypes)과 특징 태그(featureTags)는 없으면 빈 배열,
+            대표 이미지(mainImage)는 없으면 null입니다.
+            """)
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "양조장 상세 조회 성공"),
+            @ApiResponse(responseCode = "404", description = "해당 breweryId의 양조장이 없음(BREWERY_NOT_FOUND)")
+    })
+    public BreweryDetailResponse detail(
+            @Parameter(description = "양조장 고유 ID(BRW-xxx)", example = "BRW-001")
+            @PathVariable String breweryId) {
+        return breweryQueryService.findDetail(breweryId);
     }
 }
