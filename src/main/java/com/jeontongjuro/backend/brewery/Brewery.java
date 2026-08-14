@@ -172,6 +172,10 @@ public class Brewery {
     @Column(name = "designation_note", columnDefinition = "text")
     private String designationNote;
 
+    /** 카카오 place 딥링크 URL(#54). 16단계 카카오 place 시드가 UPDATE. 없으면 null(PLACE 55/NO_MATCH 4). */
+    @Column(name = "kakao_place_url", columnDefinition = "text")
+    private String kakaoPlaceUrl;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
@@ -285,6 +289,14 @@ public class Brewery {
         this.representativeName = representativeName;
         this.designatedYear = designatedYear;
         this.designationNote = designationNote;
+    }
+
+    /**
+     * 카카오 place URL 확정(파생값 UPDATE, 16단계). 순수 대입 — 경쟁 소스가 없어 우선순위 판정이 없다.
+     * 멱등 스킵(같은 값이면 미적용)은 호출자(KakaoPlaceSeedLoadService)가 판단한다(대입 계층 원칙, applyPhone 대칭).
+     */
+    public void applyKakaoPlaceUrl(String kakaoPlaceUrl) {
+        this.kakaoPlaceUrl = kakaoPlaceUrl;
     }
 
     @PrePersist

@@ -310,6 +310,26 @@ class BreweryDetailApiTest {
         assertThat(body.get("overview").isNull()).isTrue();
     }
 
+    // ── 카카오 place URL 편입(#54, additive) ──────────────────────────────────────
+    @Test
+    @DisplayName("place URL 키 존재: 미설정이면 kakaoPlaceUrl=null(키는 존재)")
+    void kakaoPlaceUrlKeyExistsAndNullWhenUnset() throws Exception {
+        JsonNode body = readBody(get("/api/v1/breweries/{id}", BREWERY_D));
+        assertThat(body.has("kakaoPlaceUrl")).isTrue();
+        assertThat(body.get("kakaoPlaceUrl").isNull()).isTrue();
+    }
+
+    @Test
+    @DisplayName("place URL 값: 설정하면 http:// 원문 그대로 노출")
+    void kakaoPlaceUrlReturnedWhenSet() throws Exception {
+        Brewery b = breweryRepository.findById(BREWERY_A).orElseThrow();
+        b.applyKakaoPlaceUrl("http://place.map.kakao.com/17112140");
+        breweryRepository.save(b);
+
+        JsonNode body = readBody(get("/api/v1/breweries/{id}", BREWERY_A));
+        assertThat(body.get("kakaoPlaceUrl").asText()).isEqualTo("http://place.map.kakao.com/17112140");
+    }
+
     // ── 체험 프로그램 편입(#52, additive) ─────────────────────────────────────────
     @Test
     @DisplayName("체험 없는 양조장 → experiences 빈 배열(키는 존재)")

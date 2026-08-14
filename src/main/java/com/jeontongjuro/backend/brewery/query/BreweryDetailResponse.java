@@ -62,7 +62,11 @@ public record BreweryDetailResponse(
         String designationNote,
         // ── 체험 프로그램 편입(#52, additive). 체험 없으면 빈 배열. 리스트 API엔 노출하지 않는다(스캔용). ──
         @Schema(description = "aT 전통주 체험 프로그램 목록(program_name 오름차순). 없으면 빈 배열")
-        List<ExperienceResponse> experiences) {
+        List<ExperienceResponse> experiences,
+        // ── 카카오 place URL 편입(#54, additive). 없으면 null. 리스트 API엔 노출하지 않는다(스캔용). ──
+        @Schema(description = "카카오 place 딥링크 URL(지도·상세). 없으면 null. http:// 원문(접속 시 https 리다이렉트)",
+                example = "http://place.map.kakao.com/17112140")
+        String kakaoPlaceUrl) {
 
     /**
      * 엔티티 + 배치 조회로 모은 파생값(태그·도수·주종·대표 이미지·소개글)을 합쳐 상세 응답을 만든다.
@@ -99,6 +103,7 @@ public record BreweryDetailResponse(
                 b.getRepresentativeName(),
                 b.getDesignatedYear(),
                 b.getDesignationNote(),
-                experiences);
+                experiences,
+                b.getKakaoPlaceUrl());
     }
 }

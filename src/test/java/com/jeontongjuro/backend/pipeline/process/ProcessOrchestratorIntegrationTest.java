@@ -213,6 +213,16 @@ class ProcessOrchestratorIntegrationTest {
         assertThat(report.experience().deleted()).isZero();
         assertThat(report.experience().unchanged()).isZero();
         assertThat(experienceRepository.count()).isEqualTo(52);
+
+        // 16단계 카카오 place URL(#54): 시드 59행 중 PLACE 55 전건 신규 적용, NO_MATCH 4는 비적용.
+        //   ★applied만 보면 NO_MATCH가 잘못 적용돼도 55가 나올 수 있으므로 seedRows·nonPlace도 함께 건다.
+        assertThat(report.kakaoPlace().seedRows()).isEqualTo(59);
+        assertThat(report.kakaoPlace().placeEntries()).isEqualTo(55);
+        assertThat(report.kakaoPlace().applied()).isEqualTo(55);
+        assertThat(report.kakaoPlace().unchanged()).isZero();
+        assertThat(report.kakaoPlace().nonPlace()).isEqualTo(4);
+        assertThat(breweryRepository.findAll().stream()
+                .filter(b -> b.getKakaoPlaceUrl() != null).count()).isEqualTo(55);
     }
 
     @Test
@@ -224,14 +234,16 @@ class ProcessOrchestratorIntegrationTest {
         assertThat(countBrewery("operating_hours IS NOT NULL")).isEqualTo(19);
         assertThat(countBrewery("phone IS NOT NULL")).isEqualTo(52);
         assertThat(countBrewery("founded_year IS NOT NULL")).isEqualTo(36);
+        assertThat(countBrewery("kakao_place_url IS NOT NULL")).isEqualTo(55);
         assertThat(countTourContent("overview IS NOT NULL")).isEqualTo(19);
 
         // 2) 기존 행의 신규 컬럼만 null로 되돌린다 — 행은 그대로 남는다(도수 #36이 놓친 바로 그 경로)
         jdbc.execute("UPDATE brewery SET operating_hours=NULL, rest_date=NULL, parking_info=NULL, "
                 + "accom_count=NULL, phone=NULL, phone_source=NULL, founded_year=NULL, "
-                + "representative_name=NULL, designated_year=NULL, designation_note=NULL");
+                + "representative_name=NULL, designated_year=NULL, designation_note=NULL, kakao_place_url=NULL");
         jdbc.execute("UPDATE tour_content SET overview=NULL, overview_fetched_at=NULL");
         assertThat(countBrewery("phone IS NOT NULL")).isZero();
+        assertThat(countBrewery("kakao_place_url IS NOT NULL")).isZero();
         assertThat(countTourContent("overview IS NOT NULL")).isZero();
         long breweryRowsBefore = breweryRepository.count();
         long tourRowsBefore = tourContentRepository.count();
@@ -244,6 +256,7 @@ class ProcessOrchestratorIntegrationTest {
         assertThat(again.tourDetail().tourDetailUpdated()).isEqualTo(19);
         assertThat(again.kakaoPhone().applied()).isEqualTo(33);
         assertThat(again.nonglim().applied()).isEqualTo(36);
+        assertThat(again.kakaoPlace().applied()).isEqualTo(55);  // null화된 기존 행을 16단계가 다시 채움
 
         // 행수 불변(UPDATE지 insert 아님) + 값 재충전 확인
         assertThat(breweryRepository.count()).isEqualTo(breweryRowsBefore);
@@ -251,6 +264,7 @@ class ProcessOrchestratorIntegrationTest {
         assertThat(countBrewery("operating_hours IS NOT NULL")).isEqualTo(19);
         assertThat(countBrewery("phone IS NOT NULL")).isEqualTo(52);
         assertThat(countBrewery("founded_year IS NOT NULL")).isEqualTo(36);
+        assertThat(countBrewery("kakao_place_url IS NOT NULL")).isEqualTo(55);
         assertThat(countTourContent("overview IS NOT NULL")).isEqualTo(19);
     }
 
@@ -364,6 +378,12 @@ class ProcessOrchestratorIntegrationTest {
         assertThat(again.experience().deleted()).isZero();
         assertThat(again.experience().unchanged()).isEqualTo(52);
         assertThat(experienceRepository.count()).isEqualTo(52);
+
+        // 16단계 카카오 place URL 멱등: 이미 같은 URL이라 신규 적용 0, PLACE 55 전건 unchanged
+        assertThat(again.kakaoPlace().seedRows()).isEqualTo(59);
+        assertThat(again.kakaoPlace().applied()).isZero();
+        assertThat(again.kakaoPlace().unchanged()).isEqualTo(55);
+        assertThat(again.kakaoPlace().nonPlace()).isEqualTo(4);
     }
 
     @Test

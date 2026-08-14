@@ -113,6 +113,10 @@ ALTER TABLE brewery ADD COLUMN IF NOT EXISTS designation_note    TEXT;
 -- DO/$$ 금지(ScriptUtils ';' 분할 파손) — 단문 2개(DROP IF EXISTS→ADD)로 멱등화. 위 coord CHECK 선례 동일.
 ALTER TABLE brewery DROP CONSTRAINT IF EXISTS ck_brewery_phone_source;
 ALTER TABLE brewery ADD CONSTRAINT ck_brewery_phone_source CHECK (phone_source IN ('TOUR', 'KAKAO'));
+-- 카카오 place URL 편입(#54) — 상세 지도 딥링크. 16단계 카카오 place 시드가 UPDATE(전용 UPDATE 단계 — 마스터
+-- 로드는 기존 brewery_id를 skip하므로 여기 편입, 백필 함정 방어). 위 상세 필드 4컬럼 ALTER와 동일 멱등 패턴.
+--   ★값은 카카오가 준 http:// 원문 그대로 저장한다(접속 시 https 리다이렉트 — 변환 금지). 경쟁 소스 없음.
+ALTER TABLE brewery ADD COLUMN IF NOT EXISTS kakao_place_url TEXT;
 CREATE INDEX IF NOT EXISTS ix_brewery_business_name ON brewery (business_name);
 CREATE INDEX IF NOT EXISTS ix_brewery_norm ON brewery (norm);
 

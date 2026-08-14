@@ -7,6 +7,7 @@ import com.jeontongjuro.backend.brewery.BreweryLiquorStatusUpdateService;
 import com.jeontongjuro.backend.brewery.BreweryMasterLoadService;
 import com.jeontongjuro.backend.brewery.BreweryRegionUpdateService;
 import com.jeontongjuro.backend.brewery.KakaoPhoneSeedLoadService;
+import com.jeontongjuro.backend.brewery.KakaoPlaceSeedLoadService;
 import com.jeontongjuro.backend.brewery.NonglimSeedLoadService;
 import com.jeontongjuro.backend.experience.ExperienceRollupService;
 import com.jeontongjuro.backend.feature.FeatureRollupService;
@@ -46,6 +47,7 @@ public record ProcessReport(
         KakaoPhoneSeedLoadService.LoadResult kakaoPhone,
         NonglimSeedLoadService.LoadResult nonglim,
         ExperienceRollupService.RollupResult experience,
+        KakaoPlaceSeedLoadService.LoadResult kakaoPlace,
         List<StaleOverride> staleOverrides
 ) {
 
@@ -158,6 +160,12 @@ public record ProcessReport(
                     .append(" (값 인지 삭제형 diff — 유령 없음)");
         }
         sb.append('\n');
+        sb.append("kakao-place 시드=").append(kakaoPlace.seedRows())
+                .append(" PLACE=").append(kakaoPlace.placeEntries())
+                .append(" 적용=").append(kakaoPlace.applied())
+                .append(" 불변=").append(kakaoPlace.unchanged())
+                .append(" 비PLACE=").append(kakaoPlace.nonPlace())
+                .append(" (place URL — 경쟁 소스 없음, 같은 값이면 불변)\n");
         sb.append("⚠ override 미적중: ");
         if (staleOverrides.isEmpty()) {
             sb.append("없음");
