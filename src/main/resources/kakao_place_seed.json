@@ -1,0 +1,482 @@
+{
+  "_meta": {
+    "source": "카카오 로컬 API 키워드 검색(/v2/local/search/keyword.json) + 200m 좌표 게이트",
+    "collectedAt": "2026-08-14",
+    "note": "카카오 상호검색은 비결정적이라 매 호출이 흔들린다 -> 시드로 고정(kakao_phone_seed 선례). status=PLACE 행만 적용한다. NO_MATCH(후보 0건)는 왜 비었는지 판별력 위해 보존한다. placeUrl은 경쟁 소스가 없어 조건 없이 그대로 쓴다(phone의 TOUR>KAKAO 우선순위와 무관). placeUrl은 카카오가 준 http:// 원문 그대로다 - 접속 시 카카오가 https로 리다이렉트하므로 변환하지 않는다. kakaoPlaceName/distanceM/searchName은 추적용 메타이며 재수집 시 동일 장소인지 대조하는 검증 키다(로더는 breweryId/status/placeUrl만 읽는다).",
+    "appendOnly": true
+  },
+  "entries": [
+    {
+      "breweryId": "BRW-001",
+      "searchName": "갈기산",
+      "status": "PLACE",
+      "placeUrl": "http://place.map.kakao.com/17112140",
+      "kakaoPlaceName": "갈기산포도농원 농업회사법인",
+      "distanceM": 0
+    },
+    {
+      "breweryId": "BRW-002",
+      "searchName": "고도리 와이너리",
+      "status": "PLACE",
+      "placeUrl": "http://place.map.kakao.com/16293319",
+      "kakaoPlaceName": "고도리 와이너리",
+      "distanceM": 57
+    },
+    {
+      "breweryId": "BRW-003",
+      "searchName": "국가유산·명인 조옥화 안동소주",
+      "status": "NO_MATCH",
+      "placeUrl": null,
+      "kakaoPlaceName": null,
+      "distanceM": null
+    },
+    {
+      "breweryId": "BRW-004",
+      "searchName": "국순당",
+      "status": "PLACE",
+      "placeUrl": "http://place.map.kakao.com/775716025",
+      "kakaoPlaceName": "국순당 주향로",
+      "distanceM": 147
+    },
+    {
+      "breweryId": "BRW-005",
+      "searchName": "그린영농조합",
+      "status": "PLACE",
+      "placeUrl": "http://place.map.kakao.com/8806410",
+      "kakaoPlaceName": "그랑꼬또와이너리",
+      "distanceM": 36
+    },
+    {
+      "breweryId": "BRW-006",
+      "searchName": "금정산성 토산주",
+      "status": "PLACE",
+      "placeUrl": "http://place.map.kakao.com/10206535",
+      "kakaoPlaceName": "금정산성막걸리 본점",
+      "distanceM": 7
+    },
+    {
+      "breweryId": "BRW-007",
+      "searchName": "금풍양조",
+      "status": "PLACE",
+      "placeUrl": "http://place.map.kakao.com/400238797",
+      "kakaoPlaceName": "금풍양조장",
+      "distanceM": 0
+    },
+    {
+      "breweryId": "BRW-008",
+      "searchName": "다도참주가",
+      "status": "PLACE",
+      "placeUrl": "http://place.map.kakao.com/1881341837",
+      "kakaoPlaceName": "다도참주가",
+      "distanceM": 65
+    },
+    {
+      "breweryId": "BRW-009",
+      "searchName": "대강양조장",
+      "status": "PLACE",
+      "placeUrl": "http://place.map.kakao.com/8844843",
+      "kakaoPlaceName": "대강양조장",
+      "distanceM": 17
+    },
+    {
+      "breweryId": "BRW-010",
+      "searchName": "대대로영농조합법인",
+      "status": "PLACE",
+      "placeUrl": "http://place.map.kakao.com/8298427",
+      "kakaoPlaceName": "대대로영농조합",
+      "distanceM": 33
+    },
+    {
+      "breweryId": "BRW-011",
+      "searchName": "덕유양조",
+      "status": "PLACE",
+      "placeUrl": "http://place.map.kakao.com/8263204",
+      "kakaoPlaceName": "덕유양조",
+      "distanceM": 12
+    },
+    {
+      "breweryId": "BRW-012",
+      "searchName": "도란원",
+      "status": "PLACE",
+      "placeUrl": "http://place.map.kakao.com/15608890",
+      "kakaoPlaceName": "도란원",
+      "distanceM": 18
+    },
+    {
+      "breweryId": "BRW-013",
+      "searchName": "두레양조",
+      "status": "PLACE",
+      "placeUrl": "http://place.map.kakao.com/10641432",
+      "kakaoPlaceName": "두례양조",
+      "distanceM": 0
+    },
+    {
+      "breweryId": "BRW-014",
+      "searchName": "맑은내일",
+      "status": "PLACE",
+      "placeUrl": "http://place.map.kakao.com/314777692",
+      "kakaoPlaceName": "농업회사법인 맑은내일",
+      "distanceM": 7
+    },
+    {
+      "breweryId": "BRW-015",
+      "searchName": "명인안동소주",
+      "status": "PLACE",
+      "placeUrl": "http://place.map.kakao.com/20070977",
+      "kakaoPlaceName": "명인안동소주",
+      "distanceM": 0
+    },
+    {
+      "breweryId": "BRW-016",
+      "searchName": "모월",
+      "status": "PLACE",
+      "placeUrl": "http://place.map.kakao.com/1828144374",
+      "kakaoPlaceName": "모월양조장",
+      "distanceM": 4
+    },
+    {
+      "breweryId": "BRW-017",
+      "searchName": "문경주조",
+      "status": "PLACE",
+      "placeUrl": "http://place.map.kakao.com/10410091",
+      "kakaoPlaceName": "문경주조",
+      "distanceM": 39
+    },
+    {
+      "breweryId": "BRW-018",
+      "searchName": "밀과노닐다",
+      "status": "PLACE",
+      "placeUrl": "http://place.map.kakao.com/141113633",
+      "kakaoPlaceName": "밀과노닐다",
+      "distanceM": 21
+    },
+    {
+      "breweryId": "BRW-019",
+      "searchName": "밝은세상영농조합",
+      "status": "PLACE",
+      "placeUrl": "http://place.map.kakao.com/11067932",
+      "kakaoPlaceName": "밝은세상 녹색농촌체험마을 영농조합법인",
+      "distanceM": 2
+    },
+    {
+      "breweryId": "BRW-020",
+      "searchName": "배상면주가",
+      "status": "PLACE",
+      "placeUrl": "http://place.map.kakao.com/8385095",
+      "kakaoPlaceName": "배상면주가 포천점",
+      "distanceM": 85
+    },
+    {
+      "breweryId": "BRW-021",
+      "searchName": "배혜정도가",
+      "status": "PLACE",
+      "placeUrl": "http://place.map.kakao.com/2073646630",
+      "kakaoPlaceName": "배혜정도가",
+      "distanceM": 22
+    },
+    {
+      "breweryId": "BRW-022",
+      "searchName": "복순도가",
+      "status": "PLACE",
+      "placeUrl": "http://place.map.kakao.com/26952057",
+      "kakaoPlaceName": "복순도가",
+      "distanceM": 3
+    },
+    {
+      "breweryId": "BRW-023",
+      "searchName": "산막와이너리",
+      "status": "PLACE",
+      "placeUrl": "http://place.map.kakao.com/2028589345",
+      "kakaoPlaceName": "산막와이너리",
+      "distanceM": 1
+    },
+    {
+      "breweryId": "BRW-024",
+      "searchName": "산머루농원",
+      "status": "PLACE",
+      "placeUrl": "http://place.map.kakao.com/24440926",
+      "kakaoPlaceName": "산머루농원영농조합법인",
+      "distanceM": 51
+    },
+    {
+      "breweryId": "BRW-025",
+      "searchName": "솔송주",
+      "status": "PLACE",
+      "placeUrl": "http://place.map.kakao.com/8077994",
+      "kakaoPlaceName": "농업회사법인 솔송주",
+      "distanceM": 30
+    },
+    {
+      "breweryId": "BRW-026",
+      "searchName": "수도산와이너리",
+      "status": "PLACE",
+      "placeUrl": "http://place.map.kakao.com/12553543",
+      "kakaoPlaceName": "수도산산머루농원",
+      "distanceM": 154
+    },
+    {
+      "breweryId": "BRW-027",
+      "searchName": "술빚는 전가네",
+      "status": "NO_MATCH",
+      "placeUrl": null,
+      "kakaoPlaceName": null,
+      "distanceM": null
+    },
+    {
+      "breweryId": "BRW-028",
+      "searchName": "술샘",
+      "status": "PLACE",
+      "placeUrl": "http://place.map.kakao.com/26887105",
+      "kakaoPlaceName": "술샘",
+      "distanceM": 1
+    },
+    {
+      "breweryId": "BRW-029",
+      "searchName": "술아원",
+      "status": "PLACE",
+      "placeUrl": "http://place.map.kakao.com/769619737",
+      "kakaoPlaceName": "농업회사법인 술아원",
+      "distanceM": 0
+    },
+    {
+      "breweryId": "BRW-030",
+      "searchName": "시나브로 와이너리",
+      "status": "PLACE",
+      "placeUrl": "http://place.map.kakao.com/1721723391",
+      "kakaoPlaceName": "시나브로와이너리 불휘농장",
+      "distanceM": 49
+    },
+    {
+      "breweryId": "BRW-031",
+      "searchName": "신평양조장",
+      "status": "PLACE",
+      "placeUrl": "http://place.map.kakao.com/1020744452",
+      "kakaoPlaceName": "신평양조뮤지엄",
+      "distanceM": 15
+    },
+    {
+      "breweryId": "BRW-032",
+      "searchName": "양촌양조",
+      "status": "PLACE",
+      "placeUrl": "http://place.map.kakao.com/10579135",
+      "kakaoPlaceName": "양촌양조장",
+      "distanceM": 0
+    },
+    {
+      "breweryId": "BRW-033",
+      "searchName": "양촌와이너리",
+      "status": "PLACE",
+      "placeUrl": "http://place.map.kakao.com/2107025707",
+      "kakaoPlaceName": "양촌와이너리",
+      "distanceM": 3
+    },
+    {
+      "breweryId": "BRW-034",
+      "searchName": "여포와인농장",
+      "status": "PLACE",
+      "placeUrl": "http://place.map.kakao.com/11413917",
+      "kakaoPlaceName": "여포농장",
+      "distanceM": 18
+    },
+    {
+      "breweryId": "BRW-035",
+      "searchName": "예산사과와인",
+      "status": "PLACE",
+      "placeUrl": "http://place.map.kakao.com/16772905",
+      "kakaoPlaceName": "농업회사법인 예산사과와인",
+      "distanceM": 9
+    },
+    {
+      "breweryId": "BRW-036",
+      "searchName": "예술주조",
+      "status": "NO_MATCH",
+      "placeUrl": null,
+      "kakaoPlaceName": null,
+      "distanceM": null
+    },
+    {
+      "breweryId": "BRW-037",
+      "searchName": "오미나라",
+      "status": "PLACE",
+      "placeUrl": "http://place.map.kakao.com/14861955",
+      "kakaoPlaceName": "오미나라",
+      "distanceM": 0
+    },
+    {
+      "breweryId": "BRW-038",
+      "searchName": "오산양조",
+      "status": "PLACE",
+      "placeUrl": "http://place.map.kakao.com/1401412426",
+      "kakaoPlaceName": "농업회사법인 오산양조",
+      "distanceM": 0
+    },
+    {
+      "breweryId": "BRW-039",
+      "searchName": "우리술",
+      "status": "PLACE",
+      "placeUrl": "http://place.map.kakao.com/1052501235",
+      "kakaoPlaceName": "우리술 1공장",
+      "distanceM": 0
+    },
+    {
+      "breweryId": "BRW-040",
+      "searchName": "울진술도가",
+      "status": "PLACE",
+      "placeUrl": "http://place.map.kakao.com/726295066",
+      "kakaoPlaceName": "울진술도가",
+      "distanceM": 36
+    },
+    {
+      "breweryId": "BRW-041",
+      "searchName": "은척양조장",
+      "status": "PLACE",
+      "placeUrl": "http://place.map.kakao.com/8540029",
+      "kakaoPlaceName": "은척양조장",
+      "distanceM": 54
+    },
+    {
+      "breweryId": "BRW-042",
+      "searchName": "이원양조장",
+      "status": "PLACE",
+      "placeUrl": "http://place.map.kakao.com/9395081",
+      "kakaoPlaceName": "이원양조장",
+      "distanceM": 25
+    },
+    {
+      "breweryId": "BRW-043",
+      "searchName": "인천탁주",
+      "status": "PLACE",
+      "placeUrl": "http://place.map.kakao.com/17907923",
+      "kakaoPlaceName": "인천탁주",
+      "distanceM": 28
+    },
+    {
+      "breweryId": "BRW-044",
+      "searchName": "장희도가",
+      "status": "PLACE",
+      "placeUrl": "http://place.map.kakao.com/26325130",
+      "kakaoPlaceName": "장희도가",
+      "distanceM": 4
+    },
+    {
+      "breweryId": "BRW-045",
+      "searchName": "제주고소리술익는집",
+      "status": "PLACE",
+      "placeUrl": "http://place.map.kakao.com/1240625494",
+      "kakaoPlaceName": "제주술익는집",
+      "distanceM": 0
+    },
+    {
+      "breweryId": "BRW-046",
+      "searchName": "제주샘주",
+      "status": "PLACE",
+      "placeUrl": "http://place.map.kakao.com/8864950",
+      "kakaoPlaceName": "제주샘주",
+      "distanceM": 11
+    },
+    {
+      "breweryId": "BRW-047",
+      "searchName": "조은술 세종",
+      "status": "PLACE",
+      "placeUrl": "http://place.map.kakao.com/8856345",
+      "kakaoPlaceName": "조은술세종",
+      "distanceM": 0
+    },
+    {
+      "breweryId": "BRW-048",
+      "searchName": "좋은술",
+      "status": "PLACE",
+      "placeUrl": "http://place.map.kakao.com/22710462",
+      "kakaoPlaceName": "농업회사법인 좋은술",
+      "distanceM": 5
+    },
+    {
+      "breweryId": "BRW-049",
+      "searchName": "중원당",
+      "status": "PLACE",
+      "placeUrl": "http://place.map.kakao.com/16340305",
+      "kakaoPlaceName": "중원당 본사",
+      "distanceM": 26
+    },
+    {
+      "breweryId": "BRW-050",
+      "searchName": "지리산 운봉주조",
+      "status": "PLACE",
+      "placeUrl": "http://place.map.kakao.com/8468735",
+      "kakaoPlaceName": "지리산운봉주조",
+      "distanceM": 7
+    },
+    {
+      "breweryId": "BRW-051",
+      "searchName": "청산녹수",
+      "status": "NO_MATCH",
+      "placeUrl": null,
+      "kakaoPlaceName": null,
+      "distanceM": null
+    },
+    {
+      "breweryId": "BRW-052",
+      "searchName": "추성고을",
+      "status": "PLACE",
+      "placeUrl": "http://place.map.kakao.com/10844079",
+      "kakaoPlaceName": "추성고을 농업회사법인",
+      "distanceM": 2
+    },
+    {
+      "breweryId": "BRW-053",
+      "searchName": "태인합동주조장",
+      "status": "PLACE",
+      "placeUrl": "http://place.map.kakao.com/17472952",
+      "kakaoPlaceName": "태인합동주조장",
+      "distanceM": 7
+    },
+    {
+      "breweryId": "BRW-054",
+      "searchName": "풍정사계",
+      "status": "PLACE",
+      "placeUrl": "http://place.map.kakao.com/649136648",
+      "kakaoPlaceName": "풍정사계",
+      "distanceM": 0
+    },
+    {
+      "breweryId": "BRW-055",
+      "searchName": "하미앙 와인밸리",
+      "status": "PLACE",
+      "placeUrl": "http://place.map.kakao.com/960608056",
+      "kakaoPlaceName": "하미앙",
+      "distanceM": 1
+    },
+    {
+      "breweryId": "BRW-056",
+      "searchName": "한국애플리즈",
+      "status": "PLACE",
+      "placeUrl": "http://place.map.kakao.com/16522781",
+      "kakaoPlaceName": "한국애플리즈",
+      "distanceM": 32
+    },
+    {
+      "breweryId": "BRW-057",
+      "searchName": "한국와인",
+      "status": "PLACE",
+      "placeUrl": "http://place.map.kakao.com/9478342",
+      "kakaoPlaceName": "농업회사법인 한국와인",
+      "distanceM": 10
+    },
+    {
+      "breweryId": "BRW-058",
+      "searchName": "한산소곡주",
+      "status": "PLACE",
+      "placeUrl": "http://place.map.kakao.com/8139167",
+      "kakaoPlaceName": "한산소곡주",
+      "distanceM": 3
+    },
+    {
+      "breweryId": "BRW-059",
+      "searchName": "해창주조장",
+      "status": "PLACE",
+      "placeUrl": "http://place.map.kakao.com/10908607",
+      "kakaoPlaceName": "해창주조장",
+      "distanceM": 3
+    }
+  ]
+}

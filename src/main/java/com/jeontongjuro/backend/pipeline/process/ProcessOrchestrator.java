@@ -7,6 +7,7 @@ import com.jeontongjuro.backend.brewery.BreweryLiquorStatusUpdateService;
 import com.jeontongjuro.backend.brewery.BreweryMasterLoadService;
 import com.jeontongjuro.backend.brewery.BreweryRegionUpdateService;
 import com.jeontongjuro.backend.brewery.KakaoPhoneSeedLoadService;
+import com.jeontongjuro.backend.brewery.KakaoPlaceSeedLoadService;
 import com.jeontongjuro.backend.brewery.NonglimSeedLoadService;
 import com.jeontongjuro.backend.experience.ExperienceRollupService;
 import com.jeontongjuro.backend.feature.FeatureRollupService;
@@ -69,6 +70,7 @@ public class ProcessOrchestrator {
     private final KakaoPhoneSeedLoadService kakaoPhoneSeedLoadService;
     private final NonglimSeedLoadService nonglimSeedLoadService;
     private final ExperienceRollupService experienceRollupService;
+    private final KakaoPlaceSeedLoadService kakaoPlaceSeedLoadService;
     private final BreweryRawRepository breweryRawRepository;
     private final ProductRawRepository productRawRepository;
     private final ManualOverrideRepository overrideRepository;
@@ -91,6 +93,7 @@ public class ProcessOrchestrator {
                                KakaoPhoneSeedLoadService kakaoPhoneSeedLoadService,
                                NonglimSeedLoadService nonglimSeedLoadService,
                                ExperienceRollupService experienceRollupService,
+                               KakaoPlaceSeedLoadService kakaoPlaceSeedLoadService,
                                BreweryRawRepository breweryRawRepository,
                                ProductRawRepository productRawRepository,
                                ManualOverrideRepository overrideRepository) {
@@ -112,6 +115,7 @@ public class ProcessOrchestrator {
         this.kakaoPhoneSeedLoadService = kakaoPhoneSeedLoadService;
         this.nonglimSeedLoadService = nonglimSeedLoadService;
         this.experienceRollupService = experienceRollupService;
+        this.kakaoPlaceSeedLoadService = kakaoPlaceSeedLoadService;
         this.breweryRawRepository = breweryRawRepository;
         this.productRawRepository = productRawRepository;
         this.overrideRepository = overrideRepository;
@@ -209,6 +213,10 @@ public class ProcessOrchestrator {
         //     시드 미매칭은 서비스가 예외로 던져 여기 step() fail-fast로 중단된다(원본 갱신 신호).
         ExperienceRollupService.RollupResult experience =
                 step(15, "체험 프로그램 편입", experienceRollupService::rollup);
+        // 16. 카카오 place URL 시드(#54) — 상세 지도 딥링크. 1단계 마스터 FK에만 의존(순서 무관, 말미).
+        //     경쟁 소스가 없어 조건 없이 대입하되 같은 값이면 멱등 스킵(unchanged). 시드로 비결정성 고정(phone 선례).
+        KakaoPlaceSeedLoadService.LoadResult kakaoPlace =
+                step(16, "카카오 place URL 시드", kakaoPlaceSeedLoadService::load);
 
         // [4] override 스테일 경고 — hit==0 override는 WARN-and-continue(예외 던지지 않음).
         //     새 uddi 재수집 시 제품명 한 글자 바뀌어 override 스테일 나는 건 정상 시나리오 — 사람이 요약 보고 판단.
@@ -220,7 +228,8 @@ public class ProcessOrchestrator {
 
         return new ProcessReport(snapshotDate, breweryRawCount, productRawCount,
                 master, seed, join, status, region, liquor, liquorStatus, geo,
-                nearby, matchResolve, match, feature, tourDetail, kakaoPhone, nonglim, experience, stale);
+                nearby, matchResolve, match, feature, tourDetail, kakaoPhone, nonglim, experience,
+                kakaoPlace, stale);
     }
 
     /** overrideHitCounts에 없는(=적중 0건) override를 골라 경고 목록으로. */
