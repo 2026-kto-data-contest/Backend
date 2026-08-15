@@ -20,8 +20,8 @@ import java.util.List;
  * 도수(alcoholMin/alcoholMax)·주종(liquorTypes)·대표 이미지(mainImage)를 additive로 추가한다 —
  * 기존 7필드(breweryId~featureTags)의 이름·타입·순서는 그대로 유지한다(계약 불변).
  * <p>
- * image_url(brewery 컬럼)은 여전히 쓰지 않는다 — 전행 null인 격리 컬럼(C-10)이고, 대표 이미지는
- * tour_content(TourAPI 캐시)에서 온다({@link MainImageResponse}). 대표 이미지가 없으면 mainImage=null.
+ * 대표 이미지는 tour_content(TourAPI 캐시)의 first_image에서 온다({@link MainImageResponse}).
+ * 대표 이미지가 없으면 mainImage=null. ★brewery.image_url 격리 컬럼(C-10)은 #56에서 제거됐다.
  */
 public record BreweryListItemResponse(
         @Schema(description = "양조장 고유 ID", example = "BRW-001") String breweryId,

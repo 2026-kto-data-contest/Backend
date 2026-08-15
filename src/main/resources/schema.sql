@@ -63,7 +63,6 @@ CREATE TABLE IF NOT EXISTS brewery (
     region                  TEXT,                           -- 광역권 매핑 자리(다음 단계)
     join_status             TEXT      NOT NULL DEFAULT 'UNJOINED',  -- 3c-2 조인이 UPDATE
     liquor_status           TEXT      NOT NULL DEFAULT 'NA',        -- 3d 주종롤업이 UPDATE
-    image_url               TEXT,                           -- 소스 미확정(C-10) 격리 자리
     -- 좌표 파생 자리 (#28 8단계 카카오 지오코딩이 UPDATE). ★address는 항상 raw 원문 — 좌표만 파생.
     latitude                NUMERIC(9,6),                   -- 위도(카카오 y). 한국 범위 33~39 검증 후 저장
     longitude               NUMERIC(9,6),                   -- 경도(카카오 x). 한국 범위 124~132 검증 후 저장
@@ -117,6 +116,12 @@ ALTER TABLE brewery ADD CONSTRAINT ck_brewery_phone_source CHECK (phone_source I
 -- 로드는 기존 brewery_id를 skip하므로 여기 편입, 백필 함정 방어). 위 상세 필드 4컬럼 ALTER와 동일 멱등 패턴.
 --   ★값은 카카오가 준 http:// 원문 그대로 저장한다(접속 시 https 리다이렉트 — 변환 금지). 경쟁 소스 없음.
 ALTER TABLE brewery ADD COLUMN IF NOT EXISTS kakao_place_url TEXT;
+-- 부채 #15 제거(#56) — image_url은 소스 미확정 격리 컬럼(C-10)으로 만들었으나 전 행 null이고 읽는 코드가
+-- 0건이다. 대표 이미지 소스가 tour_content.first_image로 확정(#48)되어 의미를 잃었다.
+--   ★위 CREATE TABLE 정의에서 지우는 것만으로는 기존 DB에서 사라지지 않는다(테이블 존재 시 통째 스킵).
+--   ★ddl-auto=validate는 엔티티에 없는 잔여 컬럼을 문제 삼지 않아 조용히 남는다. DROP을 명시한다.
+--   IF EXISTS라 매 기동 재실행돼도 멱등(ck_brewery_coord_source 선례).
+ALTER TABLE brewery DROP COLUMN IF EXISTS image_url;
 CREATE INDEX IF NOT EXISTS ix_brewery_business_name ON brewery (business_name);
 CREATE INDEX IF NOT EXISTS ix_brewery_norm ON brewery (norm);
 
