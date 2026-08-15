@@ -92,10 +92,6 @@ public class Brewery {
     @Column(name = "liquor_status", nullable = false, columnDefinition = "text")
     private LiquorStatus liquorStatus;
 
-    /** 소스 미확정(C-10) 격리 자리. */
-    @Column(name = "image_url", columnDefinition = "text")
-    private String imageUrl;
-
     // ── 좌표 파생 자리 (#28 8단계 지오코딩이 UPDATE) ───────────────────────
     /** 위도(카카오 y). 한국 범위 33~39 검증 통과분만 저장. ★address는 손대지 않는다. */
     @Column(name = "latitude", precision = 9, scale = 6)
@@ -202,7 +198,6 @@ public class Brewery {
         b.region = null;
         b.joinStatus = JoinStatus.UNJOINED;
         b.liquorStatus = LiquorStatus.NA;
-        b.imageUrl = null;
         return b;
     }
 
