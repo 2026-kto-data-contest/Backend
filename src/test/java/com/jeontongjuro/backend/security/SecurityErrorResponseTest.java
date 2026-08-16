@@ -11,10 +11,14 @@ import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 
 @SpringBootTest
 @AutoConfigureMockMvc
+@TestPropertySource(properties = {
+        "spring.datasource.url=jdbc:postgresql://localhost:5432/jeontongjuro_test"
+})
 @EnabledIf(value = "com.jeontongjuro.backend.testsupport.LocalPostgres#isUp",
         disabledReason = "로컬 PostgreSQL 미기동(docker compose up -d 필요)")
 class SecurityErrorResponseTest {
