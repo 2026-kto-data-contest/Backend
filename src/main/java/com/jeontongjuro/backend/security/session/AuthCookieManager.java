@@ -75,7 +75,7 @@ public class AuthCookieManager {
         ResponseCookie cookie = ResponseCookie.from(name, value)
                 .httpOnly(httpOnly)
                 .secure(properties.cookieSecure())
-                .sameSite("Lax")
+                .sameSite(properties.cookieSameSite())
                 .path("/")
                 .maxAge(maxAge)
                 .build();

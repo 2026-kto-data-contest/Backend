@@ -54,9 +54,10 @@ public class BreweryQueryController {
             @RequestParam(required = false) String alwaysVisit,
             @Parameter(description = "양조장 이름 검색어. 보내지 않으면 이름 검색 안 함", example = "해남")
             @RequestParam(required = false) String keyword,
-            @Parameter(description = "주종 필터. 여러 번 보내면(liquorType=탁주&liquorType=증류주) 그중 하나라도 "
-                    + "빚는 양조장이 모두 나옵니다. 허용값: 탁주, 약주, 청주, 증류주, 과실주. 보내지 않으면 주종 제한 없음",
-                    example = "탁주")
+            @Parameter(
+                    description = "주종 필터. 여러 번 보내면(liquorType=탁주&liquorType=증류주) 그중 하나라도 "
+                            + "빚는 양조장이 모두 나옵니다. 허용값: 탁주, 약주, 청주, 증류주, 과실주. 보내지 않으면 주종 제한 없음",
+                    example = "[\"탁주\"]")
             @RequestParam(required = false) List<String> liquorType,
             @Parameter(description = "최소 도수(%). 이 도수 이상을 파는 곳. maxAbv와 함께 주면 그 범위와 겹치는 제품이 있는 곳. "
                     + "0~100, 단독 사용 가능. 보내지 않으면 하한 제한 없음", example = "15")
