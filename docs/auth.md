@@ -32,7 +32,8 @@ DB·Redirect URI·프론트 주소·세션 기간·쿠키 보안은 `application
 1. 카카오 로그인 사용 설정을 켠다.
 2. REST API 키를 확인한다.
 3. Redirect URI에 `KAKAO_REDIRECT_URI`와 완전히 동일한 값을 등록한다.
-4. 동의항목에서 닉네임과 필요한 경우 카카오계정(이메일)을 설정한다.
+4. 동의항목에서 닉네임과 카카오계정(이메일)을 설정한다. 이메일은 사용자가 동의하지 않거나
+   카카오계정에 값이 없을 수 있으므로 서비스에서는 nullable로 처리한다.
 5. Client Secret을 활성화한 경우 환경변수에도 같은 값을 입력한다.
 
 ## 브라우저 로그인 흐름
@@ -42,7 +43,9 @@ DB·Redirect URI·프론트 주소·세션 기간·쿠키 보안은 `application
 3. 카카오가 `/api/v1/auth/kakao/callback`으로 인가 코드를 전달한다.
 4. 백엔드가 카카오 토큰과 사용자 정보를 서버 간 통신으로 조회한다.
 5. 백엔드가 무작위 세션 원문의 SHA-256 해시만 DB에 저장하고, 원문은 HttpOnly 쿠키로 전달한다.
-6. 필수 약관 미동의 회원은 `/terms`, 온보딩 미완료 회원은 `/onboarding`, 완료 회원은 `returnTo`로 이동한다.
+6. 백엔드는 검증한 `returnTo`를 회원의 로그인 진행 상태에 보관한다.
+7. 필수 약관 미동의 회원은 `/terms`, 온보딩 미완료 회원은 `/onboarding`, 완료 회원은 `returnTo`로 이동한다.
+8. 신규 회원도 약관과 온보딩을 모두 완료하면 로그인 직전 경로로 복귀한다.
 
 카카오 로그인 취소 또는 오류가 발생하면 프론트의 `/login`으로 돌아간다.
 
@@ -71,17 +74,25 @@ POST·PATCH·DELETE 전에 `GET /api/v1/auth/csrf`를 호출하고 응답의 토
 - `/onboarding`: 신규 회원 온보딩 화면
 - 로그인 시작 시 돌아갈 화면을 `returnTo`로 전달
 
+약관 저장 후 `POST /api/v1/auth/continue`를 호출해 다음 화면으로 이동한다. 온보딩 마지막 저장이
+성공하면 `POST /api/v1/onboarding/complete`를 호출하고 응답의 `nextPath`로 이동한다. 로그인 직전 경로는
+백엔드가 보관하므로 프론트가 임의의 외부 URL을 저장하거나 그대로 리다이렉트하지 않는다.
+
 ## API
 
 - `GET /api/v1/auth/kakao`: 카카오 로그인 시작
 - `GET /api/v1/auth/kakao/callback`: 카카오 서버용 콜백(Swagger 비노출)
 - `GET /api/v1/auth/csrf`: CSRF 토큰 발급
 - `GET /api/v1/auth/me`: 현재 회원 및 진행 상태
+- `POST /api/v1/auth/continue`: 약관·온보딩 상태에 따른 다음 내부 경로 조회
 - `POST /api/v1/auth/logout`: 현재 세션 폐기
 - `GET /api/v1/terms`: 현재 약관과 회원 동의 상태 조회
 - `POST /api/v1/terms/agreements`: 필수·선택 약관 선택 저장
+- `PATCH /api/v1/terms/agreements/{code}`: 마이페이지에서 선택 약관 동의 변경·철회
+- `POST /api/v1/onboarding/complete`: 온보딩 완료 저장 및 로그인 직전 경로 반환
 
-약관 전문 URL은 콘텐츠가 확정된 후 `terms_definition.content_url`에 입력한다.
+약관 전문 경로는 프론트 배포 주소가 바뀌어도 사용할 수 있도록 `/terms/service-use` 같은 상대 경로로 반환한다.
+프론트는 각 경로에 약관 전문 화면을 제공하고, 실제 법적 문구는 서비스 정책 확정본을 사용한다.
 
 API 오류 응답은 조회·인증 등 모든 도메인에서 다음 공통 형식을 사용한다.
 

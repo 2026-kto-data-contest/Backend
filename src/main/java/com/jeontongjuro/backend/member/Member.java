@@ -42,6 +42,9 @@ public class Member {
     @Column(name = "onboarding_completed", nullable = false)
     private boolean onboardingCompleted;
 
+    @Column(name = "post_login_return_to", columnDefinition = "text")
+    private String postLoginReturnTo;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
@@ -65,6 +68,16 @@ public class Member {
 
     public void completeOnboarding() {
         this.onboardingCompleted = true;
+    }
+
+    public void rememberPostLoginReturnTo(String returnTo) {
+        this.postLoginReturnTo = returnTo;
+    }
+
+    public String consumePostLoginReturnTo() {
+        String returnTo = postLoginReturnTo;
+        postLoginReturnTo = null;
+        return returnTo;
     }
 
     @PrePersist

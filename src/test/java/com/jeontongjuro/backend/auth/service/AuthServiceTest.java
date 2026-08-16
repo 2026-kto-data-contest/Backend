@@ -3,6 +3,7 @@ package com.jeontongjuro.backend.auth.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.verify;
 
 import com.jeontongjuro.backend.auth.kakao.KakaoClient;
 import com.jeontongjuro.backend.auth.kakao.KakaoProperties;
@@ -62,6 +63,7 @@ class AuthServiceTest {
 
         assertThat(result.sessionToken()).isEqualTo("session-token");
         assertThat(result.nextPath()).isEqualTo("/terms");
+        verify(member).rememberPostLoginReturnTo("/breweries");
     }
 
     @Test
@@ -79,5 +81,20 @@ class AuthServiceTest {
         var result = authService.completeLogin("code", "//evil.example");
 
         assertThat(result.nextPath()).isEqualTo("/");
+    }
+
+    @Test
+    void continueLoginKeepsOriginalPathUntilAllStepsAreComplete() {
+        Member member = mock(Member.class);
+        when(memberRepository.findById(10L)).thenReturn(Optional.of(member));
+        when(termsService.hasRequiredAgreements(10L)).thenReturn(true);
+        when(member.isOnboardingCompleted()).thenReturn(false);
+
+        assertThat(authService.continueLogin(10L)).isEqualTo("/onboarding");
+
+        when(member.isOnboardingCompleted()).thenReturn(true);
+        when(member.consumePostLoginReturnTo()).thenReturn("/breweries/BRW-001");
+
+        assertThat(authService.continueLogin(10L)).isEqualTo("/breweries/BRW-001");
     }
 }

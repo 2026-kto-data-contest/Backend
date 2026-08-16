@@ -3,6 +3,7 @@ package com.jeontongjuro.backend.terms;
 import com.jeontongjuro.backend.security.session.AuthenticatedMember;
 import com.jeontongjuro.backend.terms.dto.TermsAgreementRequest;
 import com.jeontongjuro.backend.terms.dto.TermsResponse;
+import com.jeontongjuro.backend.terms.dto.OptionalTermsAgreementRequest;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.enums.ParameterIn;
@@ -16,6 +17,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -74,5 +77,28 @@ public class TermsController {
     public List<TermsResponse> agree(@AuthenticationPrincipal AuthenticatedMember member,
                                      @Valid @RequestBody TermsAgreementRequest request) {
         return termsService.agree(member.id(), request);
+    }
+
+    @Operation(
+            summary = "선택 약관 동의 변경",
+            description = """
+                    마이페이지 설정에서 LOCATION 또는 MARKETING 동의를 변경할 때 호출합니다.
+                    필수 약관은 이 API로 철회할 수 없습니다.
+                    """)
+    @Parameter(name = "X-XSRF-TOKEN", in = ParameterIn.HEADER, required = true,
+            description = "GET /api/v1/auth/csrf에서 발급받은 CSRF 토큰")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "선택 약관 동의 변경 성공"),
+            @ApiResponse(responseCode = "400", description = "필수·미등록 약관 코드"),
+            @ApiResponse(responseCode = "401", description = "로그인 필요"),
+            @ApiResponse(responseCode = "403", description = "CSRF 토큰 누락 또는 불일치")
+    })
+    @PatchMapping("/agreements/{code}")
+    public TermsResponse updateOptionalAgreement(
+            @AuthenticationPrincipal AuthenticatedMember member,
+            @PathVariable String code,
+            @Valid @RequestBody OptionalTermsAgreementRequest request
+    ) {
+        return termsService.updateOptionalAgreement(member.id(), code, request);
     }
 }
