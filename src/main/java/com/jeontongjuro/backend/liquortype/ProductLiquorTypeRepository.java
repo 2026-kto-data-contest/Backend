@@ -46,4 +46,21 @@ public interface ProductLiquorTypeRepository extends JpaRepository<ProductLiquor
             WHERE t.breweryId IN :breweryIds
             """)
     List<Object[]> findDistinctTypesByBreweryIdIn(@Param("breweryIds") Collection<String> breweryIds);
+
+    /**
+     * 제품 카드 조회용 — 제품(source_row_ref)별 주종(distinct)을 IN 배치로 읽어 N+1을 피한다.
+     * 한 제품이 주종을 여럿 가지면(2주종 실존) 조합별로 여러 행이 반환된다.
+     * <p>
+     * ★{@code suppressed_from_tab}은 <b>양조장 주종 탭 전용 재검토 플래그</b>이지 오태깅 표시가 아니다.
+     * 제품 카드는 제품 단위 표시라 이 플래그를 적용하면 유일 주종이 사라진다. (해당 9건은 전부 제품당
+     * 유일 주종이며 태깅 내용은 정확하다.) 따라서 여기서는 억제 필터를 걸지 않는다.
+     *
+     * @return {@code [sourceRowRef(Integer), liquorType(LiquorType)]} 튜플 목록(제품·주종 조합별 1행)
+     */
+    @Query("""
+            SELECT DISTINCT t.sourceRowRef, t.liquorType
+            FROM ProductLiquorType t
+            WHERE t.sourceRowRef IN :sourceRowRefs
+            """)
+    List<Object[]> findTypesBySourceRowRefIn(@Param("sourceRowRefs") Collection<Integer> sourceRowRefs);
 }
