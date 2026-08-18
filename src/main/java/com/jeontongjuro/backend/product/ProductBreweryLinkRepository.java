@@ -13,6 +13,9 @@ public interface ProductBreweryLinkRepository extends JpaRepository<ProductBrewe
 
     List<ProductBreweryLink> findByJoinSource(JoinSource joinSource);
 
+    /** 제품 목록 조회용 — 한 양조장의 연결 제품(링크)을 모두 읽는다(brewery_id 인덱스 사용). */
+    List<ProductBreweryLink> findByBreweryId(String breweryId);
+
     /** 주종 MANUAL 시드 적재 시 제품 참조(source_row_ref)로 연결 확정 brewery_id를 도출한다(uq라 최대 1건). */
     Optional<ProductBreweryLink> findBySourceRowRef(Integer sourceRowRef);
 

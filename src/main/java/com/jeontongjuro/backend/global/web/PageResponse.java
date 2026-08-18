@@ -32,4 +32,18 @@ public record PageResponse<T>(
                 source.getTotalElements(),
                 source.getTotalPages());
     }
+
+    /**
+     * 인메모리 페이지네이션용 팩토리 — Spring {@link Page} 없이 계산한 메타로 감싼다. 전체를 메모리에서 정렬·
+     * 병합한 뒤 슬라이스하는 조회(제품 목록)에서 쓴다. totalPages는 totalElements/size의 올림.
+     *
+     * @param content       현재 페이지에 담을(이미 슬라이스된) DTO 목록
+     * @param page          현재 페이지 번호(0-based, 클램프 후)
+     * @param size          페이지 크기(클램프 후, 1 이상)
+     * @param totalElements 필터·제외·병합을 모두 반영한 전체 건수
+     */
+    public static <T> PageResponse<T> of(List<T> content, int page, int size, long totalElements) {
+        int totalPages = size < 1 ? 0 : (int) Math.ceil((double) totalElements / size);
+        return new PageResponse<>(content, page, size, totalElements, totalPages);
+    }
 }
