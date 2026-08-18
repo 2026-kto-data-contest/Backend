@@ -51,13 +51,25 @@ public record BrewerySearchCondition(
                                             BigDecimal minAbv, BigDecimal maxAbv) {
         validateAbv(minAbv, maxAbv);
         return new BrewerySearchCondition(
-                Region.from(region),
-                parseVisit("reservationVisit", reservationVisit),
-                parseVisit("alwaysVisit", alwaysVisit),
+                Region.from(strip(region)),
+                parseVisit("reservationVisit", strip(reservationVisit)),
+                parseVisit("alwaysVisit", strip(alwaysVisit)),
                 normalizeKeyword(keyword),
                 parseLiquorTypes(liquorType),
                 minAbv,
                 maxAbv);
+    }
+
+    /**
+     * 필터 파라미터 앞뒤 공백 정규화(부채 #21). 값 검증 직전에 딱 한 곳(이 팩토리)에서 수행해 트림 규칙이
+     * 계층마다 갈라지지 않게 한다. ★앞뒤 공백만 제거하고 중간 공백은 보존하므로 "수도 권" 같은 값은 여전히 400이다.
+     * <p>
+     * 트림 후 빈 문자열/blank의 취급은 기존 검증 의미를 바꾸지 않는다: region·visit는 {@code Region.from}·
+     * {@code parseVisit}의 blank→null 규약(필터 미적용)을, liquorType은 {@code LiquorType.from}의 빈값→400
+     * 설계를 그대로 탄다. 이 정규화는 "유효값에 붙은 패딩"만 관용하고, 유효/무효 판정 자체는 건드리지 않는다.
+     */
+    private static String strip(String raw) {
+        return raw == null ? null : raw.strip();
     }
 
     /**
@@ -94,7 +106,9 @@ public record BrewerySearchCondition(
         }
         List<LiquorType> parsed = new ArrayList<>(raw.size());
         for (String value : raw) {
-            parsed.add(LiquorType.from(value));
+            // 다중값은 원소별로 앞뒤 공백을 제거한다("탁주 "·" 약주" 각각). 트림 후 빈값·정의 밖 값은
+            // LiquorType.from이 기존대로 400으로 매핑한다(중간 공백 "탁 주"도 400 유지).
+            parsed.add(LiquorType.from(strip(value)));
         }
         return parsed;
     }

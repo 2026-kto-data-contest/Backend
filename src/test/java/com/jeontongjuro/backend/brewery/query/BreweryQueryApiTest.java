@@ -144,6 +144,88 @@ class BreweryQueryApiTest {
                 .andExpect(jsonPath("$.message").isNotEmpty());
     }
 
+    // ── 필터 파라미터 트림 일관화(부채 #21) ────────────────────────────────────────
+    // 앞뒤 공백이 붙은 '유효값'은 트림 후 통과(200), 중간 공백은 여전히 무효(400).
+    // 트림 후 빈값/공백은 기존 검증 의미를 유지한다(region blank→필터 미적용, liquorType blank→400).
+
+    @Test
+    @DisplayName("트림: region 뒤 공백 '수도권 ' → 200, 수도권 13건(공백 없는 것과 동일)")
+    void regionTrailingSpaceIsTrimmed() throws Exception {
+        mockMvc.perform(get("/api/v1/breweries").param("region", "수도권 ").param("size", "100"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(13));
+    }
+
+    @Test
+    @DisplayName("트림: region 앞 공백 ' 수도권' → 200, 수도권 13건")
+    void regionLeadingSpaceIsTrimmed() throws Exception {
+        mockMvc.perform(get("/api/v1/breweries").param("region", " 수도권").param("size", "100"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(13));
+    }
+
+    @Test
+    @DisplayName("★트림 경계: region 중간 공백 '수도 권' → 400(중간 공백은 보존되어 무효)")
+    void regionInnerSpaceStillYields400() throws Exception {
+        mockMvc.perform(get("/api/v1/breweries").param("region", "수도 권"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("INVALID_QUERY_PARAMETER"))
+                .andExpect(jsonPath("$.message").isNotEmpty());
+    }
+
+    @Test
+    @DisplayName("트림 후 빈값: region '   '(공백만) → 200, 필터 미적용 전체 59(기존 blank→null 유지)")
+    void regionWhitespaceOnlyIsNoFilter() throws Exception {
+        mockMvc.perform(get("/api/v1/breweries").param("region", "   ").param("size", "100"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(59));
+    }
+
+    @Test
+    @DisplayName("트림: reservationVisit 뒤 공백 'Y ' → 200, 예약 Y 24건")
+    void reservationVisitTrailingSpaceIsTrimmed() throws Exception {
+        mockMvc.perform(get("/api/v1/breweries").param("reservationVisit", "Y ").param("size", "100"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(24));
+    }
+
+    @Test
+    @DisplayName("트림: liquorType 뒤 공백 '탁주 ' → 200, 탁주 2건(공백 없는 것과 동일)")
+    void liquorTypeTrailingSpaceIsTrimmed() throws Exception {
+        seedLiquorTags();
+        mockMvc.perform(get("/api/v1/breweries").param("liquorType", "탁주 ").param("size", "100"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(2));
+    }
+
+    @Test
+    @DisplayName("트림: liquorType 다중값 각각 공백 '탁주 '·' 약주' → 200, OR 2건(원소별 트림)")
+    void liquorTypeMultiValueEachTrimmed() throws Exception {
+        seedLiquorTags();
+        mockMvc.perform(get("/api/v1/breweries")
+                        .param("liquorType", "탁주 ").param("liquorType", " 약주").param("size", "100"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(2));
+    }
+
+    @Test
+    @DisplayName("트림 후 빈값: liquorType '   '(공백만) → 400(기존 빈값→400 설계 유지)")
+    void liquorTypeWhitespaceOnlyStillYields400() throws Exception {
+        mockMvc.perform(get("/api/v1/breweries").param("liquorType", "   "))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("INVALID_QUERY_PARAMETER"));
+    }
+
+    @Test
+    @DisplayName("트림 회귀 없음: keyword 앞뒤 공백 ' 안동소주 ' → 부분일치 정상(strip+NFC 유지)")
+    void keywordSurroundingSpaceStillMatches() throws Exception {
+        JsonNode content = readContent(
+                get("/api/v1/breweries").param("keyword", " 안동소주 ").param("size", "100"));
+        assertThat(content).isNotEmpty();
+        content.forEach(item ->
+                assertThat(item.get("businessName").asText()).contains("안동소주"));
+    }
+
     @Test
     @DisplayName("size 상한 클램프: size=1000 요청 → 응답 size == 100")
     void sizeIsClampedTo100() throws Exception {
