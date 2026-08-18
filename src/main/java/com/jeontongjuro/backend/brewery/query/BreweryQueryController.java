@@ -1,8 +1,12 @@
 package com.jeontongjuro.backend.brewery.query;
 
+import com.jeontongjuro.backend.global.error.ErrorResponse;
 import com.jeontongjuro.backend.global.web.PageResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.ExampleObject;
+import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -43,7 +47,19 @@ public class BreweryQueryController {
             """)
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "양조장 목록 조회 성공"),
-            @ApiResponse(responseCode = "400", description = "잘못된 필터 또는 페이징 값")
+            @ApiResponse(responseCode = "400",
+                    description = "잘못된 필터 또는 페이징 값(code=INVALID_QUERY_PARAMETER). "
+                            + "발생 조건: region·reservationVisit·alwaysVisit·liquorType이 허용 집합 밖(예: region=경기, "
+                            + "reservationVisit=X, liquorType=맥주), minAbv/maxAbv가 0~100 밖이거나 minAbv>maxAbv, "
+                            + "page·size에 숫자가 아닌 값. ※page 음수·size 범위 밖은 400이 아니라 보정된다.",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class),
+                            examples = @ExampleObject(value = "{\"code\":\"INVALID_QUERY_PARAMETER\","
+                                    + "\"message\":\"허용되지 않은 region 값입니다: '경기' (허용: 수도권, 충청, 전라, 경상, 부산, 울산, 강원, 제주)\"}"))),
+            @ApiResponse(responseCode = "500",
+                    description = "서버 내부 오류(code=INTERNAL_SERVER_ERROR). 예기치 못한 예외를 공통 계약으로 감싼 응답.",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class),
+                            examples = @ExampleObject(value = "{\"code\":\"INTERNAL_SERVER_ERROR\","
+                                    + "\"message\":\"서버 내부 오류가 발생했습니다.\"}")))
     })
     public PageResponse<BreweryListItemResponse> list(
             @Parameter(description = "지역 필터. 보내지 않으면 전체 지역", example = "전라")
@@ -65,9 +81,10 @@ public class BreweryQueryController {
             @Parameter(description = "최대 도수(%). 이 도수 이하를 파는 곳. 0~100, minAbv보다 작으면 400. "
                     + "보내지 않으면 상한 제한 없음", example = "29")
             @RequestParam(required = false) BigDecimal maxAbv,
-            @Parameter(description = "페이지 번호. 0부터 시작", example = "0")
+            @Parameter(description = "페이지 번호. 0부터 시작. 음수를 보내면 400이 아니라 0으로 보정됨", example = "0")
             @RequestParam(defaultValue = "0") int page,
-            @Parameter(description = "한 페이지에 받을 개수. 최대 100", example = "20")
+            @Parameter(description = "한 페이지에 받을 개수. 기본 20, 최대 100. "
+                    + "1 미만은 기본값(20), 100 초과는 100으로 보정됨(범위 밖도 400이 아니라 보정)", example = "20")
             @RequestParam(defaultValue = "20") int size) {
         BrewerySearchCondition condition = BrewerySearchCondition.of(
                 region, reservationVisit, alwaysVisit, keyword, liquorType, minAbv, maxAbv);
@@ -85,7 +102,17 @@ public class BreweryQueryController {
             """)
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "양조장 상세 조회 성공"),
-            @ApiResponse(responseCode = "404", description = "해당 breweryId의 양조장이 없음(BREWERY_NOT_FOUND)")
+            @ApiResponse(responseCode = "404",
+                    description = "해당 breweryId의 양조장이 없음(code=BREWERY_NOT_FOUND). "
+                            + "발생 조건: 경로의 breweryId가 존재하지 않을 때.",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class),
+                            examples = @ExampleObject(value = "{\"code\":\"BREWERY_NOT_FOUND\","
+                                    + "\"message\":\"양조장을 찾을 수 없습니다: BRW-999\"}"))),
+            @ApiResponse(responseCode = "500",
+                    description = "서버 내부 오류(code=INTERNAL_SERVER_ERROR). 예기치 못한 예외를 공통 계약으로 감싼 응답.",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class),
+                            examples = @ExampleObject(value = "{\"code\":\"INTERNAL_SERVER_ERROR\","
+                                    + "\"message\":\"서버 내부 오류가 발생했습니다.\"}")))
     })
     public BreweryDetailResponse detail(
             @Parameter(description = "양조장 고유 ID(BRW-xxx)", example = "BRW-001")

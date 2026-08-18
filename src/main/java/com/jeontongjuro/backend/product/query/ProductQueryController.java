@@ -1,8 +1,12 @@
 package com.jeontongjuro.backend.product.query;
 
+import com.jeontongjuro.backend.global.error.ErrorResponse;
 import com.jeontongjuro.backend.global.web.PageResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.ExampleObject;
+import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -42,15 +46,31 @@ public class ProductQueryController {
             """)
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "제품 목록 조회 성공"),
-            @ApiResponse(responseCode = "400", description = "page·size 형식 오류(INVALID_QUERY_PARAMETER)"),
-            @ApiResponse(responseCode = "404", description = "해당 breweryId의 양조장이 없음(BREWERY_NOT_FOUND)")
+            @ApiResponse(responseCode = "400",
+                    description = "page·size 형식 오류(code=INVALID_QUERY_PARAMETER). "
+                            + "발생 조건: page·size에 숫자가 아닌 값. ※page 음수·size 범위 밖은 400이 아니라 보정된다.",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class),
+                            examples = @ExampleObject(value = "{\"code\":\"INVALID_QUERY_PARAMETER\","
+                                    + "\"message\":\"요청 파라미터 'size' 의 형식이 올바르지 않습니다.\"}"))),
+            @ApiResponse(responseCode = "404",
+                    description = "해당 breweryId의 양조장이 없음(code=BREWERY_NOT_FOUND). "
+                            + "발생 조건: 경로의 breweryId가 존재하지 않을 때.",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class),
+                            examples = @ExampleObject(value = "{\"code\":\"BREWERY_NOT_FOUND\","
+                                    + "\"message\":\"양조장을 찾을 수 없습니다: BRW-999\"}"))),
+            @ApiResponse(responseCode = "500",
+                    description = "서버 내부 오류(code=INTERNAL_SERVER_ERROR). 예기치 못한 예외를 공통 계약으로 감싼 응답.",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class),
+                            examples = @ExampleObject(value = "{\"code\":\"INTERNAL_SERVER_ERROR\","
+                                    + "\"message\":\"서버 내부 오류가 발생했습니다.\"}")))
     })
     public PageResponse<ProductCardResponse> list(
             @Parameter(description = "양조장 고유 ID(BRW-xxx)", example = "BRW-001")
             @PathVariable String breweryId,
-            @Parameter(description = "페이지 번호. 0부터 시작", example = "0")
+            @Parameter(description = "페이지 번호. 0부터 시작. 음수를 보내면 400이 아니라 0으로 보정됨", example = "0")
             @RequestParam(defaultValue = "0") int page,
-            @Parameter(description = "한 페이지에 받을 개수. 기본 5, 최대 100", example = "5")
+            @Parameter(description = "한 페이지에 받을 개수. 기본 5, 최대 100. "
+                    + "1 미만은 기본값(5), 100 초과는 100으로 보정됨(범위 밖도 400이 아니라 보정)", example = "5")
             @RequestParam(defaultValue = "5") int size) {
         return productQueryService.listProducts(breweryId, page, size);
     }
