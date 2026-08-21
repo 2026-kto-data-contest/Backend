@@ -71,6 +71,8 @@ public class NonglimSeedLoadService {
             seedRows++;
             String breweryId = e.get("breweryId").asText();
             Brewery b = breweryRepository.findById(breweryId).orElseThrow();
+            // DEBT-23: founded_year 한 필드 유무로 대표자·선정연도·특징서술까지 통째 skip한다(단일필드 게이트).
+            //          새 시드 컬럼을 추가하면 기존 행은 영구 NULL — 전용 백필 UPDATE 경로를 함께 넣어라. docs/DEBT.md #23
             if (b.getFoundedYear() != null) {
                 skippedExisting++;
                 continue;

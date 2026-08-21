@@ -99,6 +99,8 @@ public class TourDetailEnrichService {
             }
 
             // (2) 운영시간·휴무·주차·수용인원·전화(TOUR) — brewery
+            // DEBT-23: operating_hours 한 필드 유무로 상세 4필드(운영시간·휴무·주차·수용인원)를 통째 skip한다(단일필드 게이트).
+            //          새 상세 컬럼을 추가하면 이미 operating_hours가 찬 기존 행은 영구 NULL — 전용 백필 UPDATE 경로를 함께 넣어라. docs/DEBT.md #23
             if (b.getOperatingHours() != null) {
                 tourDetailSkipped++;
             } else {

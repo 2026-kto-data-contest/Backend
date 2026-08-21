@@ -1,3 +1,6 @@
+# DEBT-a: 이 prod 하드닝(forward-headers·actuator health-only·swagger 토글)은 SPRING_PROFILES_ACTIVE=prod
+#         일 때만 로드된다. 그런데 활성 프로파일이 저장소 어디에도 고정돼 있지 않아(배포 env 전적 의존),
+#         env를 빠뜨린 배포는 이 파일이 통째로 무시되고 기본 프로파일로 조용히 뜬다. docs/DEBT.md #a
 server:
   port: ${PORT:8080}
   forward-headers-strategy: framework

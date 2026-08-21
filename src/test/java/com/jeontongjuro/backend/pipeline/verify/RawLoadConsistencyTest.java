@@ -77,6 +77,8 @@ class RawLoadConsistencyTest {
         collectService.collect(fixtureSource.fetch(RawDataset.PRODUCT), EXPECTED_SNAPSHOT_DATE);
     }
 
+    // DEBT-4: 59·1215(·366) 골든 행수가 이 테스트를 비롯해 GoldenFixtureIntegrityTest·NormalizeGoldenRegressionTest·
+    //         ProcessOrchestratorIntegrationTest에 하드코딩돼 있다. 양조장/스냅샷을 추가하면 이 상수들을 한꺼번에 고쳐야 한다. docs/DEBT.md #4
     @Test
     @DisplayName("행수: brewery_raw == 59, product_raw == 1215 (snapshot_date는 주입 라벨 기준)")
     void rowCountsMatchGolden() {

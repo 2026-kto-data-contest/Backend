@@ -19,6 +19,8 @@ public class CollectHttpConfig {
     @Bean
     public RestClient.Builder collectRestClientBuilder() {
         // 클래스패스의 jackson-databind 기반 기본 컨버터로 충분(JsonNode 파싱 전용 — 값 변환 없음).
+        // DEBT-24: 연결·읽기 타임아웃과 재시도(@Retryable)가 없다. 외부 API(odcloud/KTO/카카오)가 느리거나 끊기면
+        //          collect·process 실행이 무한 대기하거나 1회 실패로 단계가 죽는다. 외부 호출을 켤 때 타임아웃+재시도를 먼저 건다. docs/DEBT.md #24
         return RestClient.builder();
     }
 }
