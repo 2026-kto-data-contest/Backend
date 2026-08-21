@@ -18,11 +18,15 @@ import io.swagger.v3.oas.annotations.media.Schema;
  * @param modifiable 이미지 변형 허용 여부(Type1만 true, 그 외 전부 false)
  */
 public record MainImageResponse(
-        @Schema(description = "대표 이미지 URL", example = "http://tong.visitkorea.or.kr/cms/resource/83/1234583_image2_1.jpg")
+        // 이 객체 자체가 null이거나(대표 이미지 없음), 존재하면 url은 반드시 non-blank(from에서 blank면 객체를 안 만든다).
+        @Schema(description = "대표 이미지 URL", example = "http://tong.visitkorea.or.kr/cms/resource/83/1234583_image2_1.jpg",
+                requiredMode = Schema.RequiredMode.REQUIRED)
         String url,
-        @Schema(description = "저작권 구분 코드(공공누리 유형): Type1(제1유형), Type3(제3유형)", example = "Type1")
+        @Schema(description = "저작권 구분 코드(공공누리 유형): Type1(제1유형), Type3(제3유형). 원문 없으면 null",
+                example = "Type1", nullable = true)
         String copyright,
-        @Schema(description = "이미지 변형 허용 여부. Type1이면 true, 그 외(Type3 등)는 false", example = "true")
+        @Schema(description = "이미지 변형 허용 여부. Type1이면 true, 그 외(Type3 등)는 false", example = "true",
+                requiredMode = Schema.RequiredMode.REQUIRED)
         boolean modifiable) {
 
     /** 공공누리 제1유형(출처표시) — 변형 허용. 이 값에서만 modifiable=true. */

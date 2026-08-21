@@ -76,6 +76,34 @@ class DescriptionTruncationPolicyTest {
     }
 
     @Test
+    @DisplayName("마침표 뒤 비ASCII 공백(개행·전각공백·NBSP)은 문장 끝이 아니다 → 경계 없으면 null "
+            + "(실데이터 product_raw.description엔 0건 — 방어적 봉인)")
+    void nonAsciiWhitespaceAfterPeriodIsNotSentenceEnd() {
+        // 정책은 '마침표+ASCII 0x20' 또는 '마침표+문자열끝'만 문장 끝으로 본다. 마침표 뒤가 개행/전각공백/NBSP면
+        // 경계로 인정하지 않는다 — 이 세 문자가 유일한 마침표 뒤에 오면 문장 끝이 없어 null을 반환한다.
+        // ★실데이터 조사: product_raw.description 전수에서 이 세 문자 0건(관광공사 overview는 이 정책의 입력이 아니다).
+        //   현재 동작을 봉인만 한다(정책 변경은 스코프 밖).
+        for (char ws : new char[] {'\n', '\u3000', '\u00A0'}) {
+            String s = padTo("여기서 문장이 끝난다." + ws + "미완성 꼬리표현이 계속 이어지는 중", 78);
+            assertThat(s).hasSize(78);
+            assertThat(s).as("마침표 뒤 ASCII 공백 경계는 없다(U+%04X)", (int) ws).doesNotContain(". ");
+            assertThat(DescriptionTruncationPolicy.apply(s))
+                    .as("마침표 뒤 비ASCII 공백 U+%04X은 경계가 아님 → null", (int) ws)
+                    .isNull();
+        }
+    }
+
+    @Test
+    @DisplayName("번호 목록의 'N. '은 문장 끝으로 오인된다 → 마지막 'N.'에서 잘림(현재 동작 봉인, 78/79 실데이터 0건)")
+    void numberListDotSpaceIsFalsePositive() {
+        // '3. ' 같은 번호 목록 구분자도 '마침표+공백'이라 문장 끝으로 오탐되어 목록 중간에서 잘린다.
+        // ★78/79 길이의 실데이터엔 이 패턴 0건이지만, 정책의 알려진 오탐을 합성 입력으로 봉인한다(변경 아님).
+        String s = padTo("재료는 1. 쌀 2. 누룩 3. 정제수를 정성껏 배합하여 오랜 시간 발효 숙성시킨 전통 방식의 술", 78);
+        assertThat(s).hasSize(78);
+        assertThat(DescriptionTruncationPolicy.apply(s)).isEqualTo("재료는 1. 쌀 2. 누룩 3.");
+    }
+
+    @Test
     @DisplayName("null → null, 빈 문자열 → null")
     void nullAndEmpty() {
         assertThat(DescriptionTruncationPolicy.apply(null)).isNull();

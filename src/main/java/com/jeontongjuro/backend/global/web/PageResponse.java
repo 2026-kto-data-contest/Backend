@@ -17,11 +17,16 @@ import org.springframework.data.domain.Page;
  * @param totalPages    전체 페이지 수
  */
 public record PageResponse<T>(
-        @Schema(description = "현재 페이지에 포함된 데이터 목록") List<T> content,
-        @Schema(description = "현재 페이지 번호. 0부터 시작", example = "0") int page,
-        @Schema(description = "요청한 페이지 크기", example = "20") int size,
-        @Schema(description = "필터를 적용한 전체 데이터 개수", example = "42") long totalElements,
-        @Schema(description = "전체 페이지 수", example = "3") int totalPages) {
+        @Schema(description = "현재 페이지에 포함된 데이터 목록. 비어 있어도 null이 아니라 빈 배열",
+                requiredMode = Schema.RequiredMode.REQUIRED) List<T> content,
+        @Schema(description = "현재 페이지 번호. 0부터 시작", example = "0",
+                requiredMode = Schema.RequiredMode.REQUIRED) int page,
+        @Schema(description = "요청한 페이지 크기", example = "20",
+                requiredMode = Schema.RequiredMode.REQUIRED) int size,
+        @Schema(description = "필터를 적용한 전체 데이터 개수", example = "42",
+                requiredMode = Schema.RequiredMode.REQUIRED) long totalElements,
+        @Schema(description = "전체 페이지 수", example = "3",
+                requiredMode = Schema.RequiredMode.REQUIRED) int totalPages) {
 
     /** Spring {@link Page}에서 메타를 추출하고, content는 이미 매핑된 DTO 목록으로 감싼다. */
     public static <T> PageResponse<T> of(List<T> content, Page<?> source) {
