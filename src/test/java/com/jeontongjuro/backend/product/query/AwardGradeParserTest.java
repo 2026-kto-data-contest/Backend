@@ -99,6 +99,22 @@ class AwardGradeParserTest {
     }
 
     @Test
+    @DisplayName("선정만 남으면 승자로 반환 → '선정' (실데이터 sr58: 대회명 '대한민국주류대상' 제거 후 선정만 남음)")
+    void seonjeongWins() {
+        // 실데이터(product_raw.source_row_index=58). NAME_NOISE '대한민국주류대상' 제거 후 남는 등급어는 '선정'뿐 →
+        // 표창·선정이 '승자'로 반환되는 경로를 봉인한다(기존 테스트는 전부 상위 등급에 밀린 '패자' 케이스였다).
+        assertThat(AwardGradeParser.parse("2019대한민국주류대상, 2017년 공식건배주선정")).isEqualTo("선정");
+    }
+
+    @Test
+    @DisplayName("표창만 있으면 승자로 반환 → '표창' (합성 입력 — 표창이 단독 승자인 실데이터는 없음)")
+    void pyochangWins() {
+        // ★합성 케이스: 실데이터에서 '표창'은 항상 상위 등급(sr276은 '대상')과 공존해 단독 승자가 된 적이 없다.
+        //   표창 라벨 매핑이 깨져도 아무 테스트가 못 잡는 사각을 합성 입력으로 봉인한다.
+        assertThat(AwardGradeParser.parse("2020 지역 농업 발전 유공 표창")).isEqualTo("표창");
+    }
+
+    @Test
     @DisplayName("awards null → null")
     void nullAwards() {
         assertThat(AwardGradeParser.parse(null)).isNull();

@@ -164,7 +164,7 @@ public class ProductQueryService {
         String volume = representative.raw().getVolume();
 
         // 주종: 그룹 멤버 ref들의 노출 주종 합집합(distinct), LiquorType 선언 순서 정렬
-        List<String> liquorTypes = mergeLiquorTypes(group, typesByRef);
+        List<LiquorType> liquorTypes = mergeLiquorTypes(group, typesByRef);
 
         return new ProductCardResponse(
                 representative.link().getSourceRowRef(),
@@ -177,7 +177,7 @@ public class ProductQueryService {
                 awardBadge);
     }
 
-    private List<String> mergeLiquorTypes(List<RawProduct> group, Map<Integer, List<LiquorType>> typesByRef) {
+    private List<LiquorType> mergeLiquorTypes(List<RawProduct> group, Map<Integer, List<LiquorType>> typesByRef) {
         List<LiquorType> merged = new ArrayList<>();
         for (RawProduct p : group) {
             for (LiquorType t : typesByRef.getOrDefault(p.link().getSourceRowRef(), List.of())) {
@@ -186,8 +186,9 @@ public class ProductQueryService {
                 }
             }
         }
+        // ★enum 그대로 반환한다(응답 DTO가 List<LiquorType>). Jackson이 name()으로 직렬화하므로 wire JSON은 불변.
         merged.sort(Comparator.comparingInt(Enum::ordinal));
-        return merged.stream().map(Enum::name).toList();
+        return merged;
     }
 
     private Map<Integer, ProductRawView> loadRawByRef(List<ProductBreweryLink> links) {

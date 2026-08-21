@@ -11,11 +11,14 @@ import io.swagger.v3.oas.annotations.media.Schema;
  * duration은 원문 "H:MM"(예 "2:00"·"8:00") 그대로다.
  */
 public record ExperienceResponse(
-        @Schema(description = "체험 프로그램명", example = "누룩만들기") String programName,
-        @Schema(description = "체험 내용 설명", example = "전통 누룩을 직접 디뎌 만드는 체험") String content,
-        @Schema(description = "체험 장소", example = "명인 안동소주 양조장") String place,
-        @Schema(description = "소요시간 원문 H:MM. 없으면 null", example = "2:00") String duration,
-        @Schema(description = "체험 비용(원). 0=무료·null=정보 없음(둘을 구분)", example = "20000") Integer cost) {
+        @Schema(description = "체험 프로그램명", example = "누룩만들기",
+                requiredMode = Schema.RequiredMode.REQUIRED) String programName,
+        @Schema(description = "체험 내용 설명. 없으면 null", example = "전통 누룩을 직접 디뎌 만드는 체험",
+                nullable = true) String content,
+        @Schema(description = "체험 장소. 없으면 null", example = "명인 안동소주 양조장", nullable = true) String place,
+        @Schema(description = "소요시간 원문 H:MM. 없으면 null", example = "2:00", nullable = true) String duration,
+        @Schema(description = "체험 비용(원). 0=무료·null=정보 없음(둘을 구분)", example = "20000",
+                nullable = true) Integer cost) {
 
     public static ExperienceResponse from(BreweryExperience e) {
         return new ExperienceResponse(
