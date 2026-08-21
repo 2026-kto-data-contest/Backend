@@ -293,10 +293,13 @@ ALTER TABLE brewery_feature_tag ADD CONSTRAINT ck_brewery_feature_tag_type CHECK
 --
 -- content_type_id에 CHECK를 걸지 않는다: 강화 표본 실측 8종 혼재(39/28/12/14/32/38/25/15)이나
 --   표본 1곳 기준이라 타 지역 미관측 타입이 나올 수 있다 — 관측 안 된 값을 배제하지 않는다(교정4).
--- overview·overview_fetched_at은 컬럼만 만들고 이번 사이클엔 채우지 않는다(둘 다 NULL 유지).
---   ★이유(수정4): overview_fetched_at은 "이 콘텐츠 상세를 받았는가"의 유일한 판별 컬럼이다. 접지분
---   일부만 채우면 NULL이 "안 받음"인지 "받았는데 overview 없음"인지 구분 불가 → 판별력이 사라진다.
---   그래서 detailCommon2로 접지할 때도 overview는 저장하지 않고 둘 다 NULL로 남긴다(후속 전량 사이클 몫).
+-- overview·overview_fetched_at은 12단계(#50, TourDetailEnrichService.enrich)가 채운다: content_id가
+--   확정된 양조장(매칭분)의 tour_content 행에만 detailCommon2 overview를 backfill하고, 반경 캐시로만
+--   들어온 나머지 행은 NULL로 남는다. 조회 상세(BreweryQueryService.overviewFor)가 이 값을 서빙한다.
+--   ★overview_fetched_at은 "이 콘텐츠 상세를 받았는가"의 유일한 판별 컬럼이자 재실행 멱등 게이트다:
+--   TourDetailEnrichService가 isOverviewFetched()면 API를 다시 부르지 않는다. NULL="아직 안 받음",
+--   값 있음="받음"의 판별력을 지키려고 overview와 overview_fetched_at을 항상 함께 기록한다.
+--   (과거 주석은 "둘 다 NULL 유지"였으나 #50에서 매칭분 backfill이 실행돼 실제와 어긋나 정정함.)
 CREATE TABLE IF NOT EXISTS tour_content (
     content_id            TEXT      PRIMARY KEY,             -- TourAPI contentid 자연키 PK(문자열 원문)
     content_type_id       TEXT      NOT NULL,                -- contenttypeid. ★CHECK 없음(교정4 — 미관측 타입 배제 금지)
@@ -323,8 +326,8 @@ CREATE TABLE IF NOT EXISTS tour_content (
     cpyrht_div_cd         TEXT,                              -- 저작권 구분(Type1/Type3 등)
     source_created_time   TEXT,                              -- TourAPI createdtime 원문(YYYYMMDDHHMMSS)
     source_modified_time  TEXT,                              -- TourAPI modifiedtime 원문 — upsert 변경 감지 기준
-    overview              TEXT,                              -- ★컬럼만 — 이번 미충전(NULL 유지, 위 주석 참조)
-    overview_fetched_at   TIMESTAMPTZ,                       -- ★컬럼만 — 이번 미충전(NULL 유지, 판별력 보존)
+    overview              TEXT,                              -- 12단계(#50)가 매칭분만 backfill·조회 서빙(위 주석 참조)
+    overview_fetched_at   TIMESTAMPTZ,                       -- 상세 수신 판별 컬럼 겸 재실행 멱등 게이트(위 주석 참조)
     created_at            TIMESTAMP NOT NULL,                -- 최초 적재 시각(UTC)
     updated_at            TIMESTAMP NOT NULL                 -- 최종 upsert 시각(UTC)
 );

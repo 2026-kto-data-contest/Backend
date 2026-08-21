@@ -89,6 +89,9 @@ public class TourNearbyCollectService {
         // distinct content_id 커버리지(쌍 단위 upsert 카운터와 별개 지표). 좌표 검증 통과분만 집계.
         java.util.Set<String> distinctContentIds = new java.util.HashSet<>();
 
+        // DEBT-17: 이 루프는 매 실행 전 양조장에 대해 locationBasedList를 라이브 재호출한다(멱등 skip은 DB write만,
+        //          API 호출은 항상). delete 경로가 없어 원본에서 사라진 콘텐츠(유령)는 tour_content에 남는다.
+        //          ★process 재실행 = 사람이 봉인한 유령 정리 상태 파손 + 외부 API 재스캔(~4분). 함부로 재실행 말 것. docs/DEBT.md #17
         for (Brewery b : breweryRepository.findAll()) {
             breweries++;
             if (b.getLatitude() == null || b.getLongitude() == null) {

@@ -124,6 +124,8 @@ public class LiquorInferenceService {
 
             for (Map.Entry<LiquorType, String> entry : firstKeywordByType.entrySet()) {
                 LiquorType type = entry.getKey();
+                // DEBT-1: exclusion은 append-only 삽입 전 필터라 "제외 취소" 경로가 없다(seed·이 필터 모두 revoke 필드 부재).
+                //         한번 제외한 (제품,주종)을 되살리려면 seed 행 물리 삭제뿐 — 되돌릴 일이 생기면 여기부터 본다. docs/DEBT.md #1
                 if (exclusions.contains(new ExclusionKey(rowRef, type))) {
                     excluded++; // 오탐 제외(3d 3차) — 삽입 전 필터, 삽입 후 삭제 아님
                     continue;

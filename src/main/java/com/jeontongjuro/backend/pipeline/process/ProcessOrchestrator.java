@@ -166,6 +166,8 @@ public class ProcessOrchestrator {
                 step(5, "region 갱신", regionUpdateService::apply);
         // 6. liquorRollup — 3d 주종 롤업. MANUAL 시드 선적재(MANUAL wins) → AUTO 추론 순서.
         //    ★AUTO행은 recheck_flag=true(미검증), MANUAL 시드행은 recheck_flag=false(검수 완료).
+        // DEBT-2: MANUAL 시드가 여기(step6)서 커밋된 뒤에야 AUTO 추론 내부의 validateNoContradiction이 돈다.
+        //         MANUAL과 EXCLUSION이 같은 (제품,주종)을 동시 주장하면 커밋 이후 예외 → 되감기 불가, 재적재(truncate) 필요. docs/DEBT.md #2
         LiquorManualSeedLoadService.LoadResult liquorManual =
                 step(6, "주종 MANUAL 시드", liquorManualSeedLoadService::load);
         LiquorInferenceService.InferResult liquorInfer =
