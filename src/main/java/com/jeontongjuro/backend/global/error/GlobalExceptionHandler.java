@@ -2,6 +2,7 @@ package com.jeontongjuro.backend.global.error;
 
 import com.jeontongjuro.backend.auth.exception.AuthException;
 import com.jeontongjuro.backend.brewery.query.BreweryNotFoundException;
+import com.jeontongjuro.backend.search.recent.RecentSearchException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.TypeMismatchException;
@@ -62,6 +63,12 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(AuthException.class)
     public ResponseEntity<ErrorResponse> handleAuthException(AuthException e) {
+        return ResponseEntity.status(e.getStatus())
+                .body(new ErrorResponse(e.getCode(), e.getMessage()));
+    }
+
+    @ExceptionHandler(RecentSearchException.class)
+    public ResponseEntity<ErrorResponse> handleRecentSearchException(RecentSearchException e) {
         return ResponseEntity.status(e.getStatus())
                 .body(new ErrorResponse(e.getCode(), e.getMessage()));
     }
