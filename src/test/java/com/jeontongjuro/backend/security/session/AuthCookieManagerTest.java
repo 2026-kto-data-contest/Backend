@@ -22,4 +22,20 @@ class AuthCookieManagerTest {
                 .contains("HttpOnly")
                 .contains("SameSite=None");
     }
+
+    @Test
+    void csrfCookieIsClearedWithTheSameSecurityAttributes() {
+        AuthCookieManager manager = new AuthCookieManager(
+                new AuthProperties(Duration.ofDays(14), true, "None"));
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        manager.clearCsrfToken(response);
+
+        assertThat(response.getHeader("Set-Cookie"))
+                .contains("XSRF-TOKEN=")
+                .contains("Max-Age=0")
+                .contains("Secure")
+                .contains("SameSite=None")
+                .doesNotContain("HttpOnly");
+    }
 }

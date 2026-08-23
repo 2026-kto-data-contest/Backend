@@ -15,6 +15,7 @@ import org.springframework.stereotype.Component;
 public class AuthCookieManager {
 
     public static final String SESSION_COOKIE = "JT_SESSION";
+    public static final String CSRF_COOKIE = "XSRF-TOKEN";
     public static final String OAUTH_STATE_COOKIE = "JT_OAUTH_STATE";
     public static final String RETURN_TO_COOKIE = "JT_RETURN_TO";
 
@@ -57,6 +58,10 @@ public class AuthCookieManager {
 
     public void clearSession(HttpServletResponse response) {
         delete(response, SESSION_COOKIE);
+    }
+
+    public void clearCsrfToken(HttpServletResponse response) {
+        add(response, CSRF_COOKIE, "", Duration.ZERO, false);
     }
 
     public String read(HttpServletRequest request, String name) {
