@@ -95,6 +95,7 @@ public class AuthController {
 
         try {
             var result = authService.completeLogin(code, returnTo);
+            cookieManager.clearCsrfToken(response);
             cookieManager.addSession(response, result.sessionToken(), sessionService.maxAgeSeconds());
             response.sendRedirect(appProperties.frontendUrl(result.nextPath()));
         } catch (AuthException exception) {
@@ -149,6 +150,7 @@ public class AuthController {
         String sessionToken = cookieManager.read(request, AuthCookieManager.SESSION_COOKIE);
         sessionService.revoke(sessionToken);
         cookieManager.clearSession(response);
+        cookieManager.clearCsrfToken(response);
     }
 
     @Operation(
