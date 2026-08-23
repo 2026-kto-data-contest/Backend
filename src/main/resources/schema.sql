@@ -188,6 +188,23 @@ CREATE TABLE IF NOT EXISTS member_account (
 );
 ALTER TABLE member_account ADD COLUMN IF NOT EXISTS post_login_return_to TEXT;
 
+-- 로그인 회원 최근 검색어. 비로그인 기록은 프론트 로컬 저장소에서 관리한다.
+-- 동일 회원이 같은 type+target을 다시 검색하면 행을 늘리지 않고 검색 시각·표시 스냅샷을 갱신한다.
+CREATE TABLE IF NOT EXISTS recent_search (
+    id           BIGSERIAL PRIMARY KEY,
+    member_id    BIGINT    NOT NULL,
+    search_type  TEXT      NOT NULL,
+    target_id    TEXT      NOT NULL,
+    keyword      TEXT      NOT NULL,
+    display_name TEXT      NOT NULL,
+    searched_at  TIMESTAMP NOT NULL,
+    CONSTRAINT fk_recent_search_member FOREIGN KEY (member_id) REFERENCES member_account (id) ON DELETE CASCADE,
+    CONSTRAINT uq_recent_search_member_target UNIQUE (member_id, search_type, target_id),
+    CONSTRAINT ck_recent_search_type CHECK (search_type IN ('BREWERY', 'PRODUCT', 'REGION'))
+);
+CREATE INDEX IF NOT EXISTS ix_recent_search_member_latest
+    ON recent_search (member_id, searched_at DESC, id DESC);
+
 CREATE TABLE IF NOT EXISTS auth_session (
     id            BIGSERIAL PRIMARY KEY,
     member_id     BIGINT    NOT NULL,
