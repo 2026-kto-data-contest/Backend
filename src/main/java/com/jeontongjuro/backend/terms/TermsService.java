@@ -51,6 +51,9 @@ public class TermsService {
         if (!validCodes.containsAll(choices.keySet())) {
             throw invalidTerms("알 수 없는 약관 코드가 있습니다.");
         }
+        if (!choices.keySet().equals(validCodes)) {
+            throw invalidTerms("현재 표시된 모든 약관의 동의 여부를 보내야 합니다.");
+        }
         boolean requiredRejected = terms.stream()
                 .filter(TermsDefinition::isRequired)
                 .anyMatch(term -> !Boolean.TRUE.equals(choices.get(term.getId().code())));

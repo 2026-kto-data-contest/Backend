@@ -205,6 +205,24 @@ CREATE TABLE IF NOT EXISTS recent_search (
 CREATE INDEX IF NOT EXISTS ix_recent_search_member_latest
     ON recent_search (member_id, searched_at DESC, id DESC);
 
+-- 회원 취향 온보딩 선택값. 한 회원이 범주별로 여러 값을 선택할 수 있으며,
+-- 재저장 시 해당 회원의 기존 선택을 새 선택으로 교체한다.
+CREATE TABLE IF NOT EXISTS member_preference (
+    id          BIGSERIAL PRIMARY KEY,
+    member_id   BIGINT    NOT NULL,
+    category    TEXT      NOT NULL,
+    value       TEXT      NOT NULL,
+    created_at  TIMESTAMP NOT NULL,
+    CONSTRAINT fk_member_preference_member FOREIGN KEY (member_id)
+        REFERENCES member_account (id) ON DELETE CASCADE,
+    CONSTRAINT uq_member_preference_member_value UNIQUE (member_id, category, value),
+    CONSTRAINT ck_member_preference_category CHECK (category IN ('LIQUOR_TYPE', 'REGION', 'ALCOHOL_LEVEL'))
+);
+CREATE INDEX IF NOT EXISTS ix_member_preference_member ON member_preference (member_id);
+ALTER TABLE member_preference DROP CONSTRAINT IF EXISTS ck_member_preference_category;
+ALTER TABLE member_preference ADD CONSTRAINT ck_member_preference_category
+    CHECK (category IN ('LIQUOR_TYPE', 'REGION', 'ALCOHOL_LEVEL'));
+
 CREATE TABLE IF NOT EXISTS auth_session (
     id            BIGSERIAL PRIMARY KEY,
     member_id     BIGINT    NOT NULL,
