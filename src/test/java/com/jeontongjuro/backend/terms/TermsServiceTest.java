@@ -64,6 +64,34 @@ class TermsServiceTest {
     }
 
     @Test
+    void initialAgreementRequiresEveryActiveTermChoice() {
+        TermsDefinitionRepository definitionRepository = mock(TermsDefinitionRepository.class);
+        TermsAgreementRepository agreementRepository = mock(TermsAgreementRepository.class);
+        MemberRepository memberRepository = mock(MemberRepository.class);
+        TermsService service = new TermsService(definitionRepository, agreementRepository, memberRepository);
+        Member member = mock(Member.class);
+        TermsDefinition serviceUse = mock(TermsDefinition.class);
+        TermsDefinition privacy = mock(TermsDefinition.class);
+        TermsDefinition location = mock(TermsDefinition.class);
+        when(serviceUse.getId()).thenReturn(new TermsDefinitionId("SERVICE_USE", "1.0"));
+        when(privacy.getId()).thenReturn(new TermsDefinitionId("PRIVACY", "1.0"));
+        when(location.getId()).thenReturn(new TermsDefinitionId("LOCATION", "1.0"));
+        when(serviceUse.isRequired()).thenReturn(true);
+        when(privacy.isRequired()).thenReturn(true);
+        when(definitionRepository.findByActiveTrueOrderByDisplayOrderAsc())
+                .thenReturn(List.of(serviceUse, privacy, location));
+        when(memberRepository.findById(10L)).thenReturn(Optional.of(member));
+
+        var request = new TermsAgreementRequest(List.of(
+                new TermsAgreementRequest.Choice("SERVICE_USE", true),
+                new TermsAgreementRequest.Choice("PRIVACY", true)));
+
+        assertThatThrownBy(() -> service.agree(10L, request))
+                .isInstanceOf(AuthException.class)
+                .hasMessage("현재 표시된 모든 약관의 동의 여부를 보내야 합니다.");
+    }
+
+    @Test
     void requiredAgreementCannotBeWithdrawnFromSettingsApi() {
         TermsDefinitionRepository definitionRepository = mock(TermsDefinitionRepository.class);
         TermsAgreementRepository agreementRepository = mock(TermsAgreementRepository.class);

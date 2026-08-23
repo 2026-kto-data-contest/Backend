@@ -37,6 +37,8 @@ class OpenApiDocumentationTest {
                 .andExpect(jsonPath("$.paths['/api/v1/terms/agreements/{code}']").exists())
                 .andExpect(jsonPath("$.paths['/api/v1/auth/continue']").exists())
                 .andExpect(jsonPath("$.paths['/api/v1/onboarding/complete']").exists())
+                .andExpect(jsonPath("$.paths['/api/v1/onboarding/preferences'].get").exists())
+                .andExpect(jsonPath("$.paths['/api/v1/onboarding/preferences'].put").exists())
                 .andExpect(jsonPath("$.paths['/api/v1/breweries']").exists())
                 .andExpect(jsonPath("$.paths['/api/v1/auth/kakao/callback']").doesNotExist())
                 .andExpect(jsonPath("$.components.securitySchemes.sessionCookie.name").value("JT_SESSION"));

@@ -18,9 +18,11 @@ class OnboardingServiceTest {
     void completesOnboardingAfterRequiredTermsAgreement() {
         MemberRepository memberRepository = mock(MemberRepository.class);
         TermsService termsService = mock(TermsService.class);
-        OnboardingService service = new OnboardingService(memberRepository, termsService);
+        OnboardingPreferenceRepository preferenceRepository = mock(OnboardingPreferenceRepository.class);
+        OnboardingService service = new OnboardingService(memberRepository, termsService, preferenceRepository);
         Member member = mock(Member.class);
         when(termsService.hasRequiredAgreements(10L)).thenReturn(true);
+        when(preferenceRepository.hasAllRequiredCategories(10L)).thenReturn(true);
         when(memberRepository.findById(10L)).thenReturn(Optional.of(member));
 
         service.complete(10L);
@@ -32,11 +34,26 @@ class OnboardingServiceTest {
     void rejectsOnboardingBeforeRequiredTermsAgreement() {
         MemberRepository memberRepository = mock(MemberRepository.class);
         TermsService termsService = mock(TermsService.class);
-        OnboardingService service = new OnboardingService(memberRepository, termsService);
+        OnboardingPreferenceRepository preferenceRepository = mock(OnboardingPreferenceRepository.class);
+        OnboardingService service = new OnboardingService(memberRepository, termsService, preferenceRepository);
         when(termsService.hasRequiredAgreements(10L)).thenReturn(false);
 
         assertThatThrownBy(() -> service.complete(10L))
                 .isInstanceOf(AuthException.class)
                 .hasMessage("필수 약관 동의 후 온보딩을 완료할 수 있습니다.");
+    }
+
+    @Test
+    void rejectsOnboardingBeforePreferencesAreSaved() {
+        MemberRepository memberRepository = mock(MemberRepository.class);
+        TermsService termsService = mock(TermsService.class);
+        OnboardingPreferenceRepository preferenceRepository = mock(OnboardingPreferenceRepository.class);
+        OnboardingService service = new OnboardingService(memberRepository, termsService, preferenceRepository);
+        when(termsService.hasRequiredAgreements(10L)).thenReturn(true);
+        when(preferenceRepository.hasAllRequiredCategories(10L)).thenReturn(false);
+
+        assertThatThrownBy(() -> service.complete(10L))
+                .isInstanceOf(AuthException.class)
+                .hasMessage("선호 주종과 도수 취향을 저장한 후 온보딩을 완료할 수 있습니다.");
     }
 }

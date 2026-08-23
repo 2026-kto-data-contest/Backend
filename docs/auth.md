@@ -89,7 +89,9 @@ POST·PATCH·DELETE 전에 `GET /api/v1/auth/csrf`를 호출하고 응답의 토
 - `GET /api/v1/terms`: 현재 약관과 회원 동의 상태 조회
 - `POST /api/v1/terms/agreements`: 필수·선택 약관 선택 저장
 - `PATCH /api/v1/terms/agreements/{code}`: 마이페이지에서 선택 약관 동의 변경·철회
-- `POST /api/v1/onboarding/complete`: 온보딩 완료 저장 및 로그인 직전 경로 반환
+- `GET /api/v1/onboarding/preferences`: 현재 회원의 저장된 취향 조회
+- `PUT /api/v1/onboarding/preferences`: 선호 주종·지역·도수 취향 저장 또는 수정
+- `POST /api/v1/onboarding/complete`: 필수 약관·취향 저장 확인 후 온보딩 완료 및 로그인 직전 경로 반환
 
 약관 전문 경로는 프론트 배포 주소가 바뀌어도 사용할 수 있도록 `/terms/service-use` 같은 상대 경로로 반환한다.
 프론트는 각 경로에 약관 전문 화면을 제공하고, 실제 법적 문구는 서비스 정책 확정본을 사용한다.
