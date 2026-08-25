@@ -17,7 +17,8 @@ import java.util.stream.Collectors;
  * 각 필드 null = 해당 필터 미적용. reservationVisit/alwaysVisit는 별 컬럼이므로 각각 받고,
  * 둘 다 지정되면 Specification 조합에서 AND로 걸린다.
  *
- * @param region          지역 칩(null 가능)
+ * @param regions         지역 칩 목록(다중, 비어 있으면 필터 미적용). 여러 값은 Specification에서 OR로 걸린다
+ *                        (liquorTypes와 동일 처리 형식).
  * @param reservationVisit 예약방문 상태(null 가능)
  * @param alwaysVisit      상시방문 상태(null 가능)
  * @param keyword          상호명 부분일치 키워드(NFC 정규화된 값, null 가능)
@@ -27,7 +28,7 @@ import java.util.stream.Collectors;
  * @param maxAbv           도수 상한(null 가능). 겹침 판정에서 제품 alcohol_min &lt;= maxAbv를 요구한다.
  */
 public record BrewerySearchCondition(
-        Region region,
+        List<Region> regions,
         VisitState reservationVisit,
         VisitState alwaysVisit,
         String keyword,
@@ -41,17 +42,18 @@ public record BrewerySearchCondition(
     /**
      * 원문 파라미터 → 검증된 조건. 허용 집합 밖 값은 {@link InvalidQueryParameterException}(400).
      * keyword는 NFC 정규화만 하고 부분일치 매칭은 Specification이 담당한다.
-     * liquorType은 다중 값이라 원소별로 검증하고, 하나라도 정의 밖이면 400.
+     * region·liquorType은 다중 값이라 원소별로 검증하고, 하나라도 정의 밖이면 400
+     * (region은 트림 후 blank 원소만은 liquorType과 달리 기존 단일값 시절 blank→null 정책을 유지해 건너뛴다).
      * 도수(minAbv·maxAbv)는 타입 바인딩(BigDecimal)은 컨트롤러/스프링이 하고(파싱 불가는 400 타입불일치 경로),
      * 값 범위(음수·100 초과·min&gt;max)는 여기서 검증한다.
      */
-    public static BrewerySearchCondition of(String region, String reservationVisit,
+    public static BrewerySearchCondition of(List<String> region, String reservationVisit,
                                             String alwaysVisit, String keyword,
                                             List<String> liquorType,
                                             BigDecimal minAbv, BigDecimal maxAbv) {
         validateAbv(minAbv, maxAbv);
         return new BrewerySearchCondition(
-                Region.from(strip(region)),
+                parseRegions(region),
                 parseVisit("reservationVisit", strip(reservationVisit)),
                 parseVisit("alwaysVisit", strip(alwaysVisit)),
                 normalizeKeyword(keyword),
@@ -97,6 +99,27 @@ public record BrewerySearchCondition(
             throw new InvalidQueryParameterException(
                     "허용되지 않은 " + paramName + " 값입니다: '" + value.toPlainString() + "' (100 이하여야 합니다)");
         }
+    }
+
+    /**
+     * region 원문 목록 → 검증된 지역 칩 목록. null·빈 목록은 "필터 미적용"이므로 빈 목록 반환.
+     * ★liquorType과 달리 트림 후 blank인 원소는 400이 아니라 건너뛴다(기존 단일값 시절 blank→null=필터
+     * 미적용 정책을 다중값 형태에서도 유지 — region만의 예외, liquorType은 blank도 400인 기존 설계 유지).
+     * blank가 아닌 값은 원소별로 {@link Region#from}에 위임해 정의 밖이면 400.
+     */
+    private static List<Region> parseRegions(List<String> raw) {
+        if (raw == null || raw.isEmpty()) {
+            return List.of();
+        }
+        List<Region> parsed = new ArrayList<>(raw.size());
+        for (String value : raw) {
+            String stripped = strip(value);
+            if (stripped == null || stripped.isBlank()) {
+                continue;
+            }
+            parsed.add(Region.from(stripped));
+        }
+        return parsed;
     }
 
     /** 주종 원문 목록 → 검증된 주종 목록. null·빈 목록은 "필터 미적용"이므로 빈 목록 반환. 원소별 검증(하나라도 틀리면 400). */

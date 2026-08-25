@@ -109,6 +109,15 @@ public final class BreweryRegionParser {
     }
 
     /**
+     * 시도 alias 키 집합(삽입 순서 = 최장 프리픽스 우선순위) — 파서 밖(시군구 추출 등) 재사용 전용 노출.
+     * ★{@link #parse}의 반환 계약(RegionResult = sido+region만)은 이 메서드로 바뀌지 않는다 — 이 파서가
+     * 여전히 sido·region의 SSOT이고, alias 표를 다른 클래스가 중복 정의하지 않게 하려고 읽기 전용으로만 연다.
+     */
+    static java.util.Set<String> sidoAliases() {
+        return java.util.Collections.unmodifiableSet(ALIAS_TO_SIDO.keySet());
+    }
+
+    /**
      * 주소 → (sido, region). 맨 앞 토큰 최장 프리픽스로 sido 확정 후 8칩 롤업. 미분류·빈주소는 예외.
      *
      * @throws IllegalArgumentException 시도를 분류하지 못한 경우(조용한 null 대신 시끄러운 실패)

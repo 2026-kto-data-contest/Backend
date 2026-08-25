@@ -148,6 +148,56 @@ class BreweryQueryApiTest {
     // 앞뒤 공백이 붙은 '유효값'은 트림 후 통과(200), 중간 공백은 여전히 무효(400).
     // 트림 후 빈값/공백은 기존 검증 의미를 유지한다(region blank→필터 미적용, liquorType blank→400).
 
+    // ── region 다중 선택(#NN) ────────────────────────────────────────────────
+    // liquorType 다중 처리(원소별 트림·검증, IN OR, 하나라도 정의 밖이면 400)를 그대로 따른다.
+    @Test
+    @DisplayName("region 다중(반복 파라미터): region=수도권&region=경상 → OR, 13+14=27건")
+    void regionMultiRepeatedParam() throws Exception {
+        mockMvc.perform(get("/api/v1/breweries")
+                        .param("region", "수도권").param("region", "경상").param("size", "100"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(27));
+    }
+
+    @Test
+    @DisplayName("region 다중(콤마 구분): region=수도권,경상 → 반복 파라미터와 동일 27건")
+    void regionMultiCommaSeparated() throws Exception {
+        mockMvc.perform(get("/api/v1/breweries")
+                        .param("region", "수도권,경상").param("size", "100"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(27));
+    }
+
+    @Test
+    @DisplayName("region 다중 중 하나가 정의 밖(경기) → 원소별 검증으로 400")
+    void regionMultiWithInvalidElementYields400() throws Exception {
+        mockMvc.perform(get("/api/v1/breweries")
+                        .param("region", "수도권").param("region", "경기"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("INVALID_QUERY_PARAMETER"));
+    }
+
+    @Test
+    @DisplayName("region 다중 중 blank 원소는 건너뛴다(liquorType과 달리 region은 blank→필터 미적용 정책 유지)")
+    void regionMultiBlankElementIsSkipped() throws Exception {
+        mockMvc.perform(get("/api/v1/breweries")
+                        .param("region", "수도권").param("region", "  ").param("size", "100"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(13));
+    }
+
+    // ── 목록 응답 계약(#NN 추가): 시군구·맛 태그·소개 ──────────────────────────────
+    @Test
+    @DisplayName("응답 계약: 제품·콘텐츠 미적재 상태에서도 sigungu 존재·flavorTags=[]·introduction=null")
+    void newAdditiveFieldsContractWhenNoProductOrContent() throws Exception {
+        JsonNode content = readContent(get("/api/v1/breweries").param("size", "100"));
+        JsonNode a = findById(content, "BRW-001");
+        assertThat(a.has("sigungu")).isTrue();
+        assertThat(a.get("flavorTags").isArray()).isTrue();
+        assertThat(a.get("flavorTags")).isEmpty();
+        assertThat(a.get("introduction").isNull()).isTrue();
+    }
+
     @Test
     @DisplayName("트림: region 뒤 공백 '수도권 ' → 200, 수도권 13건(공백 없는 것과 동일)")
     void regionTrailingSpaceIsTrimmed() throws Exception {
