@@ -19,4 +19,7 @@ public interface ProductRawView {
     String getVolume();
 
     String getSaleYn();
+
+    /** 전통주정보 '특징' 필드 원문(맛 태그 매칭 소스). {@link SensoryTagMatcher}가 소비한다. */
+    String getCharacteristics();
 }

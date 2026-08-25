@@ -30,7 +30,7 @@ public final class BreweryQuerySpecifications {
     /** 조건의 지정된 필터만 모아 AND 결합. 전부 미지정이면 무제약(전체 조회). */
     public static Specification<Brewery> build(BrewerySearchCondition cond) {
         List<Specification<Brewery>> specs = new ArrayList<>();
-        addIfPresent(specs, region(cond.region()));
+        addIfPresent(specs, regions(cond.regions()));
         addIfPresent(specs, reservationVisit(cond.reservationVisit()));
         addIfPresent(specs, alwaysVisit(cond.alwaysVisit()));
         addIfPresent(specs, keywordContains(cond.keyword()));
@@ -94,12 +94,13 @@ public final class BreweryQuerySpecifications {
         };
     }
 
-    /** region 칩 정확 일치. region 컬럼 저장값 == 칩 name(). */
-    public static Specification<Brewery> region(Region region) {
-        if (region == null) {
+    /** region 칩 다중 OR(liquorTypes와 동일 처리 형식). region 컬럼 저장값 IN 칩 name() 목록. */
+    public static Specification<Brewery> regions(List<Region> regions) {
+        if (regions == null || regions.isEmpty()) {
             return null;
         }
-        return (root, query, cb) -> cb.equal(root.get("region"), region.name());
+        List<String> names = regions.stream().map(Region::name).toList();
+        return (root, query, cb) -> root.get("region").in(names);
     }
 
     public static Specification<Brewery> reservationVisit(VisitState state) {

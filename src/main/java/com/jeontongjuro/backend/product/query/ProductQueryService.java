@@ -9,6 +9,7 @@ import com.jeontongjuro.backend.product.ProductBreweryLink;
 import com.jeontongjuro.backend.product.ProductBreweryLinkRepository;
 import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -91,30 +92,13 @@ public class ProductQueryService {
         Map<Integer, ProductRawView> rawByRef = loadRawByRef(links);
 
         // ①~③ 조인 + 판매중단 제외 + 원본오류 제외
-        List<RawProduct> kept = new ArrayList<>();
-        for (ProductBreweryLink link : links) {
-            Integer ref = link.getSourceRowRef();
-            ProductRawView raw = rawByRef.get(ref);
-            if (raw == null) {
-                continue; // 링크에 대응하는 raw가 없으면 노출 불가(정상 데이터에선 발생하지 않음)
-            }
-            if (SALE_YN_STOPPED.equals(raw.getSaleYn())) {
-                continue; // ② 판매중단
-            }
-            if (exclusionSeed.isExcluded(ref)) {
-                continue; // ③ 원본오류
-            }
-            kept.add(new RawProduct(link, raw));
-        }
+        List<RawProduct> kept = filterKept(links, rawByRef);
         if (kept.isEmpty()) {
             return List.of();
         }
 
         // ④ 중복 병합 — 제품명 공백 정규화로 그룹핑(삽입 순서 유지)
-        Map<String, List<RawProduct>> groups = new LinkedHashMap<>();
-        for (RawProduct p : kept) {
-            groups.computeIfAbsent(normalizeName(p.link().getProductName()), k -> new ArrayList<>()).add(p);
-        }
+        Map<String, List<RawProduct>> groups = groupByNormalizedName(kept);
 
         // ⑦ 주종 배치 로딩 — 남은 모든 ref 기준(병합 그룹은 멤버 ref들의 합집합으로 노출)
         Map<Integer, List<LiquorType>> typesByRef = loadLiquorTypes(kept);
@@ -135,12 +119,7 @@ public class ProductQueryService {
     /** 한 중복 그룹을 카드 1건으로 병합한다. */
     private ProductCardResponse mergeToCard(List<RawProduct> group, Map<Integer, List<LiquorType>> typesByRef) {
         // 대표 행: 완결 설명 보유 → 수상 보유 → source_row_ref 작은 쪽
-        RawProduct representative = group.stream()
-                .min(Comparator
-                        .comparing((RawProduct p) -> hasCompletableDescription(p) ? 0 : 1)
-                        .thenComparing(p -> hasAwards(p) ? 0 : 1)
-                        .thenComparing(p -> p.link().getSourceRowRef()))
-                .orElseThrow();
+        RawProduct representative = representativeOf(group);
 
         // 설명: 완결성 우선(완결 > 되돌림가능 > 없음), 동점이면 ref 작은 쪽
         RawProduct descSource = group.stream()
@@ -175,6 +154,92 @@ public class ProductQueryService {
                 liquorTypes,
                 description,
                 awardBadge);
+    }
+
+    /**
+     * 양조장 목록 조회의 맛 태그 배치 지원 — 여러 양조장의 "대표 제품 1종"(제품 목록 API 카드 순서 기준 첫 카드)의
+     * 특징(characteristics) 원문을 한 번에 계산해 breweryId별로 반환한다. {@link #buildCards}와 동일한
+     * 제외(②③)·중복 병합(④)·정렬(⑧) 규칙을 배치로 재사용해 양조장마다 따로 조회하는 N+1을 피한다.
+     * <p>
+     * 설명·주종 등 카드의 나머지 필드는 계산하지 않는다(호출자가 특징 텍스트만 필요). 정렬 판정에 쓰는
+     * "수상 뱃지 보유"는 "그룹에 non-blank awards 행이 하나라도 있는가"로 축약한다 — {@link AwardGradeParser#parse}는
+     * awards가 non-blank이면 항상 non-null을 반환하는 계약이 확인돼 있어 완전히 동치다.
+     * <p>
+     * 노출 카드가 없는(kept가 빈) 양조장은 결과 Map에 없다 — 호출자가 없으면 특징 없음으로 처리한다.
+     */
+    public Map<String, String> representativeCharacteristicsByBreweryId(Collection<String> breweryIds) {
+        if (breweryIds.isEmpty()) {
+            return Map.of();
+        }
+        List<ProductBreweryLink> allLinks = linkRepository.findByBreweryIdIn(breweryIds);
+        if (allLinks.isEmpty()) {
+            return Map.of();
+        }
+        Map<Integer, ProductRawView> rawByRef = loadRawByRef(allLinks);
+
+        Map<String, List<ProductBreweryLink>> linksByBrewery = new LinkedHashMap<>();
+        for (ProductBreweryLink link : allLinks) {
+            linksByBrewery.computeIfAbsent(link.getBreweryId(), k -> new ArrayList<>()).add(link);
+        }
+
+        Map<String, String> result = new HashMap<>();
+        for (Map.Entry<String, List<ProductBreweryLink>> e : linksByBrewery.entrySet()) {
+            List<RawProduct> kept = filterKept(e.getValue(), rawByRef);
+            if (kept.isEmpty()) {
+                continue;
+            }
+            Map<String, List<RawProduct>> groups = groupByNormalizedName(kept);
+            RawProduct firstCardRepresentative = groups.values().stream()
+                    .map(group -> new GroupOrderKey(
+                            group.stream().anyMatch(ProductQueryService::hasAwards),
+                            representativeOf(group)))
+                    .min(Comparator
+                            .comparing(GroupOrderKey::hasAwardBadge).reversed()
+                            .thenComparing(k -> k.representative().link().getSourceRowRef()))
+                    .map(GroupOrderKey::representative)
+                    .orElseThrow();
+            result.put(e.getKey(), firstCardRepresentative.raw().getCharacteristics());
+        }
+        return result;
+    }
+
+    /** ①~③ 조인 + 판매중단 제외 + 원본오류 제외. */
+    private List<RawProduct> filterKept(List<ProductBreweryLink> links, Map<Integer, ProductRawView> rawByRef) {
+        List<RawProduct> kept = new ArrayList<>();
+        for (ProductBreweryLink link : links) {
+            Integer ref = link.getSourceRowRef();
+            ProductRawView raw = rawByRef.get(ref);
+            if (raw == null) {
+                continue; // 링크에 대응하는 raw가 없으면 노출 불가(정상 데이터에선 발생하지 않음)
+            }
+            if (SALE_YN_STOPPED.equals(raw.getSaleYn())) {
+                continue; // ② 판매중단
+            }
+            if (exclusionSeed.isExcluded(ref)) {
+                continue; // ③ 원본오류
+            }
+            kept.add(new RawProduct(link, raw));
+        }
+        return kept;
+    }
+
+    /** ④ 제품명 공백 정규화로 그룹핑(삽입 순서 유지). */
+    private static Map<String, List<RawProduct>> groupByNormalizedName(List<RawProduct> kept) {
+        Map<String, List<RawProduct>> groups = new LinkedHashMap<>();
+        for (RawProduct p : kept) {
+            groups.computeIfAbsent(normalizeName(p.link().getProductName()), k -> new ArrayList<>()).add(p);
+        }
+        return groups;
+    }
+
+    /** 그룹 대표 행: 완결 설명 보유 → 수상 보유 → source_row_ref 작은 쪽. */
+    private static RawProduct representativeOf(List<RawProduct> group) {
+        return group.stream()
+                .min(Comparator
+                        .comparing((RawProduct p) -> hasCompletableDescription(p) ? 0 : 1)
+                        .thenComparing(p -> hasAwards(p) ? 0 : 1)
+                        .thenComparing(p -> p.link().getSourceRowRef()))
+                .orElseThrow();
     }
 
     private List<LiquorType> mergeLiquorTypes(List<RawProduct> group, Map<Integer, List<LiquorType>> typesByRef) {
@@ -252,5 +317,9 @@ public class ProductQueryService {
 
     /** 병합 전 link+raw 묶음(내부 운반용). */
     private record RawProduct(ProductBreweryLink link, ProductRawView raw) {
+    }
+
+    /** 그룹의 정렬 판정 키(내부 운반용) — representativeCharacteristicsByBreweryId 전용. */
+    private record GroupOrderKey(boolean hasAwardBadge, RawProduct representative) {
     }
 }

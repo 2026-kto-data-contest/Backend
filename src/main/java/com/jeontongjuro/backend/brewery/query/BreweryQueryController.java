@@ -22,6 +22,7 @@ import org.springframework.web.bind.annotation.RestController;
  * 양조장 리스트 조회 API. GET /api/v1/breweries.
  * <p>
  * 계약 파라미터(전부 선택): region · reservationVisit · alwaysVisit · keyword · liquorType · minAbv · maxAbv · page · size.
+ * region은 liquorType과 동일한 다중값 형식(반복 파라미터 또는 콤마 구분)을 받아 내부 OR로 걸린다.
  * 원문 파라미터는 {@link BrewerySearchCondition#of}에서 검증·정규화되고,
  * 허용 집합 밖 값(음수 도수·minAbv&gt;maxAbv 등 포함)은 400({@code INVALID_QUERY_PARAMETER})으로 매핑된다.
  */
@@ -62,8 +63,12 @@ public class BreweryQueryController {
                                     + "\"message\":\"서버 내부 오류가 발생했습니다.\"}")))
     })
     public PageResponse<BreweryListItemResponse> list(
-            @Parameter(description = "지역 필터. 보내지 않으면 전체 지역", example = "전라")
-            @RequestParam(required = false) String region,
+            @Parameter(
+                    description = "지역 필터. 여러 번 보내면(region=수도권&region=충청) 그중 하나라도 해당하는 "
+                            + "양조장이 모두 나옵니다. 허용값: 수도권, 충청, 전라, 경상, 부산, 울산, 강원, 제주. "
+                            + "보내지 않으면 전체 지역",
+                    example = "[\"전라\"]")
+            @RequestParam(required = false) List<String> region,
             @Parameter(description = "예약 방문 가능 여부: Y(가능), N(불가), UNKNOWN(정보 없음)", example = "Y")
             @RequestParam(required = false) String reservationVisit,
             @Parameter(description = "상시 방문 가능 여부: Y(가능), N(불가), UNKNOWN(정보 없음)", example = "Y")

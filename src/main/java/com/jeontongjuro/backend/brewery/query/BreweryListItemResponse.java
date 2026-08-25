@@ -4,6 +4,7 @@ import com.jeontongjuro.backend.brewery.Brewery;
 import com.jeontongjuro.backend.brewery.VisitState;
 import com.jeontongjuro.backend.feature.FeatureType;
 import com.jeontongjuro.backend.liquortype.LiquorType;
+import com.jeontongjuro.backend.product.query.SensoryTag;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.math.BigDecimal;
 import java.util.List;
@@ -22,6 +23,12 @@ import java.util.List;
  * <p>
  * 대표 이미지는 tour_content(TourAPI 캐시)의 first_image에서 온다({@link MainImageResponse}).
  * 대표 이미지가 없으면 mainImage=null. ★brewery.image_url 격리 컬럼(C-10)은 #56에서 제거됐다.
+ * <p>
+ * ★목록 응답 3차 additive(시군구·맛 태그·소개): 기존 11필드의 이름·타입·순서는 그대로 유지한다(계약 불변).
+ * sigungu는 {@link com.jeontongjuro.backend.brewery.BrewerySigunguParser}(주소 파싱 파생값이라 nullable), flavorTags는
+ * {@link com.jeontongjuro.backend.product.query.SensoryTagMatcher}가 대표 제품 1종의 '특징' 원문에서
+ * 매칭한 결과(없으면 빈 배열 — '+N' 절단은 프론트 몫이라 매칭분을 전부 내린다), introduction은
+ * {@link BreweryIntroductionResolver}의 우선순위 병합 결과(둘 다 없으면 null)다.
  */
 public record BreweryListItemResponse(
         @Schema(description = "양조장 고유 ID", example = "BRW-001",
@@ -50,12 +57,24 @@ public record BreweryListItemResponse(
         @Schema(description = "취급 주종 목록(탁주·약주·청주·증류주·과실주·기타). 없으면 빈 배열",
                 example = "[\"탁주\",\"증류주\"]", requiredMode = Schema.RequiredMode.REQUIRED)
         List<LiquorType> liquorTypes,
-        @Schema(description = "대표 이미지. 없으면 null", nullable = true) MainImageResponse mainImage) {
+        @Schema(description = "대표 이미지. 없으면 null", nullable = true) MainImageResponse mainImage,
+        // ── 3차 additive(시군구·맛 태그·소개) ──────────────────────────────────────
+        @Schema(description = "시군구 라벨(주소에서 시도 프리픽스를 벗기고 시/군/구 접미어를 제거한 값). "
+                + "주소 파싱 파생값이라 코드 경로상 null 가능(현재 데이터는 59/59 non-null)",
+                example = "안산", nullable = true) String sigungu,
+        @Schema(description = "맛 태그(표준 8종 중 매칭분 전부, 선언 순서 고정). 대표 제품 1종의 '특징' 원문 "
+                + "부분일치 매칭. 없으면 빈 배열. '+N' 절단은 프론트 몫",
+                example = "[\"달콤함\",\"산미\"]", requiredMode = Schema.RequiredMode.REQUIRED)
+        List<SensoryTag> flavorTags,
+        @Schema(description = "양조장 소개(관광공사 overview 우선, 없으면 농림부 designation_note). "
+                + "둘 다 없으면 null. 말줄임은 프론트가 처리(백엔드는 자르지 않음)",
+                example = "1918년 창업한 …", nullable = true) String introduction) {
 
-    /** 태그·도수·주종·대표 이미지는 서비스가 배치 조회해 주입한다(Brewery 엔티티만으로는 알 수 없다). */
+    /** 태그·도수·주종·대표 이미지·시군구·맛 태그·소개는 서비스가 배치 조회해 주입한다(Brewery 엔티티만으로는 알 수 없다). */
     public static BreweryListItemResponse from(Brewery b, List<FeatureType> featureTags,
                                                BigDecimal alcoholMin, BigDecimal alcoholMax,
-                                               List<LiquorType> liquorTypes, MainImageResponse mainImage) {
+                                               List<LiquorType> liquorTypes, MainImageResponse mainImage,
+                                               String sigungu, List<SensoryTag> flavorTags, String introduction) {
         return new BreweryListItemResponse(
                 b.getBreweryId(),
                 b.getBusinessName(),
@@ -67,6 +86,9 @@ public record BreweryListItemResponse(
                 alcoholMin,
                 alcoholMax,
                 liquorTypes,
-                mainImage);
+                mainImage,
+                sigungu,
+                flavorTags,
+                introduction);
     }
 }

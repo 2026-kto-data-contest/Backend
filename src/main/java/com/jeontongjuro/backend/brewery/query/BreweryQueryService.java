@@ -2,6 +2,7 @@ package com.jeontongjuro.backend.brewery.query;
 
 import com.jeontongjuro.backend.brewery.Brewery;
 import com.jeontongjuro.backend.brewery.BreweryRepository;
+import com.jeontongjuro.backend.brewery.BrewerySigunguParser;
 import com.jeontongjuro.backend.experience.BreweryExperience;
 import com.jeontongjuro.backend.experience.BreweryExperienceRepository;
 import com.jeontongjuro.backend.feature.BreweryFeatureTag;
@@ -11,6 +12,9 @@ import com.jeontongjuro.backend.global.web.PageResponse;
 import com.jeontongjuro.backend.liquortype.LiquorType;
 import com.jeontongjuro.backend.liquortype.ProductLiquorTypeRepository;
 import com.jeontongjuro.backend.product.ProductBreweryLinkRepository;
+import com.jeontongjuro.backend.product.query.ProductQueryService;
+import com.jeontongjuro.backend.product.query.SensoryTag;
+import com.jeontongjuro.backend.product.query.SensoryTagMatcher;
 import com.jeontongjuro.backend.tour.TourContent;
 import com.jeontongjuro.backend.tour.TourContentRepository;
 import java.math.BigDecimal;
@@ -62,19 +66,22 @@ public class BreweryQueryService {
     private final ProductBreweryLinkRepository linkRepository;
     private final TourContentRepository tourContentRepository;
     private final BreweryExperienceRepository experienceRepository;
+    private final ProductQueryService productQueryService;
 
     public BreweryQueryService(BreweryRepository breweryRepository,
                                BreweryFeatureTagRepository featureTagRepository,
                                ProductLiquorTypeRepository liquorTypeRepository,
                                ProductBreweryLinkRepository linkRepository,
                                TourContentRepository tourContentRepository,
-                               BreweryExperienceRepository experienceRepository) {
+                               BreweryExperienceRepository experienceRepository,
+                               ProductQueryService productQueryService) {
         this.breweryRepository = breweryRepository;
         this.featureTagRepository = featureTagRepository;
         this.liquorTypeRepository = liquorTypeRepository;
         this.linkRepository = linkRepository;
         this.tourContentRepository = tourContentRepository;
         this.experienceRepository = experienceRepository;
+        this.productQueryService = productQueryService;
     }
 
     public PageResponse<BreweryListItemResponse> search(BrewerySearchCondition condition, int page, int size) {
@@ -87,17 +94,26 @@ public class BreweryQueryService {
         Map<String, List<FeatureType>> tagsByBrewery = featureTagsFor(breweries);
         Map<String, List<LiquorType>> liquorsByBrewery = liquorTypesFor(breweries);
         Map<String, AbvRange> abvByBrewery = abvFor(breweries);
-        Map<String, MainImageResponse> imageByBrewery = mainImagesFor(breweries);
+        Map<String, TourContent> tourContentByBrewery = tourContentByBreweryId(breweries);
+        Map<String, MainImageResponse> imageByBrewery = mainImagesFrom(tourContentByBrewery);
+        Map<String, String> introByBrewery = introductionsFor(breweries, tourContentByBrewery);
+        Map<String, String> characteristicsByBrewery =
+                productQueryService.representativeCharacteristicsByBreweryId(breweryIds(breweries));
 
         List<BreweryListItemResponse> content = breweries.stream()
                 .map(b -> {
                     AbvRange abv = abvByBrewery.get(b.getBreweryId());
+                    List<SensoryTag> flavorTags =
+                            SensoryTagMatcher.match(characteristicsByBrewery.get(b.getBreweryId()));
                     return BreweryListItemResponse.from(b,
                             tagsByBrewery.getOrDefault(b.getBreweryId(), List.of()),
                             abv == null ? null : abv.min(),
                             abv == null ? null : abv.max(),
                             liquorsByBrewery.getOrDefault(b.getBreweryId(), List.of()),
-                            imageByBrewery.get(b.getBreweryId()));
+                            imageByBrewery.get(b.getBreweryId()),
+                            BrewerySigunguParser.parse(b.getAddress()),
+                            flavorTags,
+                            introByBrewery.get(b.getBreweryId()));
                 })
                 .toList();
         return PageResponse.of(content, result);
@@ -241,6 +257,70 @@ public class BreweryQueryService {
             MainImageResponse image = MainImageResponse.from(tc.getFirstImage(), tc.getCpyrhtDivCd());
             if (image != null) {
                 byBrewery.put(b.getBreweryId(), image);
+            }
+        }
+        return byBrewery;
+    }
+
+    /**
+     * 리스트 전용 배치 — 이 페이지 양조장들의 tour_content를 breweryId별로 한 번에 로딩(N+1 회피).
+     * mainImage(파생)·introduction(overview 소스)이 이 결과를 공유해 tour_content 쿼리를 1회로 묶는다.
+     * ★{@link #mainImagesFor}(상세 전용, 단건 List)는 건드리지 않는다 — 기존 상세 경로 회귀 방지.
+     */
+    private Map<String, TourContent> tourContentByBreweryId(List<Brewery> breweries) {
+        if (breweries.isEmpty()) {
+            return Map.of();
+        }
+        List<String> contentIds = breweries.stream()
+                .map(Brewery::getContentId)
+                .filter(Objects::nonNull)
+                .toList();
+        if (contentIds.isEmpty()) {
+            return Map.of();
+        }
+        Map<String, TourContent> byContentId = new HashMap<>();
+        for (TourContent tc : tourContentRepository.findByContentIdIn(contentIds)) {
+            byContentId.put(tc.getContentId(), tc);
+        }
+        Map<String, TourContent> byBrewery = new HashMap<>();
+        for (Brewery b : breweries) {
+            String contentId = b.getContentId();
+            if (contentId == null) {
+                continue;
+            }
+            TourContent tc = byContentId.get(contentId);
+            if (tc != null) {
+                byBrewery.put(b.getBreweryId(), tc);
+            }
+        }
+        return byBrewery;
+    }
+
+    /** {@link #tourContentByBreweryId} 결과에서 대표 이미지만 파생(추가 쿼리 없음). */
+    private Map<String, MainImageResponse> mainImagesFrom(Map<String, TourContent> tourContentByBrewery) {
+        Map<String, MainImageResponse> byBrewery = new HashMap<>();
+        tourContentByBrewery.forEach((breweryId, tc) -> {
+            MainImageResponse image = MainImageResponse.from(tc.getFirstImage(), tc.getCpyrhtDivCd());
+            if (image != null) {
+                byBrewery.put(breweryId, image);
+            }
+        });
+        return byBrewery;
+    }
+
+    /**
+     * 목록 additive(소개, 신규) — {@link BreweryIntroductionResolver} 우선순위(overview → designationNote)를
+     * 배치로 적용(추가 쿼리 없음, tour_content는 {@link #tourContentByBreweryId}가 이미 배치 로딩).
+     */
+    private Map<String, String> introductionsFor(List<Brewery> breweries,
+                                                  Map<String, TourContent> tourContentByBrewery) {
+        Map<String, String> byBrewery = new HashMap<>();
+        for (Brewery b : breweries) {
+            TourContent tc = tourContentByBrewery.get(b.getBreweryId());
+            String overview = tc == null ? null : tc.getOverview();
+            String intro = BreweryIntroductionResolver.resolve(overview, b.getDesignationNote());
+            if (intro != null) {
+                byBrewery.put(b.getBreweryId(), intro);
             }
         }
         return byBrewery;
