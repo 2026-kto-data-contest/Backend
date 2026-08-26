@@ -63,4 +63,17 @@ public interface ProductLiquorTypeRepository extends JpaRepository<ProductLiquor
             WHERE t.sourceRowRef IN :sourceRowRefs
             """)
     List<Object[]> findTypesBySourceRowRefIn(@Param("sourceRowRefs") Collection<Integer> sourceRowRefs);
+
+    /**
+     * 주종별 취급 양조장 수(필터 메타데이터 조회용). {@code COUNT(DISTINCT breweryId)}로 세는 이유 =
+     * 한 양조장이 같은 주종을 여러 제품으로 취급하면 여러 행이 나오기 때문(중복 제거 없이 세면 과대집계).
+     * 5종 합이 59(브루어리 전체)가 아니라 108인 것도 이 다대다 특성 때문 — 정상.
+     * 6종 GROUP BY 1쿼리라 주종별로 따로 세지 않는다. recheck_flag·suppressed_from_tab 무관 전체 태깅 대상
+     * (조회 API의 취급 주종 노출·필터 판정과 동일 의미, {@link #findDistinctTypesByBreweryIdIn} 선례와 일치).
+     *
+     * @return {@code [liquorType(LiquorType), breweryCount(Long)]} 튜플 목록. 취급 브루어리가 0인 주종
+     *         (예: 기타)은 GROUP BY 특성상 이 목록에 아예 나타나지 않는다 — 호출자가 0으로 채워야 한다.
+     */
+    @Query("SELECT t.liquorType, COUNT(DISTINCT t.breweryId) FROM ProductLiquorType t GROUP BY t.liquorType")
+    List<Object[]> countDistinctBreweriesByLiquorType();
 }

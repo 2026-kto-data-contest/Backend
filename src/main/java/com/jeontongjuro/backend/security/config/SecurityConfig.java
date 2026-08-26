@@ -33,6 +33,7 @@ public class SecurityConfig {
             "/api/v1/home",
             "/api/v1/breweries",
             "/api/v1/breweries/**",
+            "/api/v1/metadata/brewery-filters",
             "/swagger-ui.html",
             "/swagger-ui/**",
             "/v3/api-docs/**",
