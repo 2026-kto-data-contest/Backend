@@ -3,7 +3,7 @@
     "purpose": "제품 조회 순수 함수(DescriptionTruncationPolicy·AwardGradeParser)의 실데이터 스냅샷 골든. input은 운영 DB에서 뽑은 원문, expected는 스펙 기준으로 사람이 산정(코드 출력에 맞추지 않음). 독립 파이썬 레퍼런스로 설명 기대값을 교차검증했다.",
     "generated_from": "docker exec jeontongjuro-postgres psql -d jeontongjuro : SELECT source_row_index, description, awards FROM product_raw WHERE source_row_index IN (…선정 27건…)",
     "generated_at": "2026-08-17",
-    "coverage": "문장끝 6건(276·319·351·768·810·830) · 소수점 2건(112·461) · 대회명오탐 3건(302·304·338) · 절단/음역 awards(691·823·822) · 등급사전 다양(대통령상·금은동·장관상·표창·선정·무구분자·괄호쉼표·연도나열)",
+    "coverage": "문장끝 6건(276·319·351·768·810·830) · 소수점 2건(112·461) · 대회명오탐 3건(302·304·338) · 절단/음역 awards(691·823·822) · 등급사전 다양(금은동·장관상·표창·선정·무구분자·괄호쉼표·연도나열) · 대통령상 미부착 확인 2건(433·490, 제품 카드 등급 사전에서 제외됨)",
     "spec_notes": "expected 설명='<input과 동일>'이면 78/79자이나 문장이 이미 완결(끝 마침표)이라 되돌림 무변. 절단 awards도 파싱 시도해 등급 채택(691→동상, 823→은상)."
   },
   "descriptions": [
@@ -125,12 +125,14 @@
     {
       "sourceRowIndex": 433,
       "input": "2020 우리술 품평회 증류주 대통령상",
-      "expected": "대통령상"
+      "expected": "수상",
+      "note": "대통령상은 양조장 단위 자료라 제품 카드 등급 사전에 없음(명세) → 다른 등급어 없어 fallback '수상'"
     },
     {
       "sourceRowIndex": 490,
       "input": "2018 대한민국 우리술품평회 대통령상",
-      "expected": "대통령상"
+      "expected": "수상",
+      "note": "대통령상은 양조장 단위 자료라 제품 카드 등급 사전에 없음(명세) → 다른 등급어 없어 fallback '수상'"
     },
     {
       "sourceRowIndex": 509,
