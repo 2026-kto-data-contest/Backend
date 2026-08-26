@@ -276,6 +276,43 @@ public class ProductQueryService {
         return byRef;
     }
 
+    /**
+     * 검색 자동완성용 — 전 양조장의 노출 제품(판매중단·원본오류 제외, 중복 병합 적용 후) 이름 전체를 반환한다.
+     * {@link #buildCards}와 동일한 제외(②③)·중복 병합(④) 규칙을 그룹핑 단위(양조장별)까지 그대로 재사용해
+     * 노출 모집단을 카드 API와 일치시킨다. 정렬·설명·주종 등 카드의 나머지 계산은 하지 않는다(호출자는
+     * 제품명·id만 필요).
+     * <p>
+     * 링크 전체 조회 1쿼리 + raw 배치 조회 1쿼리로 고정된다(양조장 수·결과 건수와 무관 — N+1 없음).
+     */
+    public List<ProductNameSuggestion> allDisplayedProductNames() {
+        List<ProductBreweryLink> allLinks = linkRepository.findAll();
+        if (allLinks.isEmpty()) {
+            return List.of();
+        }
+        Map<Integer, ProductRawView> rawByRef = loadRawByRef(allLinks);
+
+        Map<String, List<ProductBreweryLink>> linksByBrewery = new LinkedHashMap<>();
+        for (ProductBreweryLink link : allLinks) {
+            linksByBrewery.computeIfAbsent(link.getBreweryId(), k -> new ArrayList<>()).add(link);
+        }
+
+        List<ProductNameSuggestion> result = new ArrayList<>();
+        for (List<ProductBreweryLink> links : linksByBrewery.values()) {
+            List<RawProduct> kept = filterKept(links, rawByRef);
+            if (kept.isEmpty()) {
+                continue;
+            }
+            Map<String, List<RawProduct>> groups = groupByNormalizedName(kept);
+            for (List<RawProduct> group : groups.values()) {
+                RawProduct representative = representativeOf(group);
+                result.add(new ProductNameSuggestion(
+                        representative.link().getSourceRowRef(),
+                        representative.link().getProductName()));
+            }
+        }
+        return result;
+    }
+
     /** 완결성 점수: 완결(절단 아님·비어있지 않음)=2 > 되돌림 가능(절단이나 문장 끝 있음)=1 > 없음=0. */
     private static int descriptionCompleteness(RawProduct p) {
         String desc = p.raw().getDescription();
