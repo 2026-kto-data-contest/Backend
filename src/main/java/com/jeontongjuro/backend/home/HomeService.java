@@ -41,7 +41,7 @@ public class HomeService {
                         List.of(selectedLiquorType), null, null),
                 LIQUOR_SECTION_SIZE);
         List<BreweryListItemResponse> regionBreweries = search(
-                BrewerySearchCondition.of(selectedRegion, null, null, null,
+                BrewerySearchCondition.of(List.of(selectedRegion), null, null, null,
                         null, null, null),
                 REGION_SECTION_SIZE);
         List<BreweryListItemResponse> recommendedBreweries = search(
