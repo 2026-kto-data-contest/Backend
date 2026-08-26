@@ -31,6 +31,7 @@ public class SecurityConfig {
             "/api/v1/auth/kakao/callback",
             "/api/v1/auth/csrf",
             "/api/v1/home",
+            "/api/v1/recommendations/breweries",
             "/api/v1/breweries",
             "/api/v1/breweries/**",
             "/api/v1/metadata/brewery-filters",
