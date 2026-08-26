@@ -313,6 +313,42 @@ public class ProductQueryService {
         return result;
     }
 
+    /**
+     * 통합 검색 3순위(제품명 매칭)용 — 전 양조장의 노출 제품명(표시집합: 판매중단·원본오류 제외, 중복 병합 후
+     * 대표)을 breweryId별로 묶어 반환한다. {@link #allDisplayedProductNames}와 동일한 제외(②③)·병합(④)·대표
+     * 규칙을 그대로 재사용하되, 그 메서드가 버리는 breweryId를 키로 살려 3순위 매칭에 쓸 수 있게 한다.
+     * <p>
+     * 노출 카드가 없는(kept가 빈) 양조장은 결과 Map에 없다(호출자가 빈 목록으로 처리). 쿼리 수는 링크 findAll 1 +
+     * raw 배치 1로 고정된다(양조장 수·결과 건수와 무관 — N+1 없음).
+     */
+    public Map<String, List<String>> displayedProductNamesByBreweryId() {
+        List<ProductBreweryLink> allLinks = linkRepository.findAll();
+        if (allLinks.isEmpty()) {
+            return Map.of();
+        }
+        Map<Integer, ProductRawView> rawByRef = loadRawByRef(allLinks);
+
+        Map<String, List<ProductBreweryLink>> linksByBrewery = new LinkedHashMap<>();
+        for (ProductBreweryLink link : allLinks) {
+            linksByBrewery.computeIfAbsent(link.getBreweryId(), k -> new ArrayList<>()).add(link);
+        }
+
+        Map<String, List<String>> result = new LinkedHashMap<>();
+        for (Map.Entry<String, List<ProductBreweryLink>> e : linksByBrewery.entrySet()) {
+            List<RawProduct> kept = filterKept(e.getValue(), rawByRef);
+            if (kept.isEmpty()) {
+                continue;
+            }
+            Map<String, List<RawProduct>> groups = groupByNormalizedName(kept);
+            List<String> names = new ArrayList<>(groups.size());
+            for (List<RawProduct> group : groups.values()) {
+                names.add(representativeOf(group).link().getProductName());
+            }
+            result.put(e.getKey(), names);
+        }
+        return result;
+    }
+
     /** 완결성 점수: 완결(절단 아님·비어있지 않음)=2 > 되돌림 가능(절단이나 문장 끝 있음)=1 > 없음=0. */
     private static int descriptionCompleteness(RawProduct p) {
         String desc = p.raw().getDescription();
