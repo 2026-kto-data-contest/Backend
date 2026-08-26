@@ -15,6 +15,7 @@ import com.jeontongjuro.backend.product.ProductBreweryLinkRepository;
 import com.jeontongjuro.backend.product.query.ProductQueryService;
 import com.jeontongjuro.backend.product.query.SensoryTag;
 import com.jeontongjuro.backend.product.query.SensoryTagMatcher;
+import com.jeontongjuro.backend.search.SearchKeyword;
 import com.jeontongjuro.backend.tour.TourContent;
 import com.jeontongjuro.backend.tour.TourContentRepository;
 import java.math.BigDecimal;
@@ -89,8 +90,84 @@ public class BreweryQueryService {
         Specification<Brewery> spec = BreweryQuerySpecifications.build(condition);
 
         Page<Brewery> result = breweryRepository.findAll(spec, pageable);
-        List<Brewery> breweries = result.getContent();
+        return PageResponse.of(toListItems(result.getContent()), result);
+    }
 
+    /**
+     * 통합 검색(GET /api/v1/search) — 정확도순 정렬 + 양조장 단위 중복 제거. 순위:
+     * <pre>1순위 상호명 전방일치 &gt; 2순위 상호명 부분일치 &gt; 3순위 표시집합 제품명 부분일치</pre>
+     * 한 양조장은 자기가 해당하는 가장 높은 순위에만 속하고(이름·제품 동시 매칭 중복 제거), 순위 내부는 목록
+     * API와 같은 {@code businessName ASC → breweryId ASC}로 정렬한다. {@code totalElements}는 중복 제거 후
+     * 양조장 수(= 명세의 {N}).
+     * <p>
+     * 매칭은 입력·대상 모두 {@link SearchKeyword#normalizeTarget} 규칙(허용문자 제거·NFC·lower)으로 정규화해
+     * 비교한다 — 특수문자를 포함한 이름(예: {@code 이화주(술샘)})도 자동완성이 내려준 그대로 재검색하면 매칭된다.
+     * needle은 {@link SearchKeyword#normalizeForMatch}로 이미 정규화된 값이며, 빈 문자열이면 결과 0건이다.
+     * <p>
+     * 전략은 인메모리다: 모집단이 전 양조장(≤59)이라 전건을 읽어 순위 부여·정렬한 뒤 페이지를 슬라이스하고,
+     * 그 페이지 양조장만 카드로 매핑한다({@link #toListItems}). 3순위 표시집합·특수문자 정규화가 SQL 술어로
+     * 깔끔히 떨어지지 않고(제외 시드가 파일·병합이 Java 로직), 모집단이 작아 DB 페이징 이점이 없어서다.
+     * 매핑 쿼리 수는 페이지 크기 기준 상수라 N+1이 없다.
+     */
+    public PageResponse<BreweryListItemResponse> searchByAccuracy(String needle, int page, int size) {
+        int clampedPage = clampPage(page);
+        int clampedSize = clampSize(size);
+        if (needle == null || needle.isEmpty()) {
+            return PageResponse.of(List.of(), clampedPage, clampedSize, 0L);
+        }
+
+        Map<String, List<String>> productNamesByBrewery =
+                productQueryService.displayedProductNamesByBreweryId();
+
+        List<RankedBrewery> matched = new ArrayList<>();
+        for (Brewery brewery : breweryRepository.findAll()) {
+            int tier = tierOf(brewery, needle,
+                    productNamesByBrewery.getOrDefault(brewery.getBreweryId(), List.of()));
+            if (tier > 0) {
+                matched.add(new RankedBrewery(tier, brewery));
+            }
+        }
+        matched.sort(Comparator
+                .comparingInt(RankedBrewery::tier)
+                .thenComparing(r -> r.brewery().getBusinessName())
+                .thenComparing(r -> r.brewery().getBreweryId()));
+
+        long totalElements = matched.size();
+        int from = Math.min(clampedPage * clampedSize, matched.size());
+        int to = Math.min(from + clampedSize, matched.size());
+        List<Brewery> pageBreweries = matched.subList(from, to).stream()
+                .map(RankedBrewery::brewery)
+                .toList();
+
+        return PageResponse.of(toListItems(pageBreweries), clampedPage, clampedSize, totalElements);
+    }
+
+    /**
+     * 정확도 순위: 1=상호명 전방일치, 2=상호명 부분일치, 3=표시집합 제품명 부분일치, 0=미매칭. 매칭은 전부
+     * 정규화된 문자열({@link SearchKeyword#normalizeTarget}) 기준이라 입력과 규칙이 같다. 한 양조장은 가장 높은
+     * 순위 하나만 반환한다(상위 순위에 걸리면 하위는 보지 않는다 → 중복 제거).
+     */
+    private static int tierOf(Brewery brewery, String needle, List<String> productNames) {
+        String name = SearchKeyword.normalizeTarget(brewery.getBusinessName());
+        if (name.startsWith(needle)) {
+            return 1;
+        }
+        if (name.contains(needle)) {
+            return 2;
+        }
+        for (String productName : productNames) {
+            if (SearchKeyword.normalizeTarget(productName).contains(needle)) {
+                return 3;
+            }
+        }
+        return 0;
+    }
+
+    /**
+     * 양조장 목록 → 카드 응답 매핑(리스트·통합검색 공용). 특징·주종·도수·대표 이미지·소개·맛 태그를 각각 IN 배치로
+     * 한 번씩 로딩해 brewery_id별로 붙인다(N+1 회피). 빈 목록이면 각 배치 헬퍼가 빈 Map을 반환해 빈 목록을 낸다.
+     */
+    private List<BreweryListItemResponse> toListItems(List<Brewery> breweries) {
         Map<String, List<FeatureType>> tagsByBrewery = featureTagsFor(breweries);
         Map<String, List<LiquorType>> liquorsByBrewery = liquorTypesFor(breweries);
         Map<String, AbvRange> abvByBrewery = abvFor(breweries);
@@ -100,7 +177,7 @@ public class BreweryQueryService {
         Map<String, String> characteristicsByBrewery =
                 productQueryService.representativeCharacteristicsByBreweryId(breweryIds(breweries));
 
-        List<BreweryListItemResponse> content = breweries.stream()
+        return breweries.stream()
                 .map(b -> {
                     AbvRange abv = abvByBrewery.get(b.getBreweryId());
                     List<SensoryTag> flavorTags =
@@ -116,7 +193,6 @@ public class BreweryQueryService {
                             introByBrewery.get(b.getBreweryId()));
                 })
                 .toList();
-        return PageResponse.of(content, result);
     }
 
     /**
@@ -345,5 +421,9 @@ public class BreweryQueryService {
 
     /** 양조장 도수 범위(집계 결과 운반용 내부 타입). min/max 중 하나만 null일 수는 없다(SQL이 함께 산출). */
     private record AbvRange(BigDecimal min, BigDecimal max) {
+    }
+
+    /** 통합 검색의 순위 부여 결과(정렬·슬라이스 전 운반용 내부 타입). tier=1/2/3. */
+    private record RankedBrewery(int tier, Brewery brewery) {
     }
 }

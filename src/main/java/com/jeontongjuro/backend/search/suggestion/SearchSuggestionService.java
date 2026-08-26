@@ -2,15 +2,14 @@ package com.jeontongjuro.backend.search.suggestion;
 
 import com.jeontongjuro.backend.brewery.Brewery;
 import com.jeontongjuro.backend.brewery.BreweryRepository;
-import com.jeontongjuro.backend.global.error.InvalidQueryParameterException;
 import com.jeontongjuro.backend.product.query.ProductNameSuggestion;
 import com.jeontongjuro.backend.product.query.ProductQueryService;
+import com.jeontongjuro.backend.search.SearchKeyword;
 import com.jeontongjuro.backend.search.recent.RecentSearchType;
 import java.text.Normalizer;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
-import java.util.regex.Pattern;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -32,10 +31,6 @@ public class SearchSuggestionService {
 
     /** 노출 최대 건수(기획 고정값 — size 파라미터 없음). */
     private static final int MAX_RESULTS = 10;
-    /** 검색어 최대 길이(앞뒤 공백 트림 후 기준). 초과 시 400. */
-    private static final int MAX_KEYWORD_LENGTH = 20;
-    /** 허용 문자(한글·영문·숫자·공백) 밖은 검색 실행 시 제거한다(이모지·특수문자는 입력은 되지만 무시). */
-    private static final Pattern DISALLOWED_CHARS = Pattern.compile("[^\\p{IsHangul}a-zA-Z0-9\\s]");
 
     private final BreweryRepository breweryRepository;
     private final ProductQueryService productQueryService;
@@ -46,21 +41,12 @@ public class SearchSuggestionService {
     }
 
     public List<SearchSuggestionResponse> suggest(String keyword) {
-        String stripped = keyword == null ? "" : keyword.strip();
-        if (stripped.length() > MAX_KEYWORD_LENGTH) {
-            throw new InvalidQueryParameterException(
-                    "검색어는 최대 " + MAX_KEYWORD_LENGTH + "자까지 입력할 수 있습니다.");
-        }
-        if (stripped.isEmpty()) {
+        // 입력 정규화(트림·길이검증·허용문자 제거·NFC·lower)는 통합검색과 공유한다({@link SearchKeyword}).
+        // 트림 후 빈 값이거나 허용문자 제거 후 빈 값이면 needle이 ""가 되어 검색을 실행하지 않는다(빈 배열).
+        String needle = SearchKeyword.normalizeForMatch(keyword);
+        if (needle.isEmpty()) {
             return List.of();
         }
-
-        // 허용 문자 밖(이모지·특수문자)은 검색 실행 시 무시 — 필터링 후에도 빈 값이면 검색을 실행하지 않는다.
-        String filtered = DISALLOWED_CHARS.matcher(stripped).replaceAll("").strip();
-        if (filtered.isEmpty()) {
-            return List.of();
-        }
-        String needle = Normalizer.normalize(filtered, Normalizer.Form.NFC).toLowerCase();
 
         List<Candidate> candidates = new ArrayList<>();
         collectBreweryCandidates(needle, candidates);
