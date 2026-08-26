@@ -212,6 +212,20 @@ class SearchSuggestionApiTest {
         assertThat(types).containsExactlyInAnyOrder("BREWERY", "PRODUCT");
     }
 
+    @Test
+    @DisplayName("특수문자 포함 이름 자기참조: 자동완성이 내려준 이름을 그대로 재검색해도 자기 자신이 잡힌다(#1-B)")
+    void selfReferenceMatchesDisplayNameWithSpecialCharacters() throws Exception {
+        product(250, "이화주(술샘)", "소개.", null, "500ml", "Y");
+
+        // 표시명 그대로 재검색
+        List<String> exact = suggestionDisplayNames("이화주(술샘)");
+        assertThat(exact).contains("이화주(술샘)");
+
+        // 특수문자를 뗀 형태로 재검색해도 동일 제품이 잡힌다(정규화 대상 = 매칭용, 표시값은 원문 유지)
+        List<String> stripped = suggestionDisplayNames("이화주술샘");
+        assertThat(stripped).contains("이화주(술샘)");
+    }
+
     // ── helpers ──────────────────────────────────────────────────────────────
     private List<String> suggestionDisplayNames(String keyword) throws Exception {
         JsonNode content = readContent(get("/api/v1/search/suggestions").param("keyword", keyword));

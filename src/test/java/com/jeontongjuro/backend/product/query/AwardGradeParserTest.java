@@ -93,9 +93,16 @@ class AwardGradeParserTest {
     }
 
     @Test
-    @DisplayName("대통령상 → 최상위")
-    void presidentAwardTop() {
-        assertThat(AwardGradeParser.parse("2020 우리술 품평회 증류주 대통령상")).isEqualTo("대통령상");
+    @DisplayName("대통령상은 등급 사전에 없음(양조장 단위 자료, 제품 카드 미부착) → 다른 등급어 없으면 fallback '수상'")
+    void presidentAwardIsNotAProductGrade() {
+        assertThat(AwardGradeParser.parse("2020 우리술 품평회 증류주 대통령상")).isEqualTo("수상");
+    }
+
+    @Test
+    @DisplayName("대통령상과 다른 등급어가 함께 있으면 그 다른 등급이 잡힌다(대통령상은 등급 사전에서 무시됨)")
+    void presidentAwardIgnoredWhenOtherGradePresent() {
+        assertThat(AwardGradeParser.parse("2020 우리술 품평회 증류주 대통령상, 지역 발전 유공 표창"))
+                .isEqualTo("표창");
     }
 
     @Test
