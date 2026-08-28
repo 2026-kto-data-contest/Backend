@@ -3,10 +3,10 @@
 저장소 밖(개인 지침)에만 있던 부채 목록을 코드·DB로 검증해 저장소에 고정한다.
 세션이 "부채 #23" 식으로 언급하면 이 파일에서 근거·상태·위험도를 찾을 수 있어야 한다.
 
-- **최종 검증**: 2026-08-21 / HEAD `9da1879`
-- **직전 전수 검증 결과**: 실재 20 · 해소 6 · 오등록 1 (합 27)
-- **[트리거] 8건은 해당 코드에 `// DEBT-N:` 인라인 앵커**를 함께 심었다(문서=지도 / 앵커=지뢰 표지).
-  단 #25는 "테스트 부재"라 단일 코드 라인이 없어 문서에만 둔다.
+- **최종 검증**: 2026-08-28 / HEAD `d2b5435`
+- **직전 전수 검증 결과**: 실재 20 · 해소 6 · 오등록 1 (합 27) — 이번 검증도 번호부채 상태는 동일, 앵커 라인·근거만 갱신
+- **[트리거] 9건 중 7건은 해당 코드에 `// DEBT-N:` 인라인 앵커**를 함께 심었다(문서=지도 / 앵커=지뢰 표지).
+  단 #25·c는 단일 코드 라인으로 특정할 성격이 아니라(#25=테스트 부재, c=상수 자체가 문제가 아니라 무경계 전제가 문제) 문서에만 둔다.
 
 ## 🔴 GitHub 이슈 번호 ≠ 부채 번호 ≠ PR 번호
 
@@ -29,30 +29,31 @@
 
 ## 열린 부채 (실재 20건)
 
-### [트리거] 8건 — 무엇을 하면 무엇이 터지는가
+### [트리거] 9건 — 무엇을 하면 무엇이 터지는가
 
 | # | 제목 | 근거 위치 | 트리거 → 결과 |
 |---|---|---|---|
 | 1 | exclusion 취소 경로 부재 | `LiquorInferenceService`:127 / `liquor_exclusion_seed.json` _meta | 제외를 되돌려야 할 때 → revoke 필드·경로 없음(seed 물리 삭제뿐) |
-| 2 | 6단계 검증-적재 순서 | `ProcessOrchestrator`:170,172 / `LiquorInferenceService`:151 | MANUAL+EXCLUSION 모순 authoring → 커밋 후 예외, 재적재(truncate) |
-| 4 | 테스트 매직넘버 | `RawLoadConsistencyTest`:83 외 3파일 | 양조장/스냅샷 추가 → 59·1215·366 하드코딩 다수 동시 수정 |
-| 17 | 9단계 라이브 재스캔 | `TourNearbyCollectService`:92,99 | process 재실행 → 유령 봉인 파손 + 외부 API 재스캔(~4분) |
+| 2 | 6단계 검증-적재 순서 | `ProcessOrchestrator`:169-170,172 / `LiquorInferenceService`:153 | MANUAL+EXCLUSION 모순 authoring → 커밋 후 예외, 재적재(truncate) |
+| 4 | 테스트 매직넘버 | `RawLoadConsistencyTest`:80-81 외 3파일 | 양조장/스냅샷 추가 → 59·1215·366 하드코딩 다수 동시 수정 |
+| 17 | 9단계 라이브 재스캔 | `TourNearbyCollectService`:92-94,102 | process 재실행 → 유령 봉인 파손 + 외부 API 재스캔(~4분) |
 | 23 | 단일필드 게이트(12·14단계) | `TourDetailEnrichService`:102 / `NonglimSeedLoadService`:74 | 새 상세/시드 컬럼 추가 → 기존 행 영구 NULL(전용 백필 필요) |
 | 24 | 외부 API 타임아웃·재시도 전무 | `CollectHttpConfig`:22 | 외부 API 호출(collect/process) → 무한 대기 또는 1회 실패로 단계 사망 |
-| 25 | 구조 봉인 5/11 시드 | `*SeedFileStructureTest` 4파일(5시드) | 미봉인 6종 구조 오류 → Postgres 미기동 CI를 무검증 통과 |
+| 25 | 구조 봉인 12/13 시드 — 잔여 1종은 Postgres 게이트 테스트에서만 검증 | `*SeedFileStructureTest`류 10파일(11시드) + `LiquorKeywordDictionaryTest`(1시드, DB-free 단위) | `recommended_brewery_seed` 구조 오류 → `FixedBrewerySeed`는 fail-fast하지만 유일 소비 테스트 `RecommendedBreweryApiTest`가 `@EnabledIf(LocalPostgres)`라 Postgres 미기동 CI를 무검증 통과 |
 | a | prod 프로파일 활성화 미고정 | `application-prod.yml` / main resources grep 0 | env(`SPRING_PROFILES_ACTIVE`) 누락 배포 → prod 하드닝 조용히 미적용 |
+| c | `RecommendedBreweryService` 무필터 조회가 100곳 상한을 무경계 전제 | `RecommendedBreweryService`:56(`POPULATION_FETCH_SIZE=MAX_SIZE`),81(호출부) | 양조장이 100곳 초과 → 상위 100곳만 정렬되고 `slice`의 `totalElements`도 100으로 거짓 보고. 현재 59곳이라 무해, 경계 방어(assert/log) 없음 |
 
-> #25 미봉인 6종: `experience_match` · `liquor_exclusion` · `liquor_keyword` · `liquor_manual` · `manual_override` · `tour_match`.
+> #25 잔여 미봉인 1종: `recommended_brewery_seed`. `liquor_keyword`는 2026-08-28 재검증에서 `LiquorKeywordDictionaryTest`(`new LiquorKeywordDictionary(new ObjectMapper())`, Spring 컨텍스트 불필요)가 DB 없이 사전 파싱 자체를 검증한다는 사실을 확인해 실질 봉인으로 재분류했다. `recommended_brewery_seed`도 `FixedBrewerySeed` 생성자가 동일하게 fail-fast하지만, 저장소의 `@SpringBootTest` 27개 전부가 `@EnabledIf(LocalPostgres#isUp)`로 게이트돼 있어 그 생성자가 Postgres 없이는 아예 실행되지 않는다 — 그래서 이 한 종만 [트리거]에 남긴다.
 
-### [심사까지X] 12건 — 문서에만 둔다(코드 무수정)
+### [심사까지X] 14건 — 문서에만 둔다(코드 무수정)
 
 | # | 제목 | 근거 위치 |
 |---|---|---|
-| 3 | excluded 카운트 의미 불일치(로그=실제 필터 / 리포트=시드 전체) | `LiquorInferenceService`:128 / `LiquorAuditReportService`:229 |
+| 3 | excluded 카운트 의미 불일치(로그=실제 필터 / 리포트=시드 전체) | `LiquorInferenceService`:130 / `LiquorAuditReportService`:229 |
 | 5–7 | reason 문구 약함(주관) | `liquor_manual_seed` · `liquor_exclusion_seed` |
 | 8 | 향미이중 9행 미검수(전부 AUTO·recheck·suppress) | `product_liquor_type WHERE suppressed_from_tab` |
 | 9 | coord_source CHECK 매 기동 재적용(멱등·무해) | `schema.sql`:94-95 |
-| 10 | BRW-002 본번지 좌표 폴백(근사) | `coord_source=KAKAO_ADDRESS_NORMALIZED` |
+| 10 | BRW-002·BRW-039 본번지 좌표 폴백(근사, 2건) | `coord_source=KAKAO_ADDRESS_NORMALIZED`(BRW-002 고도리 와이너리 · BRW-039 우리술) |
 | 11 | tour_content 유령 부분해소(화면 밖 미확인 잔존) | 10,279→10,268 교차확인 |
 | 13 | product 코어 스텁(query층은 #61로 완성) | `product/package-info.java` |
 | 14 | FeatureRollup 전건 로드(366·57행 무해) | `FeatureRollupService`:72,93 |
@@ -60,6 +61,8 @@
 | 20 | manual_override recheck 7건(검수 대기) | `manual_override WHERE recheck_flag` |
 | 26 | _meta 드리프트(서사 vs entries 불일치) | `liquor_manual_seed`(74 vs 221) · `manual_override_seed`(9 vs 14) |
 | b | 시드 값 회귀 방어 부분(봉인은 구조만, count 불변 값오류 미방어) | 골든 테스트는 출력 count만 핀 |
+| d | 검색 정규화 2벌(목록 API keyword 필터는 특수문자 미제거) | `SearchKeyword.normalizeTarget`:53-54(제거+NFC+lower) vs `BrewerySearchCondition.normalizeKeyword`:152(NFC만) + `BreweryQuerySpecifications.keywordContains`:121(lower만, 제거 없음) |
+| e | `OpenApiDocumentationTest`가 신규 7개 엔드포인트 중 1개(`/api/v1/breweries`)만 핀 | `OpenApiDocumentationTest.java`:42 — 나머지 6개(상세·제품·metadata·search·suggestions·recommendations)는 그룹 소속을 회귀 방어하는 테스트가 없다 |
 
 ## 해소·오등록 (7건 — append-only, 삭제 금지)
 
@@ -70,7 +73,7 @@
 | 18 | 테스트 datasource 미격리 | 해소 | 전 통합테스트 `spring.datasource.url=…/jeontongjuro_test` |
 | 19 | overview_fetched_at 전량 NULL | 오등록 | `TourDetailEnrichService`:88 `isOverviewFetched()` 멱등 게이트로 정상 사용 · 19행. schema.sql 주석 stale였어 정정 |
 | 21 | 필터 트림 비일관 | 해소 | `BrewerySearchCondition.of`:54-58 `strip()` |
-| 22 | 일반 500 핸들러 부재 | 해소 | `GlobalExceptionHandler`:87 `@ExceptionHandler(Exception.class)` |
+| 22 | 일반 500 핸들러 부재 | 해소 | `GlobalExceptionHandler`:94 `@ExceptionHandler(Exception.class)` |
 | 27 | prod 프로파일 부재 | 해소 | `application-prod.yml` 존재(단 활성화 미고정은 부채 #a로 분리) |
 
 ## 미결 (사람 판단 필요 — 저장소만으로 확정 불가)

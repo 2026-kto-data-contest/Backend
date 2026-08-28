@@ -26,15 +26,17 @@ import org.springframework.transaction.annotation.Transactional;
  * 추천 양조장 조회(GET /api/v1/recommendations/breweries) — 홈 「추천 양조장」 섹션, 검색
  * 「이런 양조장은 어때요?」 그리드, 두 화면의 '더보기' 전체 목록이 공유하는 단일 진입점이다.
  * <p>
- * <b>필터가 아니라 정렬이다.</b> 매칭 우선순위 "주종 &gt; 지역"(맛 축은 §하단 참고로 이번 범위 밖)을
- * 점수로 환산해 전체 양조장을 재정렬한다 — 점수 0인 양조장도 결과에 포함되고 뒤 순위로 밀릴 뿐이다.
+ * <b>필터가 아니라 정렬이다.</b> 매칭 우선순위 "주종 &gt; 지역 &gt; 맛"을 점수로 환산해 전체 양조장을
+ * 재정렬한다 — 점수 0인 양조장도 결과에 포함되고 뒤 순위로 밀릴 뿐이다.
  * <pre>
  * ① 비로그인                    → 고정 목록 순서
  * ② 로그인 + 온보딩 전(취향 없음)  → 고정 목록 순서 (①과 결과 동일)
  * ③ 로그인 + 온보딩 후(취향 있음)  → 취향 점수 내림차순(동점 시 상호명 가나다순)
  * </pre>
- * 맛(SensoryTag) 축은 온보딩({@link PreferenceCategory})이 저장하지 않아 매칭 입력이 없다 — 구현하지
- * 않는다. 온보딩에 맛 카테고리가 추가되면 그때 이 서비스에 축을 더한다.
+ * ★'맛' 축은 별도 구현이 필요 없다 — 온보딩 1단계는 "어떤 맛의 술을 좋아하세요?"로 묻지만, 선택값은
+ * 화면에서 이미 주종으로 매핑돼 {@link PreferenceCategory#LIQUOR_TYPE}로 저장된다. 즉 명세의
+ * "주종 &gt; 지역 &gt; 맛"에서 맛은 주종의 사용자 표현일 뿐 별도 매칭 입력이 아니고, 현재 점수식
+ * (주종 {@value #LIQUOR_MATCH_SCORE}점 + 지역 {@value #REGION_MATCH_SCORE}점)이 세 축을 전부 충족한다.
  * <p>
  * 카드 매핑은 새로 만들지 않는다 — {@link BreweryQueryService#search}가 이미 하는 태그·도수·주종·이미지·
  * 시군구·맛태그·소개 배치 조회 결과({@link BreweryListItemResponse})를 그대로 재사용해 순서만 바꾼다.
@@ -216,7 +218,8 @@ public class RecommendedBreweryService {
         return Math.min(size, MAX_SIZE);
     }
 
-    /** 회원의 저장된 취향 스냅샷(주종·지역 원시값 집합). 도수·맛은 이번 매칭 범위 밖이라 담지 않는다. */
+    /** 회원의 저장된 취향 스냅샷(주종·지역 원시값 집합). 맛은 저장 시점에 이미 주종으로 매핑되어
+     * liquorTypes에 담긴다 — 도수만 이번 매칭 범위 밖이라 담지 않는다. */
     private record Preferences(Set<String> liquorTypes, Set<String> regions) {
     }
 }

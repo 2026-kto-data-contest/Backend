@@ -22,7 +22,7 @@ import org.springframework.web.bind.annotation.RestController;
  */
 @RestController
 @RequestMapping("/api/v1/search/suggestions")
-@Tag(name = "검색", description = "검색 자동완성 API")
+@Tag(name = "검색", description = "통합 검색·자동완성 API")
 public class SearchSuggestionController {
 
     private final SearchSuggestionService searchSuggestionService;
