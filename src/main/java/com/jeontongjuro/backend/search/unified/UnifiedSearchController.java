@@ -25,7 +25,7 @@ import org.springframework.web.bind.annotation.RestController;
  */
 @RestController
 @RequestMapping("/api/v1/search")
-@Tag(name = "검색", description = "통합 검색 API")
+@Tag(name = "검색", description = "통합 검색·자동완성 API")
 public class UnifiedSearchController {
 
     private final UnifiedSearchService unifiedSearchService;

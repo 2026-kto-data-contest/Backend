@@ -37,7 +37,7 @@ public record BreweryListItemResponse(
                 requiredMode = Schema.RequiredMode.REQUIRED) String businessName,
         // sido·region은 주소 파싱(applyRegion) 파생값이라 미계산 상태(신규 양조장 등)면 null이 될 수 있다
         // — 현재 59/59 채워져 있으나 그건 스냅샷일 뿐, 계약은 nullable이다.
-        @Schema(description = "시·도 단위 주소. 주소 파싱 전이면 null", example = "전라남도", nullable = true) String sido,
+        @Schema(description = "시·도 단위 주소. 주소 파싱 전이면 null", example = "전남", nullable = true) String sido,
         @Schema(description = "서비스 지역 필터 분류. 주소 파싱 전이면 null", example = "전라", nullable = true) String region,
         @Schema(description = "예약 방문 가능 여부: Y(가능), N(불가), UNKNOWN(정보 없음)", example = "Y",
                 requiredMode = Schema.RequiredMode.REQUIRED)
