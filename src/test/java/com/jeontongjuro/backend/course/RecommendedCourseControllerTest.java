@@ -31,7 +31,7 @@ class RecommendedCourseControllerTest {
     @Test
     void returnsCourseContract() throws Exception {
         given(service.findByBreweryId("BRW-001")).willReturn(new RecommendedCourseResponse(
-                "BRW-001", "갈기산 양조장 주변 당일 코스", "충북 영동", "BRW-001",
+                "BRW-001", "갈기산 양조장 코스", "충북 영동", "BRW-001",
                 List.of(new CourseStopResponse(1, CourseStopType.BREWERY, "BRW-001", "갈기산",
                         "충북 영동군", new BigDecimal("36.0"), new BigDecimal("127.0"),
                         0, null, "여행의 시작", "양조장", null, null, null, List.of(), List.of()))));
