@@ -12,6 +12,8 @@ import com.jeontongjuro.backend.home.dto.HomeResponse;
 import com.jeontongjuro.backend.home.dto.HomeViewerResponse;
 import com.jeontongjuro.backend.member.Member;
 import com.jeontongjuro.backend.member.MemberRepository;
+import com.jeontongjuro.backend.recommendation.RecommendedBreweryService;
+import com.jeontongjuro.backend.recommendation.RecommendedCourseListService;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -30,6 +32,8 @@ public class HomeService {
 
     private final BreweryQueryService breweryQueryService;
     private final MemberRepository memberRepository;
+    private final RecommendedCourseListService recommendedCourseListService;
+    private final RecommendedBreweryService recommendedBreweryService;
 
     public HomeResponse getHome(Long memberId, String region, String liquorType) {
         String selectedRegion = defaultIfBlank(region, DEFAULT_REGION);
@@ -44,16 +48,15 @@ public class HomeService {
                 BrewerySearchCondition.of(List.of(selectedRegion), null, null, null,
                         null, null, null),
                 REGION_SECTION_SIZE);
-        List<BreweryListItemResponse> recommendedBreweries = search(
-                BrewerySearchCondition.of(null, null, null, null,
-                        null, null, null),
-                RECOMMENDED_SECTION_SIZE);
+        List<BreweryListItemResponse> recommendedBreweries = recommendedBreweryService
+                .recommend(memberId, 0, RECOMMENDED_SECTION_SIZE)
+                .content();
 
         return new HomeResponse(
                 viewer(member),
                 header(member),
                 banner(member),
-                List.of(),
+                recommendedCourseListService.homePreview(memberId),
                 new HomeBrewerySectionResponse(selectedLiquorType, liquorBreweries),
                 new HomeBrewerySectionResponse(selectedRegion, regionBreweries),
                 recommendedBreweries);
@@ -95,9 +98,8 @@ public class HomeService {
             return new HomeBannerResponse(HomeBannerType.ONBOARDING,
                     "취향을 등록하고 맞춤 양조장을 추천받아 보세요.", "/onboarding");
         }
-        // 취향 저장·추천 로직이 연결되기 전까지 개인화된 것처럼 표시하지 않는다.
-        return new HomeBannerResponse(HomeBannerType.DEFAULT,
-                "새로운 전통주 양조장을 만나보세요.", null);
+        return new HomeBannerResponse(HomeBannerType.PERSONALIZED,
+                "내 취향에 맞는 양조장과 코스를 만나보세요.", null);
     }
 
     private String defaultIfBlank(String value, String defaultValue) {

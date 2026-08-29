@@ -28,7 +28,8 @@ public class HomeController {
     @Operation(summary = "홈 화면 조회", description = """
             홈 화면의 헤더, 배너, 추천 코스, 주종별·지역별·추천 양조장 데이터를 한 번에 조회합니다.
             비로그인 사용자도 조회할 수 있으며, region과 liquorType의 기본값은 각각 수도권과 탁주입니다.
-            현재 추천 코스는 빈 배열, 추천 양조장은 고정 정렬 기본 목록으로 반환합니다.
+            추천 코스는 최대 5개, 추천 양조장은 최대 6개이며 각각의 전체 추천 목록과 같은 순서를 사용합니다.
+            온보딩 완료 회원은 저장된 주종·지역 취향이 추천 순서에 반영됩니다.
             """)
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "홈 화면 조회 성공"),

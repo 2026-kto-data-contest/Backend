@@ -74,7 +74,7 @@ public class RecommendedCourseService {
         append(stops, select(candidates, c -> c.type() == CourseStopType.ACCOMMODATION, false));
 
         return new RecommendedCourseResponse(brewery.getBreweryId(),
-                brewery.getBusinessName() + " 양조장 주변 당일 코스", regionLabel(brewery),
+                brewery.getBusinessName() + " 코스", regionLabel(brewery),
                 brewery.getBreweryId(), stops);
     }
 
