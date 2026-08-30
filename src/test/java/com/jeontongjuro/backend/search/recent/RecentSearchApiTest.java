@@ -77,7 +77,8 @@ class RecentSearchApiTest {
         mockMvc.perform(get("/api/v1/search/recent").with(auth(member)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(1))
-                .andExpect(jsonPath("$[0].keyword").value("갈기산 양조장"));
+                .andExpect(jsonPath("$[0].keyword").value("갈기산 양조장"))
+                .andExpect(jsonPath("$[0].searchedAt").value(org.hamcrest.Matchers.endsWith("Z")));
 
         Long recentSearchId = recentSearchRepository.findAll().get(0).getId();
         mockMvc.perform(delete("/api/v1/search/recent/{id}", recentSearchId)
