@@ -10,6 +10,7 @@ import static org.mockito.Mockito.when;
 
 import com.jeontongjuro.backend.member.Member;
 import com.jeontongjuro.backend.member.MemberRepository;
+import com.jeontongjuro.backend.product.ProductBreweryLinkRepository;
 import com.jeontongjuro.backend.search.recent.dto.RecentSearchResponse;
 import com.jeontongjuro.backend.search.recent.dto.RecentSearchSaveRequest;
 import java.util.ArrayList;
@@ -23,6 +24,7 @@ class RecentSearchServiceTest {
 
     private RecentSearchRepository recentSearchRepository;
     private MemberRepository memberRepository;
+    private ProductBreweryLinkRepository productBreweryLinkRepository;
     private RecentSearchService recentSearchService;
     private Member member;
 
@@ -30,13 +32,17 @@ class RecentSearchServiceTest {
     void setUp() {
         recentSearchRepository = mock(RecentSearchRepository.class);
         memberRepository = mock(MemberRepository.class);
-        recentSearchService = new RecentSearchService(recentSearchRepository, memberRepository);
+        productBreweryLinkRepository = mock(ProductBreweryLinkRepository.class);
+        recentSearchService = new RecentSearchService(
+                recentSearchRepository, memberRepository, productBreweryLinkRepository);
         member = Member.createKakao(100L, "수빈", "subin@example.com");
         when(memberRepository.findById(1L)).thenReturn(Optional.of(member));
         when(recentSearchRepository.save(any(RecentSearch.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
         when(recentSearchRepository.findByMemberIdOrderBySearchedAtDescIdDesc(eq(1L), any(Pageable.class)))
                 .thenReturn(List.of());
+        when(productBreweryLinkRepository.existsBySourceRowRef(3)).thenReturn(true);
+        when(productBreweryLinkRepository.existsBySourceRowRef(9999)).thenReturn(true);
     }
 
     @Test
@@ -101,6 +107,23 @@ class RecentSearchServiceTest {
                 new RecentSearchSaveRequest(RecentSearchType.REGION, "충청", "충청", "전라")))
                 .isInstanceOf(RecentSearchException.class)
                 .hasMessageContaining("같은 값");
+    }
+
+    @Test
+    void productIdMustExistButHasNoHardCodedUpperBound() {
+        RecentSearchResponse response = recentSearchService.save(
+                1L,
+                new RecentSearchSaveRequest(
+                        RecentSearchType.PRODUCT, "PRD-9999", "신제품", "새 제품명"));
+
+        assertThat(response.id()).isEqualTo("PRD-9999");
+
+        assertThatThrownBy(() -> recentSearchService.save(
+                1L,
+                new RecentSearchSaveRequest(
+                        RecentSearchType.PRODUCT, "PRD-9998", "없는 제품", "없는 제품")))
+                .isInstanceOf(RecentSearchException.class)
+                .hasMessageContaining("존재하지 않는 제품");
     }
 
     @Test

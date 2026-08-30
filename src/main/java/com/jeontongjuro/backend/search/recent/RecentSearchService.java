@@ -3,6 +3,7 @@ package com.jeontongjuro.backend.search.recent;
 import com.jeontongjuro.backend.auth.exception.AuthException;
 import com.jeontongjuro.backend.member.Member;
 import com.jeontongjuro.backend.member.MemberRepository;
+import com.jeontongjuro.backend.product.ProductBreweryLinkRepository;
 import com.jeontongjuro.backend.search.recent.dto.RecentSearchResponse;
 import com.jeontongjuro.backend.search.recent.dto.RecentSearchSaveRequest;
 import java.util.List;
@@ -29,6 +30,7 @@ public class RecentSearchService {
 
     private final RecentSearchRepository recentSearchRepository;
     private final MemberRepository memberRepository;
+    private final ProductBreweryLinkRepository productBreweryLinkRepository;
 
     @Transactional
     public RecentSearchResponse save(Long memberId, RecentSearchSaveRequest request) {
@@ -120,8 +122,8 @@ public class RecentSearchService {
             throw invalid("제품 ID는 PRD-xxxx 형식이어야 합니다.");
         }
         int sourceRowIndex = Integer.parseInt(matcher.group(1));
-        if (sourceRowIndex < 3 || sourceRowIndex > 1213) {
-            throw invalid("제품 ID 범위는 PRD-0003부터 PRD-1213까지입니다.");
+        if (!productBreweryLinkRepository.existsBySourceRowRef(sourceRowIndex)) {
+            throw invalid("존재하지 않는 제품 ID입니다.");
         }
     }
 
