@@ -156,12 +156,19 @@ class ProductQueryApiTest {
         List<String> uniqueTypes = new ArrayList<>();
         uniqueSuppressed.get("liquorTypes").forEach(n -> uniqueTypes.add(n.asText()));
         assertThat(uniqueTypes).containsExactly("탁주");
+        List<String> uniqueFlavorTags = new ArrayList<>();
+        uniqueSuppressed.get("flavorTags").forEach(n -> uniqueFlavorTags.add(n.asText()));
+        assertThat(uniqueFlavorTags).containsExactly("고소함", "부드러움");
 
         // 억제된 증류주도 제외되지 않고 나머지와 함께 노출(주종 enum ordinal 순서: 탁주·청주·증류주).
         JsonNode multi = cardById(body, 90040);
         List<String> multiTypes = new ArrayList<>();
         multi.get("liquorTypes").forEach(n -> multiTypes.add(n.asText()));
         assertThat(multiTypes).containsExactly("탁주", "청주", "증류주");
+        List<String> multiFlavorTags = new ArrayList<>();
+        multi.get("flavorTags").forEach(n -> multiFlavorTags.add(n.asText()));
+        assertThat(multiFlavorTags)
+                .containsExactly("고소함", "부드러움", "깔끔함", "담백함", "묵직함", "드라이함");
     }
 
     @Test

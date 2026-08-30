@@ -39,9 +39,27 @@ public record ProductCardResponse(
         @Schema(description = "취급 주종 목록(탁주·약주·청주·증류주·과실주·기타). 없으면 빈 배열",
                 example = "[\"증류주\"]", requiredMode = Schema.RequiredMode.REQUIRED)
         List<LiquorType> liquorTypes,
+        @Schema(description = "기능명세서의 주종별 제품 맛 태그. 기타 또는 주종 미상은 빈 배열",
+                example = "[\"묵직함\",\"드라이함\"]", requiredMode = Schema.RequiredMode.REQUIRED)
+        List<ProductFlavorTag> flavorTags,
         @Schema(description = "제품 소개(절단 되돌림/미노출 처리 후). 노출할 문장이 없으면 null", nullable = true)
         String description,
         @Schema(description = "최상위 수상 등급 뱃지 또는 '수상'. 수상 이력이 없으면 null", example = "대상",
                 nullable = true)
         String awardBadge) {
+
+    /** flavorTags 추가 전 호출부와의 소스 호환용 생성자. 태그는 주종에서 동일 규칙으로 계산한다. */
+    public ProductCardResponse(
+            Integer productId,
+            String productName,
+            BigDecimal alcoholMin,
+            BigDecimal alcoholMax,
+            String volume,
+            List<LiquorType> liquorTypes,
+            String description,
+            String awardBadge
+    ) {
+        this(productId, productName, alcoholMin, alcoholMax, volume, liquorTypes,
+                ProductFlavorTag.from(liquorTypes), description, awardBadge);
+    }
 }
