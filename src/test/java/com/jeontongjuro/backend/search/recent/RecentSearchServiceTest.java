@@ -50,6 +50,7 @@ class RecentSearchServiceTest {
         assertThat(response.keyword()).isEqualTo("갈기산");
         assertThat(response.displayName()).isEqualTo("갈기산");
         assertThat(response.searchedAt()).isNotNull();
+        assertThat(response.searchedAt().getOffset()).isEqualTo(java.time.ZoneOffset.UTC);
     }
 
     @Test
