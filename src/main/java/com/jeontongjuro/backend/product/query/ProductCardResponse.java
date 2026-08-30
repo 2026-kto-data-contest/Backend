@@ -47,4 +47,19 @@ public record ProductCardResponse(
         @Schema(description = "최상위 수상 등급 뱃지 또는 '수상'. 수상 이력이 없으면 null", example = "대상",
                 nullable = true)
         String awardBadge) {
+
+    /** flavorTags 추가 전 호출부와의 소스 호환용 생성자. 태그는 주종에서 동일 규칙으로 계산한다. */
+    public ProductCardResponse(
+            Integer productId,
+            String productName,
+            BigDecimal alcoholMin,
+            BigDecimal alcoholMax,
+            String volume,
+            List<LiquorType> liquorTypes,
+            String description,
+            String awardBadge
+    ) {
+        this(productId, productName, alcoholMin, alcoholMax, volume, liquorTypes,
+                ProductFlavorTag.from(liquorTypes), description, awardBadge);
+    }
 }
