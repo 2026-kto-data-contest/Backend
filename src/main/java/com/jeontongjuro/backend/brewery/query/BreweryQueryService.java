@@ -13,6 +13,7 @@ import com.jeontongjuro.backend.liquortype.LiquorType;
 import com.jeontongjuro.backend.liquortype.ProductLiquorTypeRepository;
 import com.jeontongjuro.backend.product.ProductBreweryLinkRepository;
 import com.jeontongjuro.backend.product.query.ProductQueryService;
+import com.jeontongjuro.backend.product.query.ProductCardResponse;
 import com.jeontongjuro.backend.product.query.SensoryTag;
 import com.jeontongjuro.backend.product.query.SensoryTagMatcher;
 import com.jeontongjuro.backend.search.SearchKeyword;
@@ -211,11 +212,14 @@ public class BreweryQueryService {
         MainImageResponse image = mainImagesFor(one).get(breweryId);
         String overview = overviewFor(brewery);
         List<ExperienceResponse> experiences = experiencesFor(breweryId);
+        List<ProductCardResponse> products = productQueryService.listProducts(breweryId, 0, 100).content();
+        RepresentativeLiquorTypesResponse representativeLiquorTypes =
+                RepresentativeLiquorTypeSelector.select(liquors, products);
 
         return BreweryDetailResponse.of(brewery, tags,
                 abv == null ? null : abv.min(),
                 abv == null ? null : abv.max(),
-                liquors, image, overview, experiences);
+                liquors, representativeLiquorTypes, image, overview, experiences);
     }
 
     /**

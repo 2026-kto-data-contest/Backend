@@ -198,6 +198,11 @@ class BreweryDetailApiTest {
         List<String> types = new ArrayList<>();
         body.get("liquorTypes").forEach(n -> types.add(n.asText()));
         assertThat(types).containsExactly("탁주", "약주", "청주", "증류주");
+        List<String> representativeTypes = new ArrayList<>();
+        body.get("representativeLiquorTypes").get("items")
+                .forEach(n -> representativeTypes.add(n.asText()));
+        assertThat(representativeTypes).containsExactly("탁주", "약주");
+        assertThat(body.get("representativeLiquorTypes").get("remainingCount").asInt()).isEqualTo(2);
     }
 
     @Test
@@ -206,7 +211,9 @@ class BreweryDetailApiTest {
         mockMvc.perform(get("/api/v1/breweries/{id}", BREWERY_D))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.liquorTypes").isArray())
-                .andExpect(jsonPath("$.liquorTypes.length()").value(0));
+                .andExpect(jsonPath("$.liquorTypes.length()").value(0))
+                .andExpect(jsonPath("$.representativeLiquorTypes.items.length()").value(0))
+                .andExpect(jsonPath("$.representativeLiquorTypes.remainingCount").value(0));
     }
 
     // ── 특징 태그(선언 순서, 빈 배열) ─────────────────────────────────────────────
