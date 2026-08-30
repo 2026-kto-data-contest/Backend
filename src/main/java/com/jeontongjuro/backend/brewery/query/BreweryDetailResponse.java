@@ -54,6 +54,8 @@ public record BreweryDetailResponse(
         @Schema(description = "취급 주종 목록(탁주·약주·청주·증류주·과실주·기타). 없으면 빈 배열",
                 example = "[\"탁주\",\"증류주\"]", requiredMode = Schema.RequiredMode.REQUIRED)
         List<LiquorType> liquorTypes,
+        @Schema(description = "상세 요약 카드용 대표주종과 '외 N' 개수", requiredMode = Schema.RequiredMode.REQUIRED)
+        RepresentativeLiquorTypesResponse representativeLiquorTypes,
         @Schema(description = "대표 이미지. 없으면 null", nullable = true) MainImageResponse mainImage,
         // ── 상세 필드 편입(#50, additive). 값 없으면 전부 null. 리스트 API엔 노출하지 않는다(스캔용). ──
         @Schema(description = "양조장 소개글(관광공사). 콘텐츠 미매칭이면 null", example = "1918년 창업한 …",
@@ -94,7 +96,9 @@ public record BreweryDetailResponse(
      */
     public static BreweryDetailResponse of(Brewery b, List<FeatureType> featureTags,
                                            BigDecimal alcoholMin, BigDecimal alcoholMax,
-                                           List<LiquorType> liquorTypes, MainImageResponse mainImage,
+                                           List<LiquorType> liquorTypes,
+                                           RepresentativeLiquorTypesResponse representativeLiquorTypes,
+                                           MainImageResponse mainImage,
                                            String overview, List<ExperienceResponse> experiences) {
         return new BreweryDetailResponse(
                 b.getBreweryId(),
@@ -111,6 +115,7 @@ public record BreweryDetailResponse(
                 alcoholMin,
                 alcoholMax,
                 liquorTypes,
+                representativeLiquorTypes,
                 mainImage,
                 overview,
                 b.getPhone(),
