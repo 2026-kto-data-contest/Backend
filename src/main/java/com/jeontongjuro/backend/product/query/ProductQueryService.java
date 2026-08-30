@@ -152,6 +152,7 @@ public class ProductQueryService {
                 alcoholMax,
                 volume,
                 liquorTypes,
+                ProductFlavorTag.from(liquorTypes),
                 description,
                 awardBadge);
     }

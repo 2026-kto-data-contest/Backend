@@ -14,6 +14,7 @@ import com.jeontongjuro.backend.global.web.PageResponse;
 import com.jeontongjuro.backend.liquortype.ProductLiquorTypeRepository;
 import com.jeontongjuro.backend.liquortype.LiquorType;
 import com.jeontongjuro.backend.product.query.ProductCardResponse;
+import com.jeontongjuro.backend.product.query.ProductFlavorTag;
 import com.jeontongjuro.backend.product.query.ProductQueryService;
 import com.jeontongjuro.backend.tour.BreweryNearby;
 import com.jeontongjuro.backend.tour.BreweryNearbyRepository;
@@ -116,6 +117,7 @@ class RecommendedCourseServiceTest {
         given(breweryRepository.findById("BRW-001")).willReturn(Optional.of(brewery));
         given(productQueryService.listProducts("BRW-001", 0, 100)).willReturn(PageResponse.of(List.of(
                 new ProductCardResponse(1, "탁주", null, null, null, List.of(LiquorType.탁주),
+                        List.of(ProductFlavorTag.고소함, ProductFlavorTag.부드러움),
                         "파전과 잘 어울리는 술", null)), 0, 100, 1));
         given(nearbyRepository.findCourseCandidates("BRW-001")).willReturn(List.of(
                 nearby("CLOSE-NON-MATCH", 100), nearby("PAIRING-MATCH", 1_000)));

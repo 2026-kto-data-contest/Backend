@@ -39,6 +39,9 @@ public record ProductCardResponse(
         @Schema(description = "취급 주종 목록(탁주·약주·청주·증류주·과실주·기타). 없으면 빈 배열",
                 example = "[\"증류주\"]", requiredMode = Schema.RequiredMode.REQUIRED)
         List<LiquorType> liquorTypes,
+        @Schema(description = "기능명세서의 주종별 제품 맛 태그. 기타 또는 주종 미상은 빈 배열",
+                example = "[\"묵직함\",\"드라이함\"]", requiredMode = Schema.RequiredMode.REQUIRED)
+        List<ProductFlavorTag> flavorTags,
         @Schema(description = "제품 소개(절단 되돌림/미노출 처리 후). 노출할 문장이 없으면 null", nullable = true)
         String description,
         @Schema(description = "최상위 수상 등급 뱃지 또는 '수상'. 수상 이력이 없으면 null", example = "대상",
