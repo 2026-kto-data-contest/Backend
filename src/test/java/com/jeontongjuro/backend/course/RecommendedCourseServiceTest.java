@@ -36,6 +36,7 @@ class RecommendedCourseServiceTest {
     private ProductQueryService productQueryService;
     private BreweryFeatureTagRepository featureTagRepository;
     private ProductLiquorTypeRepository liquorTypeRepository;
+    private KakaoPlaceSearchClient kakaoPlaceSearchClient;
     private RecommendedCourseService service;
 
     @BeforeEach
@@ -46,12 +47,14 @@ class RecommendedCourseServiceTest {
         productQueryService = Mockito.mock(ProductQueryService.class);
         featureTagRepository = Mockito.mock(BreweryFeatureTagRepository.class);
         liquorTypeRepository = Mockito.mock(ProductLiquorTypeRepository.class);
+        kakaoPlaceSearchClient = Mockito.mock(KakaoPlaceSearchClient.class);
         service = new RecommendedCourseService(breweryRepository, nearbyRepository, tourContentRepository,
-                productQueryService, featureTagRepository, liquorTypeRepository);
+                productQueryService, featureTagRepository, liquorTypeRepository, kakaoPlaceSearchClient);
         given(productQueryService.listProducts(any(), any(Integer.class), any(Integer.class)))
                 .willReturn(PageResponse.of(List.of(), 0, 100, 0));
         given(featureTagRepository.findByBreweryIdIn(any())).willReturn(List.of());
         given(liquorTypeRepository.findDistinctTypesByBreweryIdIn(any())).willReturn(List.of());
+        given(kakaoPlaceSearchClient.findPlace(any(), any(), any())).willReturn(Optional.empty());
     }
 
     @Test
@@ -131,6 +134,39 @@ class RecommendedCourseServiceTest {
         assertThat(stops.get(1).pairingComment()).contains("파전").contains("한식");
         assertThat(stops.get(2).contentId()).isEqualTo("CLOSE-NON-MATCH");
         assertThat(stops.get(2).pairingComment()).isNull();
+    }
+
+    @Test
+    void courseCardsUseUserFacingSubcategoryAndCoordinateKakaoUrl() {
+        Brewery brewery = brewery();
+        given(breweryRepository.findById("BRW-001")).willReturn(Optional.of(brewery));
+        given(nearbyRepository.findCourseCandidates("BRW-001"))
+                .willReturn(List.of(nearby("FOOD-1", 100)));
+        given(tourContentRepository.findAllById(any()))
+                .willReturn(List.of(content("FOOD-1", "39", "A05020100", "한식당")));
+
+        CourseStopResponse stop = service.findByBreweryId("BRW-001").stops().get(1);
+
+        assertThat(stop.categoryName()).isEqualTo("음식점");
+        assertThat(stop.subcategoryName()).isEqualTo("한식");
+        assertThat(stop.placeUrl()).startsWith("https://map.kakao.com/link/to/")
+                .contains("36.100000,127.100000");
+    }
+
+    @Test
+    void kakaoMatchOverridesFallbackSubcategoryAndLink() {
+        Brewery brewery = brewery();
+        given(breweryRepository.findById("BRW-001")).willReturn(Optional.of(brewery));
+        given(nearbyRepository.findCourseCandidates("BRW-001")).willReturn(List.of(nearby("FOOD-1", 100)));
+        given(tourContentRepository.findAllById(any()))
+                .willReturn(List.of(content("FOOD-1", "39", "A05020100", "한식당")));
+        given(kakaoPlaceSearchClient.findPlace(any(), any(), any())).willReturn(Optional.of(
+                new KakaoPlaceMatch("12345", "http://place.map.kakao.com/12345", "육류,고기요리")));
+
+        CourseStopResponse stop = service.findByBreweryId("BRW-001").stops().get(1);
+
+        assertThat(stop.subcategoryName()).isEqualTo("육류,고기요리");
+        assertThat(stop.placeUrl()).isEqualTo("http://place.map.kakao.com/12345");
     }
 
     @Test

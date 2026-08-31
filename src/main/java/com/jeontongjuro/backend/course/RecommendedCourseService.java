@@ -40,19 +40,22 @@ public class RecommendedCourseService {
     private final ProductQueryService productQueryService;
     private final BreweryFeatureTagRepository featureTagRepository;
     private final ProductLiquorTypeRepository liquorTypeRepository;
+    private final KakaoPlaceSearchClient kakaoPlaceSearchClient;
 
     public RecommendedCourseService(BreweryRepository breweryRepository,
                                     BreweryNearbyRepository nearbyRepository,
                                     TourContentRepository tourContentRepository,
                                     ProductQueryService productQueryService,
                                     BreweryFeatureTagRepository featureTagRepository,
-                                    ProductLiquorTypeRepository liquorTypeRepository) {
+                                    ProductLiquorTypeRepository liquorTypeRepository,
+                                    KakaoPlaceSearchClient kakaoPlaceSearchClient) {
         this.breweryRepository = breweryRepository;
         this.nearbyRepository = nearbyRepository;
         this.tourContentRepository = tourContentRepository;
         this.productQueryService = productQueryService;
         this.featureTagRepository = featureTagRepository;
         this.liquorTypeRepository = liquorTypeRepository;
+        this.kakaoPlaceSearchClient = kakaoPlaceSearchClient;
     }
 
     @Transactional(readOnly = true)
@@ -96,7 +99,7 @@ public class RecommendedCourseService {
             if (content == null || row.getDistanceM() == null) continue;
             CourseStopType type = CourseStopType.from(content);
             String pairing = type == CourseStopType.RESTAURANT
-                    ? FoodPairingMatcher.pairingComment(descriptions, content).orElse(null) : null;
+                    ? FoodPairingMatcher.pairingComment(descriptions, content, brewery.getBusinessName()).orElse(null) : null;
             result.add(new Candidate(distance(row), content, type, pairing));
         }
         // brewery_nearby는 현재 운영 수집 반경이 20km라 그 밖의 후보가 없다. 20km까지 넓혀도
@@ -111,7 +114,7 @@ public class RecommendedCourseService {
                 int meters = (int) Math.round(TourGeoValidator.haversineMeters(
                         brewery.getLatitude(), brewery.getLongitude(), content.getLatitude(), content.getLongitude()));
                 String pairing = type == CourseStopType.RESTAURANT
-                        ? FoodPairingMatcher.pairingComment(descriptions, content).orElse(null) : null;
+                        ? FoodPairingMatcher.pairingComment(descriptions, content, brewery.getBusinessName()).orElse(null) : null;
                 result.add(new Candidate(meters, content, type, pairing));
             }
         }
@@ -176,11 +179,16 @@ public class RecommendedCourseService {
 
     private CourseStopResponse toStop(int order, Candidate candidate) {
         TourContent content = candidate.content();
+        KakaoPlaceMatch kakao = kakaoPlaceSearchClient.findPlace(
+                content.getTitle(), content.getLatitude(), content.getLongitude()).orElse(null);
+        String subcategory = kakao != null && kakao.categoryName() != null
+                ? kakao.categoryName() : CoursePlaceClassifier.subcategoryOf(content, candidate.type());
+        String placeUrl = kakao != null && kakao.placeUrl() != null ? kakao.placeUrl() : kakaoPlaceUrl(content);
         return new CourseStopResponse(order, candidate.type(), content.getContentId(), content.getTitle(),
                 joinAddress(content.getAddr1(), content.getAddr2()), content.getLatitude(), content.getLongitude(),
                 distance(candidate), firstNonBlank(content.getFirstImage(), content.getFirstImage2()),
-                reason(candidate.type()), categoryName(candidate.type()), subcategoryName(content, candidate.type()),
-                kakaoSearchUrl(content.getTitle()), candidate.pairingComment(), List.of(), List.of());
+                reason(candidate.type()), categoryName(candidate.type()), subcategory,
+                placeUrl, candidate.pairingComment(), List.of(), List.of());
     }
 
     private static boolean isTourist(Candidate candidate) {
@@ -213,12 +221,6 @@ public class RecommendedCourseService {
         };
     }
 
-    private String subcategoryName(TourContent content, CourseStopType type) {
-        if (type == CourseStopType.CULTURAL_FACILITY) return "문화시설";
-        if (type == CourseStopType.MARKET) return "쇼핑·시장";
-        return firstNonBlank(content.getLclsSystm3(), content.getLclsSystm2(), content.getCat3());
-    }
-
     private String reason(CourseStopType type) {
         return switch (type) {
             case RESTAURANT -> "양조장과 가까운 지역 음식점";
@@ -228,9 +230,14 @@ public class RecommendedCourseService {
         };
     }
 
-    private String kakaoSearchUrl(String title) {
-        if (title == null || title.isBlank()) return null;
-        return "https://map.kakao.com/link/search/" + URLEncoder.encode(title, StandardCharsets.UTF_8);
+    private String kakaoPlaceUrl(TourContent content) {
+        if (content.getTitle() == null || content.getTitle().isBlank()) return null;
+        String encodedTitle = URLEncoder.encode(content.getTitle(), StandardCharsets.UTF_8);
+        if (content.getLatitude() != null && content.getLongitude() != null) {
+            return "https://map.kakao.com/link/to/" + encodedTitle + ","
+                    + content.getLatitude().toPlainString() + "," + content.getLongitude().toPlainString();
+        }
+        return "https://map.kakao.com/link/search/" + encodedTitle;
     }
 
     private String joinAddress(String addr1, String addr2) {
