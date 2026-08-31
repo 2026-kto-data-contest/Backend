@@ -134,6 +134,23 @@ class RecommendedCourseServiceTest {
     }
 
     @Test
+    void courseCardsUseUserFacingSubcategoryAndCoordinateKakaoUrl() {
+        Brewery brewery = brewery();
+        given(breweryRepository.findById("BRW-001")).willReturn(Optional.of(brewery));
+        given(nearbyRepository.findCourseCandidates("BRW-001"))
+                .willReturn(List.of(nearby("FOOD-1", 100)));
+        given(tourContentRepository.findAllById(any()))
+                .willReturn(List.of(content("FOOD-1", "39", "A05020100", "한식당")));
+
+        CourseStopResponse stop = service.findByBreweryId("BRW-001").stops().get(1);
+
+        assertThat(stop.categoryName()).isEqualTo("음식점");
+        assertThat(stop.subcategoryName()).isEqualTo("한식");
+        assertThat(stop.placeUrl()).startsWith("https://map.kakao.com/link/to/")
+                .contains("36.100000,127.100000");
+    }
+
+    @Test
     void missingCandidatesReturnsOnlyCenterInsteadOfNullArray() {
         Brewery brewery = brewery();
         given(breweryRepository.findById("BRW-001")).willReturn(Optional.of(brewery));
