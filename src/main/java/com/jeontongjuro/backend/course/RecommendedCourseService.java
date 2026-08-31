@@ -40,19 +40,22 @@ public class RecommendedCourseService {
     private final ProductQueryService productQueryService;
     private final BreweryFeatureTagRepository featureTagRepository;
     private final ProductLiquorTypeRepository liquorTypeRepository;
+    private final KakaoPlaceSearchClient kakaoPlaceSearchClient;
 
     public RecommendedCourseService(BreweryRepository breweryRepository,
                                     BreweryNearbyRepository nearbyRepository,
                                     TourContentRepository tourContentRepository,
                                     ProductQueryService productQueryService,
                                     BreweryFeatureTagRepository featureTagRepository,
-                                    ProductLiquorTypeRepository liquorTypeRepository) {
+                                    ProductLiquorTypeRepository liquorTypeRepository,
+                                    KakaoPlaceSearchClient kakaoPlaceSearchClient) {
         this.breweryRepository = breweryRepository;
         this.nearbyRepository = nearbyRepository;
         this.tourContentRepository = tourContentRepository;
         this.productQueryService = productQueryService;
         this.featureTagRepository = featureTagRepository;
         this.liquorTypeRepository = liquorTypeRepository;
+        this.kakaoPlaceSearchClient = kakaoPlaceSearchClient;
     }
 
     @Transactional(readOnly = true)
@@ -176,11 +179,16 @@ public class RecommendedCourseService {
 
     private CourseStopResponse toStop(int order, Candidate candidate) {
         TourContent content = candidate.content();
+        KakaoPlaceMatch kakao = kakaoPlaceSearchClient.findPlace(
+                content.getTitle(), content.getLatitude(), content.getLongitude()).orElse(null);
+        String subcategory = kakao != null && kakao.categoryName() != null
+                ? kakao.categoryName() : CoursePlaceClassifier.subcategoryOf(content, candidate.type());
+        String placeUrl = kakao != null && kakao.placeUrl() != null ? kakao.placeUrl() : kakaoPlaceUrl(content);
         return new CourseStopResponse(order, candidate.type(), content.getContentId(), content.getTitle(),
                 joinAddress(content.getAddr1(), content.getAddr2()), content.getLatitude(), content.getLongitude(),
                 distance(candidate), firstNonBlank(content.getFirstImage(), content.getFirstImage2()),
-                reason(candidate.type()), categoryName(candidate.type()), CoursePlaceClassifier.subcategoryOf(content, candidate.type()),
-                kakaoPlaceUrl(content), candidate.pairingComment(), List.of(), List.of());
+                reason(candidate.type()), categoryName(candidate.type()), subcategory,
+                placeUrl, candidate.pairingComment(), List.of(), List.of());
     }
 
     private static boolean isTourist(Candidate candidate) {

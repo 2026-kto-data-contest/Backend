@@ -63,7 +63,7 @@ class RecommendedCourseSupabaseAuditTest {
             assertThat(stop.latitude()).as("%s 위도", stop.contentId()).isNotNull();
             assertThat(stop.longitude()).as("%s 경도", stop.contentId()).isNotNull();
             assertThat(stop.distanceMeters()).as("%s 거리", stop.contentId()).isNotNull().isGreaterThanOrEqualTo(0);
-            assertThat(stop.placeUrl()).as("%s 카카오맵 링크", stop.contentId()).contains("map.kakao.com/link/");
+            assertThat(stop.placeUrl()).as("%s 카카오맵 링크", stop.contentId()).contains("map.kakao.com/");
             if (stop.subcategoryName() != null) {
                 assertThat(RAW_CATEGORY_CODE.matcher(stop.subcategoryName()).find())
                         .as("%s 원본 분류 코드 미노출", stop.contentId()).isFalse();
