@@ -65,7 +65,7 @@ public class BreweryQueryController {
     public PageResponse<BreweryListItemResponse> list(
             @Parameter(
                     description = "지역 필터. 여러 번 보내면(region=수도권&region=충청) 그중 하나라도 해당하는 "
-                            + "양조장이 모두 나옵니다. 허용값: 수도권, 충청, 전라, 경상, 부산, 울산, 강원, 제주. "
+                            + "양조장이 모두 나옵니다. 허용값: 수도권, 강원, 충청, 전라, 경상, 부산, 울산, 제주. "
                             + "보내지 않으면 전체 지역",
                     example = "[\"전라\"]")
             @RequestParam(required = false) List<String> region,
@@ -73,7 +73,7 @@ public class BreweryQueryController {
             @RequestParam(required = false) String reservationVisit,
             @Parameter(description = "상시 방문 가능 여부: Y(가능), N(불가), UNKNOWN(정보 없음)", example = "Y")
             @RequestParam(required = false) String alwaysVisit,
-            @Parameter(description = "양조장 이름 검색어. 보내지 않으면 이름 검색 안 함", example = "해남")
+            @Parameter(description = "양조장 이름 검색어. 보내지 않으면 이름 검색 안 함", example = "해창주조장")
             @RequestParam(required = false) String keyword,
             @Parameter(
                     description = "주종 필터. 여러 번 보내면(liquorType=탁주&liquorType=증류주) 그중 하나라도 "

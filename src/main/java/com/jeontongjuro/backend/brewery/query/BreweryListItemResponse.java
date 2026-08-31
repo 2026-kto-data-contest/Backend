@@ -33,7 +33,7 @@ import java.util.List;
 public record BreweryListItemResponse(
         @Schema(description = "양조장 고유 ID", example = "BRW-001",
                 requiredMode = Schema.RequiredMode.REQUIRED) String breweryId,
-        @Schema(description = "화면에 표시할 양조장 이름", example = "해남 장독대 양조장",
+        @Schema(description = "화면에 표시할 양조장 이름", example = "해창주조장",
                 requiredMode = Schema.RequiredMode.REQUIRED) String businessName,
         // sido·region은 주소 파싱(applyRegion) 파생값이라 미계산 상태(신규 양조장 등)면 null이 될 수 있다
         // — 현재 59/59 채워져 있으나 그건 스냅샷일 뿐, 계약은 nullable이다.

@@ -5,6 +5,11 @@
 
 - **최종 검증**: 2026-08-28 / HEAD `d2b5435`
 - **직전 전수 검증 결과**: 실재 20 · 해소 6 · 오등록 1 (합 27) — 이번 검증도 번호부채 상태는 동일, 앵커 라인·근거만 갱신
+- **2026-08-31 추가**: 문서·Swagger 대조 세션에서 #f 신규 등록(mainImage OpenAPI 스키마 자기모순, 문서 전용·앵커 없음).
+  이 세션은 전수 재검증이 아니라 #f 1건 추가만 수행했다. 위 "실재 20" 등 기존 합계 산식을 표의 행 수와 대조했더니
+  이미 어긋나 있었다(트리거 9행 + 심사까지X 14행 = 23행인데 "실재 20"으로 적혀 있음 — `5–7` 1행이 부채 3개를 묶은 표기라
+  행 수≠부채 개수인 데서 온 차이로 추정되나 확정하지 못했다). 전면 재산정은 이번 세션 범위 밖이라 건드리지 않고,
+  #f 추가분만 반영해 상대값으로 갱신한다: 실재 20→21 · 해소 6(불변) · 오등록 1(불변) (합 27→28, 단 기저값 자체가 재검증 필요)
 - **[트리거] 9건 중 7건은 해당 코드에 `// DEBT-N:` 인라인 앵커**를 함께 심었다(문서=지도 / 앵커=지뢰 표지).
   단 #25·c는 단일 코드 라인으로 특정할 성격이 아니라(#25=테스트 부재, c=상수 자체가 문제가 아니라 무경계 전제가 문제) 문서에만 둔다.
 
@@ -45,7 +50,7 @@
 
 > #25 잔여 미봉인 1종: `recommended_brewery_seed`. `liquor_keyword`는 2026-08-28 재검증에서 `LiquorKeywordDictionaryTest`(`new LiquorKeywordDictionary(new ObjectMapper())`, Spring 컨텍스트 불필요)가 DB 없이 사전 파싱 자체를 검증한다는 사실을 확인해 실질 봉인으로 재분류했다. `recommended_brewery_seed`도 `FixedBrewerySeed` 생성자가 동일하게 fail-fast하지만, 저장소의 `@SpringBootTest` 27개 전부가 `@EnabledIf(LocalPostgres#isUp)`로 게이트돼 있어 그 생성자가 Postgres 없이는 아예 실행되지 않는다 — 그래서 이 한 종만 [트리거]에 남긴다.
 
-### [심사까지X] 14건 — 문서에만 둔다(코드 무수정)
+### [심사까지X] 15건 — 문서에만 둔다(코드 무수정)
 
 | # | 제목 | 근거 위치 |
 |---|---|---|
@@ -63,6 +68,18 @@
 | b | 시드 값 회귀 방어 부분(봉인은 구조만, count 불변 값오류 미방어) | 골든 테스트는 출력 count만 핀 |
 | d | 검색 정규화 2벌(목록 API keyword 필터는 특수문자 미제거) | `SearchKeyword.normalizeTarget`:53-54(제거+NFC+lower) vs `BrewerySearchCondition.normalizeKeyword`:152(NFC만) + `BreweryQuerySpecifications.keywordContains`:121(lower만, 제거 없음) |
 | e | `OpenApiDocumentationTest`가 신규 7개 엔드포인트 중 1개(`/api/v1/breweries`)만 핀 | `OpenApiDocumentationTest.java`:42 — 나머지 6개(상세·제품·metadata·search·suggestions·recommendations)는 그룹 소속을 회귀 방어하는 테스트가 없다 |
+| f | `mainImage` 필드 OpenAPI 3.1 스키마 자기모순(`type:"null"` + `$ref` 형제, 실제 응답은 정상) | springdoc-openapi 3.0.3 출력(`/v3/api-docs`) · `BreweryListItemResponse.java`:60 · `BreweryDetailResponse.java`:57 (둘 다 object 타입 `$ref` 필드에 `@Schema(nullable=true)`) |
+
+> #f `mainImage`: OpenAPI 3.1(JSON Schema 2020-12)에서 `$ref`는 형제 키워드와 AND로 합성된다. object 타입 `$ref` 필드에
+> `@Schema(nullable=true)`를 붙이면 springdoc 3.0.3이 3.1 출력 모드에서 `anyOf:[{$ref},{type:"null"}]` 대신
+> `{"type":"null","$ref":"#/components/schemas/MainImageResponse", ...}`를 그대로 얹어, null도 객체도 통과할 수 없는
+> 모순 스키마가 된다(원시 타입 nullable 필드는 `type:["string","null"]`로 정상 렌더링되므로 이 패턴에만 국한).
+> **실제 JSON 응답 자체는 정상**이다 — 2026-08-30 검증 세션에서 양조장 59건 전수 조회 결과 null 43건·object 16건 모두
+> shape이 정상임을 확인했다. 영향 조건: 프론트가 ajv strict 등 **런타임 JSON Schema 검증**을 이 스키마에 대해 돌릴 때만
+> 검증 실패로 터진다(이 프로젝트 프론트가 그런 검증을 쓰는지는 미확인 — 안 쓰면 무해). 고치지 않는 근거: (1) 실응답에
+> 결함이 없어 원인이 springdoc 렌더링 한정이다 (2) 고치려면 springdoc 버전업 또는 `OpenApiCustomizer` 신설이 필요한데
+> `global/OpenApiConfig`는 수빈 라인 파일이라 이번 세션(문서 문자열 2건 한정) 범위 밖이다 (3) 심사 5주 전에 문서 렌더링
+> 목적으로 의존성·설정을 건드릴 유인이 없다.
 
 ## 해소·오등록 (7건 — append-only, 삭제 금지)
 

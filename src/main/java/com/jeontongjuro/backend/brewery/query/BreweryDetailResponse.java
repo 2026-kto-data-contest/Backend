@@ -23,12 +23,12 @@ import java.util.Locale;
 public record BreweryDetailResponse(
         @Schema(description = "양조장 고유 ID", example = "BRW-001",
                 requiredMode = Schema.RequiredMode.REQUIRED) String breweryId,
-        @Schema(description = "화면에 표시할 양조장 이름", example = "해남 장독대 양조장",
+        @Schema(description = "화면에 표시할 양조장 이름", example = "해창주조장",
                 requiredMode = Schema.RequiredMode.REQUIRED) String businessName,
         // sido·region은 주소 파싱(applyRegion) 파생값이라 미계산 상태(신규 양조장 등)면 null이 될 수 있다(계약 nullable).
         @Schema(description = "시·도 단위 주소. 주소 파싱 전이면 null", example = "전남", nullable = true) String sido,
         @Schema(description = "서비스 지역 필터 분류. 주소 파싱 전이면 null", example = "전라", nullable = true) String region,
-        @Schema(description = "도로명/지번 주소 원문", example = "전라남도 해남군 ...",
+        @Schema(description = "도로명/지번 주소 원문", example = "전남 해남군 화산면 해창길 1",
                 requiredMode = Schema.RequiredMode.REQUIRED) String address,
         @Schema(description = "위도(WGS84). 지오코딩 실패 시 null", example = "34.573933", nullable = true)
         BigDecimal latitude,
