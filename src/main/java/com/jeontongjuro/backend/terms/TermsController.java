@@ -62,7 +62,9 @@ public class TermsController {
 
                     호출 전 GET /api/v1/auth/csrf에서 받은 토큰을 X-XSRF-TOKEN 헤더에 넣으세요.
                     fetch는 credentials 옵션을 include로, Axios는 withCredentials 옵션을 true로 설정하세요.
-                    성공하면 갱신된 약관 동의 목록을 반환하며, 프론트는 온보딩 화면으로 이동하면 됩니다.
+                    성공하면 갱신된 약관 동의 목록을 반환합니다. 저장 성공 후 POST /api/v1/auth/continue를
+                    호출하고, 응답의 nextPath로 이동하세요. 현재 상태에 따라 /terms, /onboarding 또는
+                    로그인 직전 서비스 내부 경로가 반환됩니다.
                     """
     )
     @Parameter(name = "X-XSRF-TOKEN", in = ParameterIn.HEADER, required = true,

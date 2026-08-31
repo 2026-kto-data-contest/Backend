@@ -10,8 +10,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
-import java.time.LocalDateTime;
-import java.time.ZoneOffset;
+import java.time.Instant;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -46,10 +45,10 @@ public class Member {
     private String postLoginReturnTo;
 
     @Column(name = "created_at", nullable = false, updatable = false)
-    private LocalDateTime createdAt;
+    private Instant createdAt;
 
     @Column(name = "updated_at", nullable = false)
-    private LocalDateTime updatedAt;
+    private Instant updatedAt;
 
     public static Member createKakao(Long kakaoUserId, String nickname, String email) {
         Member member = new Member();
@@ -82,13 +81,13 @@ public class Member {
 
     @PrePersist
     void onCreate() {
-        LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
+        Instant now = Instant.now();
         createdAt = now;
         updatedAt = now;
     }
 
     @PreUpdate
     void onUpdate() {
-        updatedAt = LocalDateTime.now(ZoneOffset.UTC);
+        updatedAt = Instant.now();
     }
 }

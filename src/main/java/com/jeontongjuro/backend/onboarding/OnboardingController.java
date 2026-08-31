@@ -66,7 +66,7 @@ public class OnboardingController {
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "온보딩 완료 및 다음 경로 반환"),
             @ApiResponse(responseCode = "401", description = "로그인 필요"),
-            @ApiResponse(responseCode = "409", description = "필수 약관 동의 필요")
+            @ApiResponse(responseCode = "409", description = "필수 약관 또는 필수 온보딩 취향 저장 필요")
     })
     @PostMapping("/complete")
     public NextPathResponse complete(@AuthenticationPrincipal AuthenticatedMember member) {
