@@ -181,12 +181,41 @@ CREATE TABLE IF NOT EXISTS member_account (
     role          TEXT      NOT NULL DEFAULT 'USER',
     onboarding_completed BOOLEAN NOT NULL DEFAULT FALSE,
     post_login_return_to TEXT,
-    created_at    TIMESTAMP NOT NULL,
-    updated_at    TIMESTAMP NOT NULL,
+    created_at    TIMESTAMPTZ NOT NULL,
+    updated_at    TIMESTAMPTZ NOT NULL,
     CONSTRAINT uq_member_account_kakao_user_id UNIQUE (kakao_user_id),
     CONSTRAINT ck_member_account_role CHECK (role IN ('USER', 'ADMIN'))
 );
 ALTER TABLE member_account ADD COLUMN IF NOT EXISTS post_login_return_to TEXT;
+
+-- 기존 TIMESTAMP WITHOUT TIME ZONE 값은 애플리케이션이 UTC LocalDateTime으로 기록했다.
+-- UTC로 명시해 같은 순간의 TIMESTAMPTZ로 바꾸며, 이미 전환된 DB에서는 실행하지 않아 재기동 시 이동을 막는다.
+CREATE OR REPLACE FUNCTION migrate_member_account_timestamps_110() RETURNS void
+LANGUAGE plpgsql AS '
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = current_schema()
+          AND table_name = ''member_account''
+          AND column_name = ''created_at''
+          AND data_type = ''timestamp without time zone''
+    ) THEN
+        EXECUTE ''ALTER TABLE member_account ALTER COLUMN created_at TYPE TIMESTAMPTZ
+                 USING created_at AT TIME ZONE ''''UTC'''''';
+    END IF;
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = current_schema()
+          AND table_name = ''member_account''
+          AND column_name = ''updated_at''
+          AND data_type = ''timestamp without time zone''
+    ) THEN
+        EXECUTE ''ALTER TABLE member_account ALTER COLUMN updated_at TYPE TIMESTAMPTZ
+                 USING updated_at AT TIME ZONE ''''UTC'''''';
+    END IF;
+END';
+SELECT migrate_member_account_timestamps_110();
+DROP FUNCTION migrate_member_account_timestamps_110();
 
 -- 로그인 회원 최근 검색어. 비로그인 기록은 프론트 로컬 저장소에서 관리한다.
 -- 동일 회원이 같은 type+target을 다시 검색하면 행을 늘리지 않고 검색 시각·표시 스냅샷을 갱신한다.
