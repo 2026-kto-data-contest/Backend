@@ -63,15 +63,14 @@ public class RecommendedCourseService {
         Brewery brewery = breweryRepository.findById(breweryId)
                 .orElseThrow(() -> new BreweryNotFoundException("양조장을 찾을 수 없습니다: " + breweryId));
         List<ProductCardResponse> products = productQueryService.listProducts(breweryId, 0, 100).content();
-        List<String> descriptions = products.stream().map(ProductCardResponse::description)
-                .filter(value -> value != null && !value.isBlank()).toList();
+        List<String> descriptions = productQueryService.pairingTexts(breweryId);
         List<BreweryNearby> nearby = nearbyRepository.findCourseCandidates(breweryId);
         Map<String, TourContent> contentById = loadContent(nearby);
-        List<Candidate> candidates = candidates(brewery, nearby, contentById, descriptions);
+        List<Candidate> candidates = refineNearbyFoodTypes(candidates(brewery, nearby, contentById, descriptions));
 
         List<CourseStopResponse> stops = new ArrayList<>();
         stops.add(centerStop(brewery, contentById.get(brewery.getContentId()), products));
-        append(stops, select(candidates, c -> c.type() == CourseStopType.RESTAURANT, true));
+        append(stops, selectRestaurants(candidates, descriptions, brewery.getBusinessName()));
         append(stops, select(candidates, RecommendedCourseService::isTourist, false));
         append(stops, select(candidates, c -> c.type() == CourseStopType.CAFE, false));
         append(stops, select(candidates, c -> c.type() == CourseStopType.ACCOMMODATION, false));
@@ -100,7 +99,7 @@ public class RecommendedCourseService {
             CourseStopType type = CourseStopType.from(content);
             String pairing = type == CourseStopType.RESTAURANT
                     ? FoodPairingMatcher.pairingComment(descriptions, content, brewery.getBusinessName()).orElse(null) : null;
-            result.add(new Candidate(distance(row), content, type, pairing));
+            result.add(new Candidate(distance(row), content, type, pairing, null));
         }
         // brewery_nearby는 현재 운영 수집 반경이 20km라 그 밖의 후보가 없다. 20km까지 넓혀도
         // 카테고리 정원이 안 차면 tour_content 전체 좌표에서 Haversine 거리로 보충해 상한 없는 확장을 구현한다.
@@ -115,10 +114,40 @@ public class RecommendedCourseService {
                         brewery.getLatitude(), brewery.getLongitude(), content.getLatitude(), content.getLongitude()));
                 String pairing = type == CourseStopType.RESTAURANT
                         ? FoodPairingMatcher.pairingComment(descriptions, content, brewery.getBusinessName()).orElse(null) : null;
-                result.add(new Candidate(meters, content, type, pairing));
+                result.add(new Candidate(meters, content, type, pairing, null));
             }
         }
         return result;
+    }
+
+    /** 카카오 재분류는 5→10→20km 버킷을 순서대로 처리하고 음식점·카페가 각각 두 곳 확보되면 중단한다. */
+    private List<Candidate> refineNearbyFoodTypes(List<Candidate> candidates) {
+        Map<String, Candidate> refined = new java.util.HashMap<>();
+        for (int radius : SEARCH_RADII_METERS) {
+            candidates.stream()
+                    .filter(candidate -> isFood(candidate.type()) && distance(candidate) <= radius)
+                    .filter(candidate -> !refined.containsKey(candidate.content().getContentId()))
+                    .forEach(candidate -> refined.put(candidate.content().getContentId(), refineFoodType(candidate)));
+            long restaurants = refined.values().stream()
+                    .filter(candidate -> candidate.type() == CourseStopType.RESTAURANT).count();
+            long cafes = refined.values().stream()
+                    .filter(candidate -> candidate.type() == CourseStopType.CAFE).count();
+            if (restaurants >= PER_CATEGORY_LIMIT && cafes >= PER_CATEGORY_LIMIT) break;
+        }
+        return candidates.stream().map(candidate -> refined.getOrDefault(
+                candidate.content().getContentId(), candidate)).toList();
+    }
+
+    private Candidate refineFoodType(Candidate candidate) {
+        KakaoPlaceMatch kakao = kakaoPlaceSearchClient.findPlace(candidate.content().getTitle(),
+                candidate.content().getLatitude(), candidate.content().getLongitude()).orElse(null);
+        CourseStopType type = CoursePlaceClassifier.typeOf(
+                candidate.content(), kakao == null ? null : kakao.categoryName());
+        return new Candidate(candidate.distanceMeters(), candidate.content(), type, candidate.pairingComment(), kakao);
+    }
+
+    private static boolean isFood(CourseStopType type) {
+        return type == CourseStopType.RESTAURANT || type == CourseStopType.CAFE;
     }
 
     private boolean needsGlobalFallback(List<Candidate> candidates) {
@@ -156,6 +185,41 @@ public class RecommendedCourseService {
                 .sorted(order).limit(PER_CATEGORY_LIMIT).toList();
     }
 
+    private List<Candidate> selectRestaurants(List<Candidate> candidates, List<String> descriptions,
+                                              String breweryName) {
+        List<Candidate> restaurants = candidates.stream()
+                .filter(c -> c.type() == CourseStopType.RESTAURANT).toList();
+        if (restaurants.isEmpty()) return List.of();
+        int finalRadius = selectionRadius(restaurants);
+        return restaurants.stream().filter(c -> distance(c) <= finalRadius)
+                .map(candidate -> enrichRestaurant(candidate, descriptions, breweryName))
+                .sorted(Comparator.comparing((Candidate c) -> c.pairingComment() != null).reversed()
+                        .thenComparingInt(RecommendedCourseService::distance)
+                        .thenComparing(c -> c.content().getContentId()))
+                .limit(PER_CATEGORY_LIMIT).toList();
+    }
+
+    private Candidate enrichRestaurant(Candidate candidate, List<String> descriptions, String breweryName) {
+        KakaoPlaceMatch kakao = candidate.kakaoPlaceMatch() != null ? candidate.kakaoPlaceMatch()
+                : kakaoPlaceSearchClient.findPlace(candidate.content().getTitle(),
+                        candidate.content().getLatitude(), candidate.content().getLongitude()).orElse(null);
+        String externalCategory = kakao == null ? null : kakao.categoryName();
+        String pairing = FoodPairingMatcher.pairingComment(
+                descriptions, candidate.content(), breweryName, externalCategory).orElse(null);
+        return new Candidate(candidate.distanceMeters(), candidate.content(), candidate.type(), pairing, kakao);
+    }
+
+    private int selectionRadius(List<Candidate> categoryCandidates) {
+        int finalRadius = categoryCandidates.stream().mapToInt(RecommendedCourseService::distance)
+                .max().orElse(20_000);
+        for (int radius : SEARCH_RADII_METERS) {
+            if (categoryCandidates.stream().filter(c -> distance(c) <= radius).count() >= PER_CATEGORY_LIMIT) {
+                return radius;
+            }
+        }
+        return finalRadius;
+    }
+
     private void append(List<CourseStopResponse> stops, List<Candidate> selected) {
         for (Candidate candidate : selected) stops.add(toStop(stops.size() + 1, candidate));
     }
@@ -179,10 +243,10 @@ public class RecommendedCourseService {
 
     private CourseStopResponse toStop(int order, Candidate candidate) {
         TourContent content = candidate.content();
-        KakaoPlaceMatch kakao = kakaoPlaceSearchClient.findPlace(
-                content.getTitle(), content.getLatitude(), content.getLongitude()).orElse(null);
-        String subcategory = kakao != null && kakao.categoryName() != null
-                ? kakao.categoryName() : CoursePlaceClassifier.subcategoryOf(content, candidate.type());
+        KakaoPlaceMatch kakao = candidate.kakaoPlaceMatch() != null ? candidate.kakaoPlaceMatch()
+                : kakaoPlaceSearchClient.findPlace(
+                        content.getTitle(), content.getLatitude(), content.getLongitude()).orElse(null);
+        String subcategory = CoursePlaceClassifier.subcategoryOf(content, candidate.type());
         String placeUrl = kakao != null && kakao.placeUrl() != null ? kakao.placeUrl() : kakaoPlaceUrl(content);
         return new CourseStopResponse(order, candidate.type(), content.getContentId(), content.getTitle(),
                 joinAddress(content.getAddr1(), content.getAddr2()), content.getLatitude(), content.getLongitude(),
@@ -252,6 +316,6 @@ public class RecommendedCourseService {
     }
 
     private record Candidate(int distanceMeters, TourContent content, CourseStopType type,
-                             String pairingComment) {
+                             String pairingComment, KakaoPlaceMatch kakaoPlaceMatch) {
     }
 }

@@ -113,6 +113,13 @@ class ProductQueryServiceCharacteristicsTest {
         assertThat(productQueryService.representativeCharacteristicsByBreweryId(List.of())).isEmpty();
     }
 
+    @Test
+    @DisplayName("추천 코스 페어링 원문에 노출 제품의 특징을 포함한다")
+    void pairingTextsIncludeCharacteristics() {
+        assertThat(productQueryService.pairingTexts(BREWERY_A))
+                .contains("여기는 절대 선택되면 안 됨", "부드러운 목넘김과 산뜻한 산미");
+    }
+
     // ── helpers ──────────────────────────────────────────────────────────────
     private void product(String breweryId, int ref, String name, String characteristics, String awards,
                          String saleYn) {
