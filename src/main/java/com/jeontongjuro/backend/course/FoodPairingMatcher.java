@@ -18,12 +18,20 @@ final class FoodPairingMatcher {
 
     private static final Pattern JEON_FOOD_CONTEXT = Pattern.compile(
             "(?:파전|감자전|해물전|김치전|부추전|녹두전|빈대떡|\\b전\\s*(?:요리|안주|한접시|집))");
+    private static final Pattern SASHIMI_FOOD_CONTEXT = Pattern.compile(
+            "(?:생선회|모둠회|모듬회|회무침|회덮밥|횟감|횟집|(?:^|[\\s,·/])회(?:$|[\\s,·/]))");
 
     static Optional<String> pairingComment(List<String> descriptions, TourContent restaurant, String breweryName) {
+        return pairingComment(descriptions, restaurant, breweryName, null);
+    }
+
+    static Optional<String> pairingComment(List<String> descriptions, TourContent restaurant,
+                                           String breweryName, String externalCategory) {
         String source = String.join(" ", descriptions).toLowerCase(Locale.ROOT);
         String restaurantText = String.join(" ", nonNull(
                 restaurant.getTitle(), restaurant.getCat1(), restaurant.getCat2(), restaurant.getCat3(),
-                restaurant.getLclsSystm1(), restaurant.getLclsSystm2(), restaurant.getLclsSystm3()))
+                restaurant.getLclsSystm1(), restaurant.getLclsSystm2(), restaurant.getLclsSystm3(),
+                externalCategory))
                 .toLowerCase(Locale.ROOT);
         for (Map.Entry<String, PairingRule> entry : RULES.entrySet()) {
             if (!matchesSource(entry.getKey(), source)) continue;
@@ -50,8 +58,9 @@ final class FoodPairingMatcher {
     }
 
     private static boolean matchesSource(String keyword, String source) {
-        if (!"전".equals(keyword)) return source.contains(keyword);
-        return JEON_FOOD_CONTEXT.matcher(source).find();
+        if ("전".equals(keyword)) return JEON_FOOD_CONTEXT.matcher(source).find();
+        if ("회".equals(keyword)) return SASHIMI_FOOD_CONTEXT.matcher(source).find();
+        return source.contains(keyword);
     }
 
     private static List<String> nonNull(String... values) {

@@ -27,9 +27,32 @@ class FoodPairingMatcherTest {
                 List.of(description), koreanRestaurant(), "갈기산양조장")).isEmpty();
     }
 
+    @ParameterizedTest
+    @ValueSource(strings = {"대한민국 우리술품평회 대상", "배상면 회장의 역작", "농업회사법인",
+            "국제소믈리에협회 인증"})
+    void sashimiFalsePositiveContextsDoNotMatch(String description) {
+        assertThat(FoodPairingMatcher.pairingComment(
+                List.of(description), japaneseRestaurant(), "갈기산양조장")).isEmpty();
+    }
+
+    @Test
+    void sashimiFoodContextStillMatches() {
+        assertThat(FoodPairingMatcher.pairingComment(
+                List.of("족발, 삼겹살, 회 등 다양한 안주와 어울린다"), japaneseRestaurant(), "갈기산양조장"))
+                .get().asString().contains("회 페어링");
+    }
+
     private TourContent koreanRestaurant() {
         TourContentRow row = new TourContentRow("FOOD", "39", "영동 한식당", "주소", null, null,
                 null, null, null, null, "A05020100", null, null, null, null, null,
+                "127.1", "36.1", null, null, null, null, null, null, null);
+        return TourContent.create(row, new BigDecimal("36.100000"), new BigDecimal("127.100000"));
+    }
+
+
+    private TourContent japaneseRestaurant() {
+        TourContentRow row = new TourContentRow("JAPANESE", "39", "바다 횟집", "주소", null, null,
+                null, null, null, null, "A05020300", null, null, null, null, null,
                 "127.1", "36.1", null, null, null, null, null, null, null);
         return TourContent.create(row, new BigDecimal("36.100000"), new BigDecimal("127.100000"));
     }

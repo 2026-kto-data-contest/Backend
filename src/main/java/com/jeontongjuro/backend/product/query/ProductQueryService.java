@@ -82,6 +82,20 @@ public class ProductQueryService {
         return PageResponse.of(pageContent, clampedPage, clampedSize, totalElements);
     }
 
+    /** 추천 코스 음식점 페어링용 원문. 노출 대상 제품의 소개와 실제 안주 정보가 있는 특징을 함께 반환한다. */
+    public List<String> pairingTexts(String breweryId) {
+        List<ProductBreweryLink> links = linkRepository.findByBreweryId(breweryId);
+        if (links.isEmpty()) return List.of();
+        Map<Integer, ProductRawView> rawByRef = loadRawByRef(links);
+        return filterKept(links, rawByRef).stream()
+                .flatMap(product -> java.util.stream.Stream.of(
+                        DescriptionTruncationPolicy.apply(product.raw().getDescription()),
+                        product.raw().getCharacteristics()))
+                .filter(value -> value != null && !value.isBlank())
+                .distinct()
+                .toList();
+    }
+
     /** ①~⑧: 이 양조장의 노출 카드 전체(정렬 완료)를 만든다. 페이지네이션(⑨)은 호출자가 한다. */
     private List<ProductCardResponse> buildCards(String breweryId) {
         // ① 로드

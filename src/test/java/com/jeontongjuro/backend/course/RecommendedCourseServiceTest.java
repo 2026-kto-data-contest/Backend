@@ -52,6 +52,7 @@ class RecommendedCourseServiceTest {
                 productQueryService, featureTagRepository, liquorTypeRepository, kakaoPlaceSearchClient);
         given(productQueryService.listProducts(any(), any(Integer.class), any(Integer.class)))
                 .willReturn(PageResponse.of(List.of(), 0, 100, 0));
+        given(productQueryService.pairingTexts(any())).willReturn(List.of());
         given(featureTagRepository.findByBreweryIdIn(any())).willReturn(List.of());
         given(liquorTypeRepository.findDistinctTypesByBreweryIdIn(any())).willReturn(List.of());
         given(kakaoPlaceSearchClient.findPlace(any(), any(), any())).willReturn(Optional.empty());
@@ -75,7 +76,7 @@ class RecommendedCourseServiceTest {
                 content("FOOD-1", "39", null, "가까운 식당"),
                 content("FOOD-2", "39", null, "두 번째 식당"),
                 content("TOUR-1", "12", null, "관광지"),
-                content("CULTURE-1", "14", null, "문화시설"),
+                content("CULTURE-1", "14", "A02060100", "박물관"),
                 content("CAFE-1", "39", "A05020900", "첫 카페"),
                 content("CAFE-2", "39", "A05020900", "둘째 카페"),
                 content("STAY-1", "32", null, "첫 숙소"),
@@ -122,6 +123,7 @@ class RecommendedCourseServiceTest {
                 new ProductCardResponse(1, "탁주", null, null, null, List.of(LiquorType.탁주),
                         List.of(ProductFlavorTag.고소함, ProductFlavorTag.부드러움),
                         "파전과 잘 어울리는 술", null)), 0, 100, 1));
+        given(productQueryService.pairingTexts("BRW-001")).willReturn(List.of("파전과 잘 어울리는 술"));
         given(nearbyRepository.findCourseCandidates("BRW-001")).willReturn(List.of(
                 nearby("CLOSE-NON-MATCH", 100), nearby("PAIRING-MATCH", 1_000)));
         given(tourContentRepository.findAllById(any())).willReturn(List.of(
@@ -154,7 +156,7 @@ class RecommendedCourseServiceTest {
     }
 
     @Test
-    void kakaoMatchOverridesFallbackSubcategoryAndLink() {
+    void kakaoMatchKeepsNormalizedSubcategoryAndOverridesLink() {
         Brewery brewery = brewery();
         given(breweryRepository.findById("BRW-001")).willReturn(Optional.of(brewery));
         given(nearbyRepository.findCourseCandidates("BRW-001")).willReturn(List.of(nearby("FOOD-1", 100)));
@@ -165,8 +167,32 @@ class RecommendedCourseServiceTest {
 
         CourseStopResponse stop = service.findByBreweryId("BRW-001").stops().get(1);
 
-        assertThat(stop.subcategoryName()).isEqualTo("육류,고기요리");
+        assertThat(stop.subcategoryName()).isEqualTo("한식");
         assertThat(stop.placeUrl()).isEqualTo("http://place.map.kakao.com/12345");
+    }
+
+    @Test
+    void kakaoDetailedCategoryParticipatesInPairingRanking() {
+        Brewery brewery = brewery();
+        given(breweryRepository.findById("BRW-001")).willReturn(Optional.of(brewery));
+        given(productQueryService.listProducts("BRW-001", 0, 100)).willReturn(PageResponse.of(List.of(
+                new ProductCardResponse(1, "탁주", null, null, null, List.of(LiquorType.탁주),
+                        List.of(), "보쌈과 잘 어울리는 술", null)), 0, 100, 1));
+        given(productQueryService.pairingTexts("BRW-001")).willReturn(List.of("보쌈과 잘 어울리는 술"));
+        given(nearbyRepository.findCourseCandidates("BRW-001")).willReturn(List.of(
+                nearby("CLOSE", 100), nearby("PAIRING", 1_000)));
+        TourContent close = content("CLOSE", "39", "A05020200", "가까운 식당");
+        TourContent pairing = content("PAIRING", "39", "A05020200", "두 번째 식당");
+        given(tourContentRepository.findAllById(any())).willReturn(List.of(close, pairing));
+        given(kakaoPlaceSearchClient.findPlace("가까운 식당", close.getLatitude(), close.getLongitude()))
+                .willReturn(Optional.of(new KakaoPlaceMatch("1", "http://place/1", "양식")));
+        given(kakaoPlaceSearchClient.findPlace("두 번째 식당", pairing.getLatitude(), pairing.getLongitude()))
+                .willReturn(Optional.of(new KakaoPlaceMatch("2", "http://place/2", "보쌈")));
+
+        List<CourseStopResponse> stops = service.findByBreweryId("BRW-001").stops();
+
+        assertThat(stops.get(1).contentId()).isEqualTo("PAIRING");
+        assertThat(stops.get(1).pairingComment()).contains("보쌈");
     }
 
     @Test
@@ -178,6 +204,22 @@ class RecommendedCourseServiceTest {
 
         assertThat(service.findByBreweryId("BRW-001").stops())
                 .singleElement().extracting(CourseStopResponse::type).isEqualTo(CourseStopType.BREWERY);
+    }
+
+    @Test
+    void kakaoCafeCategoryMovesTourRestaurantCandidateToCafeSection() {
+        Brewery brewery = brewery();
+        TourContent ambiguous = content("AMBIGUOUS", "39", "A05020200", "메이비");
+        given(breweryRepository.findById("BRW-001")).willReturn(Optional.of(brewery));
+        given(nearbyRepository.findCourseCandidates("BRW-001")).willReturn(List.of(nearby("AMBIGUOUS", 100)));
+        given(tourContentRepository.findAllById(any())).willReturn(List.of(ambiguous));
+        given(kakaoPlaceSearchClient.findPlace("메이비", ambiguous.getLatitude(), ambiguous.getLongitude()))
+                .willReturn(Optional.of(new KakaoPlaceMatch("1", "https://place.map.kakao.com/1", "테마카페")));
+
+        CourseStopResponse stop = service.findByBreweryId("BRW-001").stops().get(1);
+
+        assertThat(stop.type()).isEqualTo(CourseStopType.CAFE);
+        assertThat(stop.categoryName()).isEqualTo("카페");
     }
 
     @Test

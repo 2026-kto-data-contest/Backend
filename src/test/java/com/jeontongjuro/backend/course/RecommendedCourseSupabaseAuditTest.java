@@ -6,6 +6,7 @@ import com.jeontongjuro.backend.brewery.Brewery;
 import com.jeontongjuro.backend.brewery.BreweryRepository;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.regex.Pattern;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
@@ -24,6 +25,11 @@ import org.springframework.test.context.TestPropertySource;
 class RecommendedCourseSupabaseAuditTest {
 
     private static final Pattern RAW_CATEGORY_CODE = Pattern.compile("(?:A|B)\\d{8}|(?:FD|VE|HS)\\d{2,6}");
+    private static final Map<String, Set<String>> ALLOWED_SUBCATEGORIES = Map.of(
+            "음식점", Set.of("한식", "일식", "양식", "중식", "아시아", "분식", "기타"),
+            "관광지", Set.of("미술관", "박물관", "자연관광", "역사·유적", "체험", "공원", "전통시장"),
+            "카페", Set.of("베이커리", "디저트", "전통찻집", "카페"),
+            "숙소", Set.of("호텔", "펜션", "한옥", "게스트하우스", "민박", "기타"));
 
     @Autowired
     private BreweryRepository breweryRepository;
@@ -67,6 +73,9 @@ class RecommendedCourseSupabaseAuditTest {
             if (stop.subcategoryName() != null) {
                 assertThat(RAW_CATEGORY_CODE.matcher(stop.subcategoryName()).find())
                         .as("%s 원본 분류 코드 미노출", stop.contentId()).isFalse();
+                assertThat(ALLOWED_SUBCATEGORIES.get(stop.categoryName()))
+                        .as("%s 허용 카테고리 목록", stop.categoryName())
+                        .contains(stop.subcategoryName());
             }
         }
         assertThat(sectionCounts.values()).allSatisfy(count -> assertThat(count).isLessThanOrEqualTo(2));
