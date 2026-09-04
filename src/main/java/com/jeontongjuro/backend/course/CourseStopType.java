@@ -16,4 +16,9 @@ public enum CourseStopType {
     public static CourseStopType from(TourContent content) {
         return CoursePlaceClassifier.typeOf(content);
     }
+
+    /** 콘텐츠의 장소 유형과 일치하는 사용자용 세부분류를 공통 분류 규칙으로 반환한다. */
+    public static String subcategoryOf(TourContent content) {
+        return CoursePlaceClassifier.subcategoryOf(content, from(content));
+    }
 }

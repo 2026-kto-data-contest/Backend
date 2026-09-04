@@ -38,6 +38,7 @@ public class SecurityConfig {
             "/api/v1/metadata/brewery-filters",
             "/api/v1/search",
             "/api/v1/search/suggestions",
+            "/api/v1/map/places",
             "/swagger-ui.html",
             "/swagger-ui/**",
             "/v3/api-docs/**",
