@@ -2,6 +2,7 @@ package com.jeontongjuro.backend.global.error;
 
 import com.jeontongjuro.backend.auth.exception.AuthException;
 import com.jeontongjuro.backend.brewery.query.BreweryNotFoundException;
+import com.jeontongjuro.backend.map.MapPlaceNotFoundException;
 import com.jeontongjuro.backend.search.recent.RecentSearchException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -40,12 +41,19 @@ public class GlobalExceptionHandler {
 
     private static final String INVALID_QUERY_PARAMETER = "INVALID_QUERY_PARAMETER";
     private static final String BREWERY_NOT_FOUND = "BREWERY_NOT_FOUND";
+    private static final String MAP_PLACE_NOT_FOUND = "MAP_PLACE_NOT_FOUND";
     private static final String INTERNAL_SERVER_ERROR = "INTERNAL_SERVER_ERROR";
 
     @ExceptionHandler(BreweryNotFoundException.class)
     public ResponseEntity<ErrorResponse> handleBreweryNotFound(BreweryNotFoundException e) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
                 .body(new ErrorResponse(BREWERY_NOT_FOUND, e.getMessage()));
+    }
+
+    @ExceptionHandler(MapPlaceNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleMapPlaceNotFound(MapPlaceNotFoundException e) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(new ErrorResponse(MAP_PLACE_NOT_FOUND, e.getMessage()));
     }
 
     @ExceptionHandler(InvalidQueryParameterException.class)
