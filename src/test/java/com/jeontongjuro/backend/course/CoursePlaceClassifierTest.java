@@ -48,6 +48,17 @@ class CoursePlaceClassifierTest {
     }
 
     @Test
+    void publicFacadeReturnsTheSameSubtypeWithoutExposingTheClassifier() {
+        TourContent korean = content("한식당", "39", "A05020100", "FD010100");
+        TourContent market = content("전통시장", "38", "A04010100", "SH060100");
+        TourContent unsupported = content("시립도서관", "14", "A02060900", "VE090300");
+
+        assertThat(CourseStopType.subcategoryOf(korean)).isEqualTo("한식");
+        assertThat(CourseStopType.subcategoryOf(market)).isEqualTo("전통시장");
+        assertThat(CourseStopType.subcategoryOf(unsupported)).isNull();
+    }
+
+    @Test
     void restaurantCategoriesFollowTheProductCategoryVocabulary() {
         assertThat(CoursePlaceClassifier.subcategoryOf(
                 content("동남아 식당", "39", "A05020700", "FD020400"), CourseStopType.RESTAURANT))
