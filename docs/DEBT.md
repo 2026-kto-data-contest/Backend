@@ -3,7 +3,7 @@
 저장소 밖(개인 지침)에만 있던 부채 목록을 코드·DB로 검증해 저장소에 고정한다.
 세션이 "부채 #23" 식으로 언급하면 이 파일에서 근거·상태·위험도를 찾을 수 있어야 한다.
 
-- **최종 검증**: 2026-09-01 / HEAD `f6af511`
+- **최종 검증**: 2026-09-04 / HEAD `d831295`
 - **직전 전수 검증 결과**: 실재 20 · 해소 6 · 오등록 1 (합 27) — 이번 검증도 번호부채 상태는 동일, 앵커 라인·근거만 갱신
 - ★위 집계는 표 행 수 기준이다. `5–7` 1행이 부채 3개를 묶은 표기라 부채 번호 기준 개수와는 다르다(다음 세션이 다시 셀 것에 대비해 명기)
 - **2026-08-31 추가**: 문서·Swagger 대조 세션에서 #f 신규 등록(mainImage OpenAPI 스키마 자기모순, 문서 전용·앵커 없음).
@@ -53,7 +53,7 @@
 
 > #25 잔여 미봉인 1종: `recommended_brewery_seed`. `liquor_keyword`는 2026-08-28 재검증에서 `LiquorKeywordDictionaryTest`(`new LiquorKeywordDictionary(new ObjectMapper())`, Spring 컨텍스트 불필요)가 DB 없이 사전 파싱 자체를 검증한다는 사실을 확인해 실질 봉인으로 재분류했다. `recommended_brewery_seed`도 `FixedBrewerySeed` 생성자가 동일하게 fail-fast하지만, 저장소의 `@SpringBootTest` 29개 전부가 `@EnabledIf(LocalPostgres#isUp)`로 게이트돼 있어 그 생성자가 Postgres 없이는 아예 실행되지 않는다 — 그래서 이 한 종만 [트리거]에 남긴다.
 
-### [심사까지X] 15건 — 문서에만 둔다(코드 무수정)
+### [심사까지X] 16건 — 문서에만 둔다(코드 무수정)
 
 | # | 제목 | 근거 위치 |
 |---|---|---|
@@ -72,6 +72,7 @@
 | d | 검색 정규화 2벌(목록 API keyword 필터는 특수문자 미제거) | `SearchKeyword.normalizeTarget`:53-54(제거+NFC+lower) vs `BrewerySearchCondition.normalizeKeyword`:152(NFC만) + `BreweryQuerySpecifications.keywordContains`:121(lower만, 제거 없음) |
 | e | `OpenApiDocumentationTest`가 신규 7개 엔드포인트 중 1개(`/api/v1/breweries`)만 핀 | `OpenApiDocumentationTest.java`:42 — 나머지 6개(상세·제품·metadata·search·suggestions·recommendations)는 그룹 소속을 회귀 방어하는 테스트가 없다 |
 | f | `mainImage` 필드 OpenAPI 3.1 스키마 자기모순(`type:"null"` + `$ref` 형제, 실제 응답은 정상) | springdoc-openapi 3.0.3 출력(`/v3/api-docs`) · `BreweryListItemResponse.java`:60 · `BreweryDetailResponse.java`:59 (둘 다 object 타입 `$ref` 필드에 `@Schema(nullable=true)`) |
+| h | 지도 카테고리 축약 매핑이 2벌(CourseStopType 8종→노출 5종) | `MapPlaceService.java`:77(categoryOf, private, 목록:52에서 사용) / `MapPlaceDetailService.java`:93(categoryOf, 상세 신규 중복:73, 규칙은 현재 동일) — 트리거: 한쪽만 수정 시 같은 장소가 목록·상세에서 다른 category로 나오나 두 클래스가 서로 참조하지 않아 컴파일·테스트 모두 안 잡음(관련 #d와 동형, MapPlaceService는 타인 소유·categoryOf private이라 재사용 불가) |
 
 > #f `mainImage`: OpenAPI 3.1(JSON Schema 2020-12)에서 `$ref`는 형제 키워드와 AND로 합성된다. object 타입 `$ref` 필드에
 > `@Schema(nullable=true)`를 붙이면 springdoc 3.0.3이 3.1 출력 모드에서 `anyOf:[{$ref},{type:"null"}]` 대신
