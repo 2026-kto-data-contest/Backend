@@ -227,6 +227,24 @@ class ProductQueryApiTest {
         assertThat(types).containsExactly("탁주");
     }
 
+    @Test
+    @DisplayName("page 상한 클램프: 오버플로가 양수로 떨어지는 page와 음수로 떨어지는 page 둘 다 200")
+    void pageIsClampedOnBothOverflowSigns() throws Exception {
+        // page × size가 int를 넘으면 결과 부호가 입력에 따라 갈린다. 양수로 떨어지면 우연히 통과하고,
+        // 음수로 떨어져야 subList(fromIndex < 0)로 500이 났다 — 그래서 "한 번 찔러보고 정상"이
+        // 잠복 결함을 놓친다. 경계를 사이에 둔 두 값을 함께 박아 다음 사람이 같은 실수를 하지 않게 한다.
+        //   429496729 × 5 = 2,147,483,645  (int 범위 안 — 보정 전에도 200이었다)
+        //   429496730 × 5 = 2,147,483,650  (오버플로 → -2,147,483,646 — 보정 전 500)
+        mockMvc.perform(get("/api/v1/breweries/{id}/products", BREWERY)
+                        .param("page", "429496729").param("size", "5"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.page").value(429496729));
+        mockMvc.perform(get("/api/v1/breweries/{id}/products", BREWERY)
+                        .param("page", "429496730").param("size", "5"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.page").value(429496729));
+    }
+
     // ── helpers ──────────────────────────────────────────────────────────────
     private JsonNode cardById(JsonNode body, int productId) {
         for (JsonNode c : body.get("content")) {

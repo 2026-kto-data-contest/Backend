@@ -87,7 +87,8 @@ public class BreweryQueryService {
     }
 
     public PageResponse<BreweryListItemResponse> search(BrewerySearchCondition condition, int page, int size) {
-        Pageable pageable = PageRequest.of(clampPage(page), clampSize(size), FIXED_SORT);
+        int clampedSize = clampSize(size);
+        Pageable pageable = PageRequest.of(clampPage(page, clampedSize), clampedSize, FIXED_SORT);
         Specification<Brewery> spec = BreweryQuerySpecifications.build(condition);
 
         Page<Brewery> result = breweryRepository.findAll(spec, pageable);
@@ -111,8 +112,8 @@ public class BreweryQueryService {
      * 매핑 쿼리 수는 페이지 크기 기준 상수라 N+1이 없다.
      */
     public PageResponse<BreweryListItemResponse> searchByAccuracy(String needle, int page, int size) {
-        int clampedPage = clampPage(page);
         int clampedSize = clampSize(size);
+        int clampedPage = clampPage(page, clampedSize);
         if (needle == null || needle.isEmpty()) {
             return PageResponse.of(List.of(), clampedPage, clampedSize, 0L);
         }
@@ -410,9 +411,16 @@ public class BreweryQueryService {
         return breweries.stream().map(Brewery::getBreweryId).toList();
     }
 
-    /** 음수 페이지는 0으로 클램프(PageRequest 계약 위반 방지). */
-    private static int clampPage(int page) {
-        return Math.max(0, page);
+    /**
+     * 페이지 클램프. 음수는 0으로(PageRequest 계약 위반 방지), offset(page × size)이 int 범위를 넘는
+     * 페이지는 넘지 않는 최대 페이지로 보정한다. 상한 밖도 400이 아니라 보정이다 — size 클램프와 같은 규약.
+     * <p>
+     * 상한을 고정 상수로 두지 않는 이유: 표현 가능한 최대 페이지는 size에 따라 달라진다
+     * (size=20 → 107,374,182 / size=100 → 21,474,836). 상수로 잡으면 데이터가 늘 때 다시 깨진다.
+     * {@code clampedSize}는 {@link #clampSize}를 거쳐 1 이상이 보장된 값이어야 한다(0 나눗셈 방지).
+     */
+    private static int clampPage(int page, int clampedSize) {
+        return Math.min(Math.max(0, page), Integer.MAX_VALUE / clampedSize);
     }
 
     /** size 상한 클램프: 1 미만은 기본값, MAX_SIZE 초과는 MAX_SIZE로. */
