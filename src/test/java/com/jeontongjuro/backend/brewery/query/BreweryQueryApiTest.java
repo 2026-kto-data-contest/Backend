@@ -635,6 +635,33 @@ class BreweryQueryApiTest {
                 .andExpect(jsonPath("$.code").value("INVALID_QUERY_PARAMETER"));
     }
 
+    @Test
+    @DisplayName("page 상한 클램프(JPA 경로): offset이 int를 넘는 page → 500이 아니라 200, page는 표현 가능한 최대로 보정")
+    void pageIsClampedWhenOffsetOverflows() throws Exception {
+        // 표현 가능한 최대 page는 size에 따라 달라진다: Integer.MAX_VALUE / size.
+        // 보정 전에는 PageRequest.of가 InvalidDataAccessApiUsageException("Page offset exceeds
+        // Integer.MAX_VALUE")을 던져 500이 나갔다. size 클램프와 같이 400이 아니라 보정이다.
+        mockMvc.perform(get("/api/v1/breweries").param("page", "107374182").param("size", "20"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.page").value(107374182));
+        mockMvc.perform(get("/api/v1/breweries").param("page", "107374183").param("size", "20"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.page").value(107374182));
+        mockMvc.perform(get("/api/v1/breweries").param("page", "2147483647").param("size", "100"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.page").value(21474836))
+                .andExpect(jsonPath("$.totalElements").value(59));
+    }
+
+    @Test
+    @DisplayName("page 음수 클램프 회귀: page=-2147483648 → 400이 아니라 200 + page 0")
+    void negativePageStillClampsToZero() throws Exception {
+        mockMvc.perform(get("/api/v1/breweries").param("page", "-2147483648").param("size", "20"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.page").value(0))
+                .andExpect(jsonPath("$.totalElements").value(59));
+    }
+
     // ── helpers ──────────────────────────────────────────────────────────────
     /**
      * 도수 필터 검증용 최소 픽스처(주종 픽스처와 독립 — @BeforeEach가 link를 비우므로 각 테스트가 이것만 심는다).

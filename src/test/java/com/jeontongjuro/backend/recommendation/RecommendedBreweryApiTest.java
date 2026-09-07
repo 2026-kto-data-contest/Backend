@@ -294,6 +294,20 @@ class RecommendedBreweryApiTest {
                 .andExpect(jsonPath("$.totalPages").isNumber());
     }
 
+    @Test
+    // page 상한 클램프: 추천 양조장은 offset 오버플로에서 500이 아니라 200이어야 한다.
+    void pageIsClampedWhenOffsetOverflows() throws Exception {
+        stubAllBreweries(List.of(
+                brewery("BRW-A", "가양조", "수도권", LiquorType.탁주),
+                brewery("BRW-B", "나양조", "충청", LiquorType.약주),
+                brewery("BRW-C", "다양조", "전라", LiquorType.청주)));
+
+        mockMvc.perform(get("/api/v1/recommendations/breweries")
+                        .param("page", "357913942").param("size", "6"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.page").value(357913941));
+    }
+
     /** {@link RecommendedBreweryService}가 부르는 조회를 통제된 합성 데이터로 스텁한다(실 DB brewery 미사용). */
     private void stubAllBreweries(List<BreweryListItemResponse> allInAlphabeticalOrder) {
         given(breweryQueryService.search(any(BrewerySearchCondition.class), eq(0), eq(100)))

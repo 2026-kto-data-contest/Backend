@@ -70,8 +70,8 @@ public class ProductQueryService {
         if (!breweryRepository.existsById(breweryId)) {
             throw new BreweryNotFoundException("양조장을 찾을 수 없습니다: " + breweryId);
         }
-        int clampedPage = clampPage(page);
         int clampedSize = clampSize(size);
+        int clampedPage = clampPage(page, clampedSize);
 
         List<ProductCardResponse> all = buildCards(breweryId);
 
@@ -390,9 +390,16 @@ public class ProductQueryService {
         return productName == null ? "" : productName.replaceAll("\\s", "");
     }
 
-    /** 음수 페이지는 0으로 클램프. */
-    private static int clampPage(int page) {
-        return Math.max(0, page);
+    /**
+     * 페이지 클램프. 음수는 0으로(PageRequest 계약 위반 방지), offset(page × size)이 int 범위를 넘는
+     * 페이지는 넘지 않는 최대 페이지로 보정한다. 상한 밖도 400이 아니라 보정이다 — size 클램프와 같은 규약.
+     * <p>
+     * 상한을 고정 상수로 두지 않는 이유: 표현 가능한 최대 페이지는 size에 따라 달라진다
+     * (size=20 → 107,374,182 / size=100 → 21,474,836). 상수로 잡으면 데이터가 늘 때 다시 깨진다.
+     * {@code clampedSize}는 {@link #clampSize}를 거쳐 1 이상이 보장된 값이어야 한다(0 나눗셈 방지).
+     */
+    private static int clampPage(int page, int clampedSize) {
+        return Math.min(Math.max(0, page), Integer.MAX_VALUE / clampedSize);
     }
 
     /** size 클램프: 1 미만은 기본값(5), MAX_SIZE 초과는 MAX_SIZE로. */

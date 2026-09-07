@@ -228,6 +228,17 @@ class UnifiedSearchApiTest {
         assertThat(item.get("mainImage").isNull()).isTrue();
     }
 
+    @Test
+    @DisplayName("page 상한 클램프(인메모리 슬라이스 경로): offset이 int를 넘는 page → 500이 아니라 200")
+    void pageIsClampedWhenOffsetOverflows() throws Exception {
+        // 인메모리 경로는 PageRequest를 쓰지 않아 예외가 다르다 — page × size가 음수로 오버플로해
+        // subList(fromIndex < 0)에서 IndexOutOfBoundsException이 났다. 같은 클램프로 함께 덮인다.
+        mockMvc.perform(get("/api/v1/search").param("keyword", "주")
+                        .param("page", "107374183").param("size", "20"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.page").value(107374182));
+    }
+
     // ── helpers ──────────────────────────────────────────────────────────────
     private List<String> contentIds(JsonNode body) {
         List<String> ids = new ArrayList<>();
