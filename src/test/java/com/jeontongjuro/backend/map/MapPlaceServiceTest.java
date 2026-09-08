@@ -97,6 +97,61 @@ class MapPlaceServiceTest {
         assertThat(findIds("ACCOMMODATION")).containsExactly("accommodation");
     }
 
+    @Test
+    void 지도검색은전체카테고리를합치고이름정확도순으로반환한다() {
+        Brewery brewery = brewery("BRW-001", "안동", "37.01", "127.00");
+        TourContent restaurant = tour("restaurant", "39", "안동 한식집", "경북 안동시", null, "A05020100");
+        when(breweryRepository.searchMapPlaces("안동")).thenReturn(List.of(brewery));
+        when(breweryRepository.findAll()).thenReturn(List.of(brewery));
+        when(tourContentRepository.searchMapPlaces("안동")).thenReturn(List.of(restaurant));
+
+        PageResponse<MapPlaceResponse> result = service.search("  안동  ", null, null, null, 0, 20);
+
+        assertThat(result.content()).extracting(MapPlaceResponse::placeId)
+                .containsExactly("BRW-001", "restaurant");
+        assertThat(result.content()).extracting(MapPlaceResponse::category)
+                .containsExactly(MapPlaceCategory.BREWERY, MapPlaceCategory.RESTAURANT);
+    }
+
+    @Test
+    void 지도검색은카테고리를필터링하고양조장중복관광콘텐츠를제외한다() {
+        Brewery linked = brewery("BRW-001", "안동 양조장", "37.01", "127.00");
+        linked.applyContentMatch("duplicate", OffsetDateTime.now());
+        TourContent duplicate = tour("duplicate", "39", "안동 중복", "주소", null, "A05020100");
+        TourContent cafe = tour("cafe", "39", "안동 카페", "주소", null, "A05020900");
+        when(breweryRepository.findAll()).thenReturn(List.of(linked));
+        when(tourContentRepository.searchMapPlaces("안동")).thenReturn(List.of(duplicate, cafe));
+
+        PageResponse<MapPlaceResponse> result = service.search("안동", "CAFE", null, null, 0, 20);
+
+        assertThat(result.content()).extracting(MapPlaceResponse::placeId).containsExactly("cafe");
+    }
+
+    @Test
+    void 지도검색은사용자좌표가있으면거리순이고페이지크기를100으로제한한다() {
+        Brewery far = brewery("BRW-002", "안동 먼곳", "37.20", "127.00");
+        Brewery near = brewery("BRW-001", "안동 가까운곳", "37.01", "127.00");
+        when(breweryRepository.searchMapPlaces("안동")).thenReturn(List.of(far, near));
+
+        PageResponse<MapPlaceResponse> result = service.search(
+                "안동", "BREWERY", bd("37"), bd("127"), 0, 999);
+
+        assertThat(result.size()).isEqualTo(100);
+        assertThat(result.content()).extracting(MapPlaceResponse::placeId).containsExactly("BRW-001", "BRW-002");
+    }
+
+    @Test
+    void 지도검색은잘못된검색어카테고리좌표를거부한다() {
+        assertThatThrownBy(() -> service.search("   ", null, null, null, 0, 20))
+                .isInstanceOf(InvalidQueryParameterException.class);
+        assertThatThrownBy(() -> service.search("가".repeat(51), null, null, null, 0, 20))
+                .isInstanceOf(InvalidQueryParameterException.class);
+        assertThatThrownBy(() -> service.search("안동", "MARKET", null, null, 0, 20))
+                .isInstanceOf(InvalidQueryParameterException.class);
+        assertThatThrownBy(() -> service.search("안동", null, bd("37"), null, 0, 20))
+                .isInstanceOf(InvalidQueryParameterException.class);
+    }
+
     private Brewery brewery(String id, String name, String latitude, String longitude) {
         Brewery brewery = Brewery.seed(id, name, name, "주소", null, 0L, VisitState.UNKNOWN, VisitState.UNKNOWN);
         brewery.applyCoordinate(bd(latitude), bd(longitude), CoordSource.KAKAO_ADDRESS, OffsetDateTime.now());

@@ -11,6 +11,7 @@ import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -22,6 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class MapPlaceService {
     private static final int DEFAULT_SIZE = 20;
     private static final int MAX_SIZE = 300;
+    private static final int SEARCH_MAX_SIZE = 100;
     private final BreweryRepository breweryRepository;
     private final TourContentRepository tourContentRepository;
 
@@ -60,6 +62,62 @@ public class MapPlaceService {
         int from = (int) Math.min((long) page * size, places.size());
         int to = (int) Math.min((long) from + size, places.size());
         return PageResponse.of(places.subList(from, to), page, size, places.size());
+    }
+
+    public PageResponse<MapPlaceResponse> search(String keywordValue, String categoryValue,
+                                                  BigDecimal userLatitude, BigDecimal userLongitude,
+                                                  int requestedPage, int requestedSize) {
+        String keyword = validateKeyword(keywordValue);
+        MapPlaceCategory category = categoryValue == null ? null : MapPlaceCategory.parse(categoryValue);
+        validateUserCoordinatePair(userLatitude, userLongitude);
+        int page = Math.max(0, requestedPage);
+        int size = requestedSize < 1 ? DEFAULT_SIZE : Math.min(requestedSize, SEARCH_MAX_SIZE);
+
+        List<MapPlaceResponse> places = new ArrayList<>();
+        if (category == null || category == MapPlaceCategory.BREWERY) {
+            breweryRepository.searchMapPlaces(keyword).stream()
+                    .map(b -> fromBrewery(b, userLatitude, userLongitude))
+                    .forEach(places::add);
+        }
+        if (category != MapPlaceCategory.BREWERY) {
+            Set<String> breweryContentIds = breweryRepository.findAll().stream()
+                    .map(Brewery::getContentId).filter(Objects::nonNull).collect(Collectors.toSet());
+            tourContentRepository.searchMapPlaces(keyword).stream()
+                    .filter(t -> !breweryContentIds.contains(t.getContentId()))
+                    .filter(t -> categoryOf(t) != null)
+                    .filter(t -> category == null || categoryOf(t) == category)
+                    .map(t -> fromTour(t, categoryOf(t), userLatitude, userLongitude))
+                    .forEach(places::add);
+        }
+
+        Comparator<MapPlaceResponse> comparator = userLatitude == null
+                ? Comparator.comparingInt((MapPlaceResponse place) -> relevance(place, keyword))
+                        .thenComparing(MapPlaceResponse::placeName,
+                                Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER))
+                : Comparator.comparing(MapPlaceResponse::distance)
+                        .thenComparing(MapPlaceResponse::placeName,
+                                Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER));
+        places.sort(comparator);
+        int from = (int) Math.min((long) page * size, places.size());
+        int to = (int) Math.min((long) from + size, places.size());
+        return PageResponse.of(places.subList(from, to), page, size, places.size());
+    }
+
+    private String validateKeyword(String raw) {
+        String keyword = raw == null ? "" : raw.trim();
+        if (keyword.isEmpty() || keyword.length() > 50) {
+            throw new InvalidQueryParameterException("keyword는 공백 제거 후 1~50자여야 합니다.");
+        }
+        return keyword.toLowerCase(Locale.ROOT);
+    }
+
+    private int relevance(MapPlaceResponse place, String keyword) {
+        String name = place.placeName() == null ? "" : place.placeName().toLowerCase(Locale.ROOT);
+        String address = place.roadAddressName() == null ? "" : place.roadAddressName().toLowerCase(Locale.ROOT);
+        if (name.equals(keyword)) return 0;
+        if (name.startsWith(keyword)) return 1;
+        if (name.contains(keyword)) return 2;
+        return address.contains(keyword) ? 3 : 4;
     }
 
     private void validateUserCoordinatePair(BigDecimal latitude, BigDecimal longitude) {
