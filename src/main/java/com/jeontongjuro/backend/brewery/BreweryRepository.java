@@ -21,8 +21,8 @@ public interface BreweryRepository extends JpaRepository<Brewery, String>, JpaSp
                                    @Param("west") BigDecimal west, @Param("east") BigDecimal east);
 
     @Query("SELECT b FROM Brewery b WHERE b.latitude IS NOT NULL AND b.longitude IS NOT NULL "
-            + "AND (LOWER(b.businessName) LIKE CONCAT('%', :keyword, '%') "
-            + "OR LOWER(COALESCE(b.address, '')) LIKE CONCAT('%', :keyword, '%'))")
+            + "AND (LOCATE(:keyword, LOWER(b.businessName)) > 0 "
+            + "OR LOCATE(:keyword, LOWER(COALESCE(b.address, ''))) > 0)")
     List<Brewery> searchMapPlaces(@Param("keyword") String keyword);
 
     /**

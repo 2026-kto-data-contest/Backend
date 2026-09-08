@@ -18,9 +18,9 @@ public interface TourContentRepository extends JpaRepository<TourContent, String
                                        @Param("west") BigDecimal west, @Param("east") BigDecimal east);
 
     @Query("SELECT t FROM TourContent t WHERE t.latitude IS NOT NULL AND t.longitude IS NOT NULL "
-            + "AND (LOWER(t.title) LIKE CONCAT('%', :keyword, '%') "
-            + "OR LOWER(COALESCE(t.addr1, '')) LIKE CONCAT('%', :keyword, '%') "
-            + "OR LOWER(COALESCE(t.addr2, '')) LIKE CONCAT('%', :keyword, '%'))")
+            + "AND (LOCATE(:keyword, LOWER(t.title)) > 0 "
+            + "OR LOCATE(:keyword, LOWER(COALESCE(t.addr1, ''))) > 0 "
+            + "OR LOCATE(:keyword, LOWER(COALESCE(t.addr2, ''))) > 0)")
     List<TourContent> searchMapPlaces(@Param("keyword") String keyword);
 
     /** 조회 API 배치 로딩용 — 페이지 양조장의 content_id 집합으로 대표 이미지(first_image·cpyrht_div_cd)를 한 번에 읽는다. */
