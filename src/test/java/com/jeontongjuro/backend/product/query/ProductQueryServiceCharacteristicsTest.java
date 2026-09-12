@@ -77,6 +77,8 @@ class ProductQueryServiceCharacteristicsTest {
 
         // B: 단일 제품(그룹 1개) — 그대로 대표.
         product(BREWERY_B, 95010, "단일제품", "달콤하고 향긋한 뒷맛", null, "Y");
+        // B 중복 원본: 제품 목록과 동일하게 하나의 제품 그룹으로 병합되어 대표 행만 페어링에 사용되어야 한다.
+        product(BREWERY_B, 95011, "단일 제품", "중복 행의 특징", null, "Y");
 
         // C: 제품 없음(seed 안 함) — 결과 Map에 없어야 한다.
     }
@@ -118,6 +120,14 @@ class ProductQueryServiceCharacteristicsTest {
     void pairingTextsIncludeCharacteristics() {
         assertThat(productQueryService.pairingTexts(BREWERY_A))
                 .contains("여기는 절대 선택되면 안 됨", "부드러운 목넘김과 산뜻한 산미");
+    }
+
+    @Test
+    @DisplayName("동일 제품명 공백 변형은 대표 행 하나로 병합해 페어링 텍스트를 만든다")
+    void pairingTextsMergeDuplicateProducts() {
+        assertThat(productQueryService.pairingTexts(BREWERY_B))
+                .contains("달콤하고 향긋한 뒷맛")
+                .doesNotContain("중복 행의 특징");
     }
 
     // ── helpers ──────────────────────────────────────────────────────────────
