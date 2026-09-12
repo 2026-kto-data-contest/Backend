@@ -24,6 +24,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.Semaphore;
 import java.util.function.Predicate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -36,6 +37,8 @@ public class RecommendedCourseService {
     static final List<Integer> SEARCH_RADII_METERS = List.of(5_000, 10_000, 20_000);
     private static final List<String> COURSE_CONTENT_TYPES =
             List.of("12", "14", "15", "28", "32", "38", "39");
+    /** 카카오 호출은 외부 서비스 보호를 위해 동시에 최대 4건만 실행한다. */
+    private static final Semaphore KAKAO_CONCURRENCY = new Semaphore(4);
 
     private final BreweryRepository breweryRepository;
     private final BreweryNearbyRepository nearbyRepository;
@@ -145,10 +148,18 @@ public class RecommendedCourseService {
     private List<Candidate> refineNearbyFoodTypes(List<Candidate> candidates) {
         Map<String, Candidate> refined = new java.util.HashMap<>();
         for (int radius : SEARCH_RADII_METERS) {
-            candidates.stream()
+            List<Candidate> pending = candidates.stream()
                     .filter(candidate -> isFood(candidate.type()) && distance(candidate) <= radius)
                     .filter(candidate -> !refined.containsKey(candidate.content().getContentId()))
-                    .forEach(candidate -> refined.put(candidate.content().getContentId(), refineFoodType(candidate)));
+                    .toList();
+            // 후보별 카카오 조회는 서로 독립적이다. 결과는 pending 순서대로 반영해
+            // 기존의 후보 선택·정렬 순서를 그대로 유지한다.
+            List<Candidate> refinedPending = pending.parallelStream()
+                    .map(this::refineFoodTypeWithLimit)
+                    .toList();
+            for (Candidate candidate : refinedPending) {
+                refined.put(candidate.content().getContentId(), candidate);
+            }
             long restaurants = refined.values().stream()
                     .filter(candidate -> candidate.type() == CourseStopType.RESTAURANT).count();
             long cafes = refined.values().stream()
@@ -157,6 +168,22 @@ public class RecommendedCourseService {
         }
         return candidates.stream().map(candidate -> refined.getOrDefault(
                 candidate.content().getContentId(), candidate)).toList();
+    }
+
+    private Candidate refineFoodTypeWithLimit(Candidate candidate) {
+        boolean acquired = false;
+        try {
+            KAKAO_CONCURRENCY.acquire();
+            acquired = true;
+            return refineFoodType(candidate);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return candidate;
+        } finally {
+            if (acquired) {
+                KAKAO_CONCURRENCY.release();
+            }
+        }
     }
 
     private Candidate refineFoodType(Candidate candidate) {
