@@ -32,7 +32,8 @@ import lombok.NoArgsConstructor;
 @Entity
 @Table(name = "brewery", indexes = {
         @Index(name = "ix_brewery_business_name", columnList = "business_name"),
-        @Index(name = "ix_brewery_norm", columnList = "norm")
+        @Index(name = "ix_brewery_norm", columnList = "norm"),
+        @Index(name = "ix_brewery_coordinates", columnList = "latitude, longitude")
 })
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)

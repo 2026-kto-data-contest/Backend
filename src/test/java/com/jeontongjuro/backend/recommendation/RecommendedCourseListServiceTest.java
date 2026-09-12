@@ -2,6 +2,7 @@ package com.jeontongjuro.backend.recommendation;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.verifyNoInteractions;
 
 import com.jeontongjuro.backend.brewery.VisitState;
 import com.jeontongjuro.backend.brewery.query.BreweryListItemResponse;
@@ -70,6 +71,18 @@ class RecommendedCourseListServiceTest {
 
         assertThat(card.imageUrl()).isNull();
         assertThat(card.regionLabel()).isEqualTo("충청");
+    }
+
+    @Test
+    void homePreviewReusesRecommendationOrderWithoutFetchingAgain() {
+        List<BreweryListItemResponse> breweries = java.util.stream.IntStream.range(0, 6)
+                .mapToObj(i -> brewery("BRW-" + i, "양조장" + i, null, null, null)).toList();
+
+        assertThat(service.homePreviewFrom(breweries))
+                .extracting(RecommendedCourseCardResponse::courseId)
+                .containsExactly("BRW-0", "BRW-1", "BRW-2", "BRW-3", "BRW-4");
+        assertThat(service.homePreviewFrom(List.of())).isEmpty();
+        verifyNoInteractions(recommendedBreweryService);
     }
 
     private BreweryListItemResponse brewery(String id, String name, String sido, String sigungu,

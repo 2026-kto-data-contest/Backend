@@ -70,7 +70,8 @@ class MapPlaceServiceTest {
     void 관광공사장소는주소일부가없어도조회되고세부분류를내린다() {
         TourContent restaurant = tour("1", "39", "한식집", null, "상세주소", "A05020100");
         when(breweryRepository.findWithinBounds(any(), any(), any(), any())).thenReturn(List.of());
-        when(tourContentRepository.findWithinBounds(any(), any(), any(), any())).thenReturn(List.of(restaurant));
+        when(tourContentRepository.findWithinBoundsAndContentTypeIn(any(), any(), any(), any(), any()))
+                .thenReturn(List.of(restaurant));
 
         PageResponse<MapPlaceResponse> result = service.find(
                 bd("36"), bd("126"), bd("38"), bd("128"), "RESTAURANT", null, null, 0, 20);
@@ -89,7 +90,8 @@ class MapPlaceServiceTest {
                 tour("market", "38", "전통시장", "주소", null, "A04010100"),
                 tour("accommodation", "32", "한옥 숙소", "주소", null, "B02011600"));
         when(breweryRepository.findWithinBounds(any(), any(), any(), any())).thenReturn(List.of());
-        when(tourContentRepository.findWithinBounds(any(), any(), any(), any())).thenReturn(contents);
+        when(tourContentRepository.findWithinBoundsAndContentTypeIn(any(), any(), any(), any(), any()))
+                .thenReturn(contents);
 
         assertThat(findIds("RESTAURANT")).containsExactly("restaurant");
         assertThat(findIds("CAFE")).containsExactly("cafe");

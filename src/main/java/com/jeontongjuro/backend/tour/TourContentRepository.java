@@ -17,6 +17,14 @@ public interface TourContentRepository extends JpaRepository<TourContent, String
     List<TourContent> findWithinBounds(@Param("south") BigDecimal south, @Param("north") BigDecimal north,
                                        @Param("west") BigDecimal west, @Param("east") BigDecimal east);
 
+    @Query("SELECT t FROM TourContent t WHERE t.latitude BETWEEN :south AND :north "
+            + "AND t.longitude BETWEEN :west AND :east AND t.contentTypeId IN :contentTypes")
+    List<TourContent> findWithinBoundsAndContentTypeIn(@Param("south") BigDecimal south,
+                                                       @Param("north") BigDecimal north,
+                                                       @Param("west") BigDecimal west,
+                                                       @Param("east") BigDecimal east,
+                                                       @Param("contentTypes") List<String> contentTypes);
+
     @Query("SELECT t FROM TourContent t WHERE t.latitude IS NOT NULL AND t.longitude IS NOT NULL "
             + "AND (LOCATE(:keyword, LOWER(t.title)) > 0 "
             + "OR LOCATE(:keyword, LOWER(COALESCE(t.addr1, ''))) > 0 "
@@ -25,4 +33,7 @@ public interface TourContentRepository extends JpaRepository<TourContent, String
 
     /** 조회 API 배치 로딩용 — 페이지 양조장의 content_id 집합으로 대표 이미지(first_image·cpyrht_div_cd)를 한 번에 읽는다. */
     List<TourContent> findByContentIdIn(Collection<String> contentIds);
+
+    /** 추천 코스 후보에 해당하는 콘텐츠 타입만 전체 조회한다(ETC 원천 데이터 스캔 방지). */
+    List<TourContent> findByContentTypeIdIn(Collection<String> contentTypeIds);
 }

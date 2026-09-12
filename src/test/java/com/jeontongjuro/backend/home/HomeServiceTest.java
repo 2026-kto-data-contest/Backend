@@ -4,6 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 import com.jeontongjuro.backend.brewery.query.BreweryQueryService;
 import com.jeontongjuro.backend.global.web.PageResponse;
@@ -40,14 +42,12 @@ class HomeServiceTest {
     void setUp() {
         homeService = new HomeService(breweryQueryService, memberRepository,
                 recommendedCourseListService, recommendedBreweryService);
-        given(breweryQueryService.search(any(), anyInt(), anyInt()))
-                .willAnswer(invocation -> PageResponse.of(
-                        List.of(), 0, invocation.getArgument(2), 0L));
-        given(recommendedCourseListService.homePreview(any())).willReturn(List.of(
+        given(breweryQueryService.searchAllCards()).willReturn(List.of());
+        given(recommendedCourseListService.homePreviewFrom(any())).willReturn(List.of(
                 new RecommendedCourseCardResponse("BRW-001", null, "충북 영동", "갈기산 코스")));
-        given(recommendedBreweryService.recommend(any(), anyInt(), anyInt()))
+        given(recommendedBreweryService.recommendFromCandidates(any(), any(), anyInt(), anyInt()))
                 .willAnswer(invocation -> PageResponse.of(
-                        List.of(), invocation.getArgument(1), invocation.getArgument(2), 0L));
+                        List.of(), invocation.getArgument(2), invocation.getArgument(3), 0L));
     }
 
     @Test
@@ -63,6 +63,10 @@ class HomeServiceTest {
         assertThat(response.recommendedCourses()).hasSize(1);
         assertThat(response.recommendedCourses().get(0).courseId()).isEqualTo("BRW-001");
         assertThat(response.recommendedBreweries()).isEmpty();
+        verify(recommendedBreweryService).recommendFromCandidates(null, List.of(), 0, 6);
+        verifyNoMoreInteractions(recommendedBreweryService);
+        verify(recommendedCourseListService).homePreviewFrom(response.recommendedBreweries());
+        verifyNoMoreInteractions(recommendedCourseListService);
     }
 
     @Test

@@ -124,6 +124,7 @@ ALTER TABLE brewery ADD COLUMN IF NOT EXISTS kakao_place_url TEXT;
 ALTER TABLE brewery DROP COLUMN IF EXISTS image_url;
 CREATE INDEX IF NOT EXISTS ix_brewery_business_name ON brewery (business_name);
 CREATE INDEX IF NOT EXISTS ix_brewery_norm ON brewery (norm);
+CREATE INDEX IF NOT EXISTS ix_brewery_coordinates ON brewery (latitude, longitude);
 
 CREATE TABLE IF NOT EXISTS manual_override (
     id              BIGSERIAL PRIMARY KEY,                  -- 서러게이트 PK(의미 없음)
@@ -396,6 +397,7 @@ CREATE TABLE IF NOT EXISTS tour_content (
     updated_at            TIMESTAMP NOT NULL                 -- 최종 upsert 시각(UTC)
 );
 CREATE INDEX IF NOT EXISTS ix_tour_content_type ON tour_content (content_type_id);
+CREATE INDEX IF NOT EXISTS ix_tour_content_coordinates ON tour_content (latitude, longitude);
 
 -- 9단계 근접 캐싱 산물: 양조장 반경 내 콘텐츠(20km 실측 캐시). 복합 PK로 (양조장,콘텐츠) 1행.
 -- ★자기 자신 제외는 별도 플래그 컬럼 없이 brewery_nearby.content_id = brewery.content_id 파생으로 판정.

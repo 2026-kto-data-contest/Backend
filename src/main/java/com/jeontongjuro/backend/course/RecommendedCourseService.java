@@ -23,6 +23,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Predicate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -33,6 +34,8 @@ public class RecommendedCourseService {
 
     static final int PER_CATEGORY_LIMIT = 2;
     static final List<Integer> SEARCH_RADII_METERS = List.of(5_000, 10_000, 20_000);
+    private static final List<String> COURSE_CONTENT_TYPES =
+            List.of("12", "14", "15", "28", "32", "38", "39");
 
     private final BreweryRepository breweryRepository;
     private final BreweryNearbyRepository nearbyRepository;
@@ -41,6 +44,8 @@ public class RecommendedCourseService {
     private final BreweryFeatureTagRepository featureTagRepository;
     private final ProductLiquorTypeRepository liquorTypeRepository;
     private final KakaoPlaceSearchClient kakaoPlaceSearchClient;
+    /** 수집 데이터는 애플리케이션 재기동 단위로 갱신되므로 전역 후보 목록을 재사용한다. */
+    private final AtomicReference<List<TourContent>> globalTourContents = new AtomicReference<>();
 
     public RecommendedCourseService(BreweryRepository breweryRepository,
                                     BreweryNearbyRepository nearbyRepository,
@@ -104,7 +109,7 @@ public class RecommendedCourseService {
         // brewery_nearby는 현재 운영 수집 반경이 20km라 그 밖의 후보가 없다. 20km까지 넓혀도
         // 카테고리 정원이 안 차면 tour_content 전체 좌표에서 Haversine 거리로 보충해 상한 없는 확장을 구현한다.
         if (needsGlobalFallback(result) && brewery.getLatitude() != null && brewery.getLongitude() != null) {
-            for (TourContent content : tourContentRepository.findAll()) {
+            for (TourContent content : globalTourContents()) {
                 String id = content.getContentId();
                 if (id == null || id.equals(brewery.getContentId()) || !seen.add(id)
                         || content.getLatitude() == null || content.getLongitude() == null) continue;
@@ -118,6 +123,16 @@ public class RecommendedCourseService {
             }
         }
         return result;
+    }
+
+    private List<TourContent> globalTourContents() {
+        List<TourContent> cached = globalTourContents.get();
+        if (cached != null) {
+            return cached;
+        }
+        List<TourContent> loaded = tourContentRepository.findByContentTypeIdIn(COURSE_CONTENT_TYPES);
+        globalTourContents.compareAndSet(null, loaded);
+        return globalTourContents.get();
     }
 
     /** 카카오 재분류는 5→10→20km 버킷을 순서대로 처리하고 음식점·카페가 각각 두 곳 확보되면 중단한다. */

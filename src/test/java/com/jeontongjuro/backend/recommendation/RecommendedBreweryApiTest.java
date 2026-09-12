@@ -310,8 +310,8 @@ class RecommendedBreweryApiTest {
 
     /** {@link RecommendedBreweryService}가 부르는 조회를 통제된 합성 데이터로 스텁한다(실 DB brewery 미사용). */
     private void stubAllBreweries(List<BreweryListItemResponse> allInAlphabeticalOrder) {
-        given(breweryQueryService.search(any(BrewerySearchCondition.class), eq(0), eq(100)))
-                .willReturn(PageResponse.of(allInAlphabeticalOrder, 0, 100, allInAlphabeticalOrder.size()));
+        given(breweryQueryService.searchAllCards())
+                .willReturn(allInAlphabeticalOrder);
     }
 
     private BreweryListItemResponse brewery(String breweryId, String businessName, String region,

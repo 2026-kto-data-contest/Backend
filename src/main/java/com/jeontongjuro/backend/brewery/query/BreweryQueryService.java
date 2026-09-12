@@ -95,6 +95,12 @@ public class BreweryQueryService {
         return PageResponse.of(toListItems(result.getContent()), result);
     }
 
+    /** 추천·홈에서 공유하는 전체 카드 조회. 같은 요청 안에서 반복되는 배치 매핑을 줄인다. */
+    public List<BreweryListItemResponse> searchAllCards() {
+        return search(BrewerySearchCondition.of(null, null, null, null, null, null, null),
+                0, MAX_SIZE).content();
+    }
+
     /**
      * 통합 검색(GET /api/v1/search) — 정확도순 정렬 + 양조장 단위 중복 제거. 순위:
      * <pre>1순위 상호명 전방일치 &gt; 2순위 상호명 부분일치 &gt; 3순위 표시집합 제품명 부분일치</pre>
