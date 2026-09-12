@@ -5,6 +5,7 @@ import com.jeontongjuro.backend.product.query.ProductCardResponse;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.EnumMap;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -33,11 +34,28 @@ final class RepresentativeLiquorTypeSelector {
             }
         }
 
+        // 동점 순서는 enum 선언 순서가 아니라 제품 데이터에 나타난 주종 출력 순서를 따른다.
+        // 제품에 나타나지 않은 주종은 allTypes의 순서를 fallback으로 사용한다.
+        Map<LiquorType, Integer> declarationOrder = new HashMap<>();
+        int nextOrder = 0;
+        for (ProductCardResponse product : products) {
+            for (LiquorType type : product.liquorTypes()) {
+                if (!declarationOrder.containsKey(type)) {
+                    declarationOrder.put(type, nextOrder++);
+                }
+            }
+        }
+        for (LiquorType type : allTypes) {
+            if (!declarationOrder.containsKey(type)) {
+                declarationOrder.put(type, nextOrder++);
+            }
+        }
+
         List<LiquorType> ordered = new ArrayList<>(allTypes);
         ordered.sort(Comparator
                 .comparing((LiquorType type) -> stats.get(type).hasAward).reversed()
                 .thenComparing((LiquorType type) -> stats.get(type).productCount, Comparator.reverseOrder())
-                .thenComparingInt(Enum::ordinal));
+                .thenComparingInt(declarationOrder::get));
 
         int visibleCount = Math.min(DISPLAY_LIMIT, ordered.size());
         return new RepresentativeLiquorTypesResponse(

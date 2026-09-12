@@ -33,6 +33,17 @@ class RepresentativeLiquorTypeSelectorTest {
         assertThat(selected.remainingCount()).isZero();
     }
 
+    @Test
+    void usesProductDeclarationOrderWhenTypesTie() {
+        RepresentativeLiquorTypesResponse selected = RepresentativeLiquorTypeSelector.select(
+                List.of(LiquorType.증류주, LiquorType.과실주),
+                List.of(
+                        product(1, null, LiquorType.과실주),
+                        product(2, null, LiquorType.증류주)));
+
+        assertThat(selected.items()).containsExactly(LiquorType.과실주, LiquorType.증류주);
+    }
+
     private ProductCardResponse product(int id, String awardBadge, LiquorType type) {
         return new ProductCardResponse(id, "제품" + id, null, null, null,
                 List.of(type), null, awardBadge);
