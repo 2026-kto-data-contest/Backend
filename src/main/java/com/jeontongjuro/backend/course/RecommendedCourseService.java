@@ -67,8 +67,14 @@ public class RecommendedCourseService {
     public RecommendedCourseResponse findByBreweryId(String breweryId) {
         Brewery brewery = breweryRepository.findById(breweryId)
                 .orElseThrow(() -> new BreweryNotFoundException("양조장을 찾을 수 없습니다: " + breweryId));
-        List<ProductCardResponse> products = productQueryService.listProducts(breweryId, 0, 100).content();
-        List<String> descriptions = productQueryService.pairingTexts(breweryId);
+        ProductQueryService.CourseProductData courseProducts = productQueryService.loadCourseData(breweryId);
+        // 기존 테스트 대역과의 호환을 위해 null 반환 시 구 API를 사용한다.
+        List<ProductCardResponse> products = courseProducts == null
+                ? productQueryService.listProducts(breweryId, 0, 100).content()
+                : courseProducts.products();
+        List<String> descriptions = courseProducts == null
+                ? productQueryService.pairingTexts(breweryId)
+                : courseProducts.pairingTexts();
         List<BreweryNearby> nearby = nearbyRepository.findCourseCandidates(breweryId);
         Map<String, TourContent> contentById = loadContent(nearby);
         List<Candidate> candidates = refineNearbyFoodTypes(candidates(brewery, nearby, contentById, descriptions));

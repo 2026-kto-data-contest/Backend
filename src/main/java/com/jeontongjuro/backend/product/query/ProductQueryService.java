@@ -84,11 +84,20 @@ public class ProductQueryService {
 
     /** 추천 코스 음식점 페어링용 원문. 노출 대상 제품의 소개와 실제 안주 정보가 있는 특징을 함께 반환한다. */
     public List<String> pairingTexts(String breweryId) {
-        List<ProductBreweryLink> links = linkRepository.findByBreweryId(breweryId);
-        if (links.isEmpty()) return List.of();
-        Map<Integer, ProductRawView> rawByRef = loadRawByRef(links);
-        List<RawProduct> kept = filterKept(links, rawByRef);
+        List<RawProduct> kept = loadKeptProducts(breweryId);
         if (kept.isEmpty()) return List.of();
+
+        return pairingTextsFrom(kept);
+    }
+
+    /** 추천 코스가 제품 카드와 페어링 원문을 한 번에 사용할 때 원천 데이터를 한 번만 읽는다. */
+    public CourseProductData loadCourseData(String breweryId) {
+        List<RawProduct> kept = loadKeptProducts(breweryId);
+        if (kept.isEmpty()) return new CourseProductData(List.of(), List.of());
+        return new CourseProductData(buildCardsFromKept(kept), pairingTextsFrom(kept));
+    }
+
+    private List<String> pairingTextsFrom(List<RawProduct> kept) {
 
         // 제품 목록과 동일하게 제품명 공백 정규화로 중복 제품을 먼저 병합한다.
         return groupByNormalizedName(kept).values().stream()
@@ -103,18 +112,20 @@ public class ProductQueryService {
 
     /** ①~⑧: 이 양조장의 노출 카드 전체(정렬 완료)를 만든다. 페이지네이션(⑨)은 호출자가 한다. */
     private List<ProductCardResponse> buildCards(String breweryId) {
-        // ① 로드
-        List<ProductBreweryLink> links = linkRepository.findByBreweryId(breweryId);
-        if (links.isEmpty()) {
-            return List.of();
-        }
-        Map<Integer, ProductRawView> rawByRef = loadRawByRef(links);
-
-        // ①~③ 조인 + 판매중단 제외 + 원본오류 제외
-        List<RawProduct> kept = filterKept(links, rawByRef);
+        List<RawProduct> kept = loadKeptProducts(breweryId);
         if (kept.isEmpty()) {
             return List.of();
         }
+        return buildCardsFromKept(kept);
+    }
+
+    private List<RawProduct> loadKeptProducts(String breweryId) {
+        List<ProductBreweryLink> links = linkRepository.findByBreweryId(breweryId);
+        if (links.isEmpty()) return List.of();
+        return filterKept(links, loadRawByRef(links));
+    }
+
+    private List<ProductCardResponse> buildCardsFromKept(List<RawProduct> kept) {
 
         // ④ 중복 병합 — 제품명 공백 정규화로 그룹핑(삽입 순서 유지)
         Map<String, List<RawProduct>> groups = groupByNormalizedName(kept);
@@ -421,5 +432,12 @@ public class ProductQueryService {
 
     /** 그룹의 정렬 판정 키(내부 운반용) — representativeCharacteristicsByBreweryId 전용. */
     private record GroupOrderKey(boolean hasAwardBadge, RawProduct representative) {
+    }
+
+    public record CourseProductData(List<ProductCardResponse> products, List<String> pairingTexts) {
+        public CourseProductData {
+            products = products == null ? List.of() : List.copyOf(products);
+            pairingTexts = pairingTexts == null ? List.of() : List.copyOf(pairingTexts);
+        }
     }
 }
