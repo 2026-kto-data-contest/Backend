@@ -139,26 +139,14 @@ public class RecommendedCourseService {
     private List<Candidate> refineNearbyFoodTypes(List<Candidate> candidates) {
         Map<String, Candidate> refined = new java.util.HashMap<>();
         for (int radius : SEARCH_RADII_METERS) {
-            // 거리순으로 필요한 수(식당 2곳·카페 2곳)를 채우는 즉시 외부 카카오 조회를 멈춘다.
-            // 기존 stream(forEach)은 반경 안의 음식점 후보를 모두 조회해 후보가 많을수록 코스 응답이 느려졌다.
+            candidates.stream()
+                    .filter(candidate -> isFood(candidate.type()) && distance(candidate) <= radius)
+                    .filter(candidate -> !refined.containsKey(candidate.content().getContentId()))
+                    .forEach(candidate -> refined.put(candidate.content().getContentId(), refineFoodType(candidate)));
             long restaurants = refined.values().stream()
                     .filter(candidate -> candidate.type() == CourseStopType.RESTAURANT).count();
             long cafes = refined.values().stream()
                     .filter(candidate -> candidate.type() == CourseStopType.CAFE).count();
-            List<Candidate> foodInRadius = candidates.stream()
-                    .filter(candidate -> isFood(candidate.type()) && distance(candidate) <= radius)
-                    .filter(candidate -> !refined.containsKey(candidate.content().getContentId()))
-                    .sorted(Comparator.comparingInt((Candidate candidate) -> distance(candidate))
-                            .thenComparing(candidate -> candidate.content().getContentId()))
-                    .toList();
-            for (Candidate candidate : foodInRadius) {
-                refined.put(candidate.content().getContentId(), refineFoodType(candidate));
-                restaurants = refined.values().stream()
-                        .filter(item -> item.type() == CourseStopType.RESTAURANT).count();
-                cafes = refined.values().stream()
-                        .filter(item -> item.type() == CourseStopType.CAFE).count();
-                if (restaurants >= PER_CATEGORY_LIMIT && cafes >= PER_CATEGORY_LIMIT) break;
-            }
             if (restaurants >= PER_CATEGORY_LIMIT && cafes >= PER_CATEGORY_LIMIT) break;
         }
         return candidates.stream().map(candidate -> refined.getOrDefault(
