@@ -14,6 +14,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.Set;
+import java.util.Map;
 import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,6 +25,11 @@ public class MapPlaceService {
     private static final int DEFAULT_SIZE = 20;
     private static final int MAX_SIZE = 300;
     private static final int SEARCH_MAX_SIZE = 100;
+    private static final Map<MapPlaceCategory, List<String>> CONTENT_TYPES_BY_CATEGORY = Map.of(
+            MapPlaceCategory.RESTAURANT, List.of("39"),
+            MapPlaceCategory.CAFE, List.of("39"),
+            MapPlaceCategory.ACCOMMODATION, List.of("32"),
+            MapPlaceCategory.TOURIST_ATTRACTION, List.of("12", "14", "15", "28", "38"));
     private final BreweryRepository breweryRepository;
     private final TourContentRepository tourContentRepository;
 
@@ -49,7 +55,9 @@ public class MapPlaceService {
             Set<String> breweryContentIds = breweryRepository.findWithinBounds(
                             bounds.south(), bounds.north(), bounds.west(), bounds.east()).stream()
                     .map(Brewery::getContentId).filter(Objects::nonNull).collect(Collectors.toSet());
-            tourContentRepository.findWithinBounds(bounds.south(), bounds.north(), bounds.west(), bounds.east())
+            tourContentRepository.findWithinBoundsAndContentTypeIn(bounds.south(), bounds.north(), bounds.west(), bounds.east(),
+                            CONTENT_TYPES_BY_CATEGORY.getOrDefault(category,
+                                    List.of("12", "14", "15", "28", "32", "38", "39")))
                     .stream().filter(t -> !breweryContentIds.contains(t.getContentId()))
                     .filter(t -> categoryOf(t) == category)
                     .map(t -> fromTour(t, category, userLatitude, userLongitude)).forEach(places::add);

@@ -69,16 +69,21 @@ public class RecommendedBreweryService {
         int clampedPage = clampPage(page, clampedSize);
 
         List<BreweryListItemResponse> allBreweries = allBreweriesAlphabetical();
-        List<BreweryListItemResponse> ordered = orderFor(memberId, allBreweries, clampedSize);
+        return recommendFromCandidates(memberId, allBreweries, clampedPage, clampedSize);
+    }
 
+    /** 홈처럼 이미 카드 모집단을 읽은 호출자가 추천 정렬을 재사용하는 진입점. */
+    public PageResponse<BreweryListItemResponse> recommendFromCandidates(
+            Long memberId, List<BreweryListItemResponse> allBreweries, int page, int size) {
+        int clampedSize = clampSize(size);
+        int clampedPage = clampPage(page, clampedSize);
+        List<BreweryListItemResponse> ordered = orderFor(memberId, allBreweries, clampedSize);
         return slice(ordered, clampedPage, clampedSize);
     }
 
     /** 전체 양조장을 목록 API와 동일한 카드로, 동일한 고정 정렬(상호명 ASC → breweryId ASC)로 읽는다. */
     private List<BreweryListItemResponse> allBreweriesAlphabetical() {
-        BrewerySearchCondition noFilter = BrewerySearchCondition.of(
-                null, null, null, null, null, null, null);
-        return breweryQueryService.search(noFilter, 0, POPULATION_FETCH_SIZE).content();
+        return breweryQueryService.searchAllCards();
     }
 
     /**

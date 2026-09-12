@@ -39,6 +39,13 @@ dependencies {
 
 tasks.named('test') {
 	useJUnitPlatform()
+	// Tests that point at the Docker PostgreSQL instance must not inherit the
+	// developer's remote Supabase credentials from .env. The opt-in Supabase
+	// audit keeps its explicit environment credentials.
+	if (System.getenv('COURSE_AUDIT_ENABLED') != 'true') {
+		systemProperty 'spring.datasource.username', 'jeontongjuro'
+		systemProperty 'spring.datasource.password', 'jeontongjuro'
+	}
 }
 tasks.named('bootJar') {
     archiveFileName = 'app.jar'

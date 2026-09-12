@@ -35,6 +35,11 @@ public class RecommendedCourseListService {
         return list(memberId, 0, HOME_SIZE).content();
     }
 
+    /** 홈에서 이미 조회한 추천 순서를 재사용해 전체 양조장 조회를 반복하지 않는다. */
+    public List<RecommendedCourseCardResponse> homePreviewFrom(List<BreweryListItemResponse> breweries) {
+        return breweries.stream().limit(HOME_SIZE).map(this::toCard).toList();
+    }
+
     private RecommendedCourseCardResponse toCard(BreweryListItemResponse brewery) {
         String imageUrl = brewery.mainImage() == null ? null : brewery.mainImage().url();
         return new RecommendedCourseCardResponse(
