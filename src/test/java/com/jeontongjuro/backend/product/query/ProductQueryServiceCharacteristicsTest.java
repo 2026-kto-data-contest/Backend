@@ -74,11 +74,15 @@ class ProductQueryServiceCharacteristicsTest {
         //    ref가 더 커도 수상 있는 쪽이 대표가 돼야 한다(buildCards ⑧ 정렬과 동치 검증).
         product(BREWERY_A, 95001, "무수상제품", "여기는 절대 선택되면 안 됨", null, "Y");
         product(BREWERY_A, 95002, "수상제품", "부드러운 목넘김과 산뜻한 산미", "2020 우리술품평회 대상", "Y");
+        product(BREWERY_A, 95003, "판매중단제품", "판매중단 행의 페어링 정보", null, "N");
 
         // B: 단일 제품(그룹 1개) — 그대로 대표.
         product(BREWERY_B, 95010, "단일제품", "달콤하고 향긋한 뒷맛", null, "Y");
         // B 중복 원본: 제품 목록과 동일하게 하나의 제품 그룹으로 병합되어 대표 행만 페어링에 사용되어야 한다.
         product(BREWERY_B, 95011, "단일 제품", "중복 행의 특징", null, "Y");
+        // 도수가 다른 제품은 제품명 정규화 대상이 아니므로 서로 다른 제품으로 남아야 한다.
+        product(BREWERY_B, 95012, "도수제품 12도", "12도 제품 특징", null, "Y");
+        product(BREWERY_B, 95013, "도수제품 13도", "13도 제품 특징", null, "Y");
 
         // C: 제품 없음(seed 안 함) — 결과 Map에 없어야 한다.
     }
@@ -128,6 +132,20 @@ class ProductQueryServiceCharacteristicsTest {
         assertThat(productQueryService.pairingTexts(BREWERY_B))
                 .contains("달콤하고 향긋한 뒷맛")
                 .doesNotContain("중복 행의 특징");
+    }
+
+    @Test
+    @DisplayName("판매중단 제품은 페어링 원문에서도 제외한다")
+    void pairingTextsExcludeStoppedProducts() {
+        assertThat(productQueryService.pairingTexts(BREWERY_A))
+                .doesNotContain("판매중단 행의 페어링 정보");
+    }
+
+    @Test
+    @DisplayName("도수가 다른 제품명은 중복 병합하지 않는다")
+    void pairingTextsKeepProductsWithDifferentAbv() {
+        assertThat(productQueryService.pairingTexts(BREWERY_B))
+                .contains("12도 제품 특징", "13도 제품 특징");
     }
 
     // ── helpers ──────────────────────────────────────────────────────────────
