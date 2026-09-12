@@ -27,6 +27,8 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 @RequiredArgsConstructor
 public class SecurityConfig {
 
+    private static final String PRODUCTION_FRONTEND_ORIGIN = "https://jeontongjuro.vercel.app";
+
     private static final String[] PUBLIC_ENDPOINTS = {
             "/actuator/health",
             "/api/v1/auth/kakao",
@@ -86,7 +88,7 @@ public class SecurityConfig {
         CorsConfiguration configuration = new CorsConfiguration();
         List<String> allowedOrigins = Stream.concat(
                         properties.allowedOrigins().stream(),
-                        Stream.of(appProperties.frontendBaseUrl()))
+                        Stream.of(appProperties.frontendBaseUrl(), PRODUCTION_FRONTEND_ORIGIN))
                 .map(String::trim)
                 .filter(origin -> !origin.isEmpty())
                 .distinct()
