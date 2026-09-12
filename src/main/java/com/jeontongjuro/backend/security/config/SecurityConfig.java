@@ -1,10 +1,12 @@
 package com.jeontongjuro.backend.security.config;
 
+import com.jeontongjuro.backend.auth.config.AppProperties;
 import com.jeontongjuro.backend.security.filter.SessionAuthenticationFilter;
 import com.jeontongjuro.backend.security.handler.RestAccessDeniedHandler;
 import com.jeontongjuro.backend.security.handler.RestAuthenticationEntryPoint;
 import com.jeontongjuro.backend.security.session.AuthProperties;
 import java.util.List;
+import java.util.stream.Stream;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
 import org.springframework.context.annotation.Bean;
@@ -79,9 +81,17 @@ public class SecurityConfig {
     }
 
     @Bean
-    CorsConfigurationSource corsConfigurationSource(CorsProperties properties) {
+    CorsConfigurationSource corsConfigurationSource(CorsProperties properties,
+            AppProperties appProperties) {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(properties.allowedOrigins());
+        List<String> allowedOrigins = Stream.concat(
+                        properties.allowedOrigins().stream(),
+                        Stream.of(appProperties.frontendBaseUrl()))
+                .map(String::trim)
+                .filter(origin -> !origin.isEmpty())
+                .distinct()
+                .toList();
+        configuration.setAllowedOrigins(allowedOrigins);
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of(HttpHeaders.CONTENT_TYPE, "X-XSRF-TOKEN"));
         configuration.setAllowCredentials(true);
