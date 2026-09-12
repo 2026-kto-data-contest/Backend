@@ -87,7 +87,12 @@ public class ProductQueryService {
         List<ProductBreweryLink> links = linkRepository.findByBreweryId(breweryId);
         if (links.isEmpty()) return List.of();
         Map<Integer, ProductRawView> rawByRef = loadRawByRef(links);
-        return filterKept(links, rawByRef).stream()
+        List<RawProduct> kept = filterKept(links, rawByRef);
+        if (kept.isEmpty()) return List.of();
+
+        // 제품 목록과 동일하게 제품명 공백 정규화로 중복 제품을 먼저 병합한다.
+        return groupByNormalizedName(kept).values().stream()
+                .map(ProductQueryService::representativeOf)
                 .flatMap(product -> java.util.stream.Stream.of(
                         DescriptionTruncationPolicy.apply(product.raw().getDescription()),
                         product.raw().getCharacteristics()))
