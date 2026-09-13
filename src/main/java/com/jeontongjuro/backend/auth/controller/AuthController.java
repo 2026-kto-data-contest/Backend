@@ -69,7 +69,7 @@ public class AuthController {
                            HttpServletResponse response) throws IOException {
         AuthService.LoginStart login = authService.startLogin();
         cookieManager.addOAuthState(response, login.state());
-        cookieManager.addReturnTo(response, safeReturnTo(returnTo));
+                           cookieManager.addReturnTo(response, appProperties.safeReturnTo(returnTo));
         response.sendRedirect(login.authorizationUrl());
     }
 
@@ -180,8 +180,4 @@ public class AuthController {
                 .toUriString();
     }
 
-    private String safeReturnTo(String value) {
-        return value != null && value.startsWith("/") && !value.startsWith("//") && !value.contains("\\")
-                ? value : "/";
-    }
 }

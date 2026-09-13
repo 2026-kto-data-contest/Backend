@@ -1,6 +1,7 @@
 package com.jeontongjuro.backend.auth.service;
 
 import com.jeontongjuro.backend.auth.dto.response.LoginResult;
+import com.jeontongjuro.backend.auth.config.AppProperties;
 import com.jeontongjuro.backend.auth.dto.response.MemberResponse;
 import com.jeontongjuro.backend.auth.exception.AuthException;
 import com.jeontongjuro.backend.auth.kakao.KakaoClient;
@@ -26,6 +27,7 @@ public class AuthService {
 
     private final KakaoClient kakaoClient;
     private final KakaoProperties kakaoProperties;
+    private final AppProperties appProperties;
     private final MemberRepository memberRepository;
     private final SessionService sessionService;
     private final TermsService termsService;
@@ -51,12 +53,12 @@ public class AuthService {
     public LoginResult completeLogin(String authorizationCode, String returnTo) {
         KakaoUserResponse kakaoUser = kakaoClient.getUser(authorizationCode);
         Member member = upsertMember(kakaoUser);
-        member.rememberPostLoginReturnTo(safeReturnTo(returnTo));
+        member.rememberPostLoginReturnTo(appProperties.safeReturnTo(returnTo));
         memberRepository.save(member);
         boolean termsAgreed = termsService.hasRequiredAgreements(member.getId());
         String sessionToken = sessionService.create(member);
         String nextPath = termsAgreed
-                ? (member.isOnboardingCompleted() ? safeReturnTo(member.consumePostLoginReturnTo()) : "/onboarding")
+                ? (member.isOnboardingCompleted() ? appProperties.safeReturnTo(member.consumePostLoginReturnTo()) : "/onboarding")
                 : "/terms";
         memberRepository.save(member);
         return new LoginResult(sessionToken, nextPath);
@@ -75,7 +77,7 @@ public class AuthService {
         if (!member.isOnboardingCompleted()) {
             return "/onboarding";
         }
-        String returnTo = safeReturnTo(member.consumePostLoginReturnTo());
+        String returnTo = appProperties.safeReturnTo(member.consumePostLoginReturnTo());
         memberRepository.save(member);
         return returnTo;
     }
@@ -94,14 +96,6 @@ public class AuthService {
                 .orElseGet(() -> Member.createKakao(kakaoUser.id(), nickname, kakaoUser.email()));
         member.updateKakaoProfile(nickname, kakaoUser.email());
         return memberRepository.save(member);
-    }
-
-    private String safeReturnTo(String returnTo) {
-        if (returnTo == null || !returnTo.startsWith("/") || returnTo.startsWith("//")
-                || returnTo.contains("\\")) {
-            return "/";
-        }
-        return returnTo;
     }
 
     public record LoginStart(String state, String authorizationUrl) {

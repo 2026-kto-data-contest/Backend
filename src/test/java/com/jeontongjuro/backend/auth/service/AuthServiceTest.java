@@ -6,6 +6,7 @@ import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.verify;
 
 import com.jeontongjuro.backend.auth.kakao.KakaoClient;
+import com.jeontongjuro.backend.auth.config.AppProperties;
 import com.jeontongjuro.backend.auth.kakao.KakaoProperties;
 import com.jeontongjuro.backend.auth.kakao.KakaoUserResponse;
 import com.jeontongjuro.backend.member.Member;
@@ -32,6 +33,7 @@ class AuthServiceTest {
         termsService = mock(TermsService.class);
         authService = new AuthService(kakaoClient,
                 new KakaoProperties("rest-key", "client-secret", "http://localhost:8080/callback"),
+                new AppProperties("http://localhost:5173"),
                 memberRepository, sessionService, termsService);
     }
 
