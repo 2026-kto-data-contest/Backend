@@ -16,6 +16,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
+import java.util.List;
 
 class AuthControllerTest {
 
@@ -25,7 +26,7 @@ class AuthControllerTest {
         SessionService sessionService = mock(SessionService.class);
         AuthCookieManager cookieManager = mock(AuthCookieManager.class);
         AuthController controller = new AuthController(authService, sessionService, cookieManager,
-                new AppProperties("http://localhost:3000"));
+                new AppProperties("http://localhost:3000", List.of("http://localhost:3000")));
         MockHttpServletRequest request = new MockHttpServletRequest();
         MockHttpServletResponse response = new MockHttpServletResponse();
 
@@ -47,7 +48,7 @@ class AuthControllerTest {
         SessionService sessionService = mock(SessionService.class);
         AuthCookieManager cookieManager = mock(AuthCookieManager.class);
         AuthController controller = new AuthController(authService, sessionService, cookieManager,
-                new AppProperties("http://localhost:3000"));
+                new AppProperties("http://localhost:3000", List.of("http://localhost:3000")));
         MockHttpServletRequest request = new MockHttpServletRequest();
         MockHttpServletResponse response = new MockHttpServletResponse();
 
@@ -70,7 +71,7 @@ class AuthControllerTest {
         SessionService sessionService = mock(SessionService.class);
         AuthCookieManager cookieManager = mock(AuthCookieManager.class);
         AuthController controller = new AuthController(authService, sessionService, cookieManager,
-                new AppProperties("http://localhost:3000"));
+                new AppProperties("http://localhost:3000", List.of("http://localhost:3000")));
         MockHttpServletRequest request = new MockHttpServletRequest();
         MockHttpServletResponse response = new MockHttpServletResponse();
         when(cookieManager.read(request, AuthCookieManager.SESSION_COOKIE)).thenReturn("session-token");

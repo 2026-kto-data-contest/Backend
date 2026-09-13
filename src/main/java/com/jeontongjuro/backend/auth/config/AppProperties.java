@@ -7,10 +7,6 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 @ConfigurationProperties(prefix = "app")
 public record AppProperties(String frontendBaseUrl, List<String> frontendAllowedOrigins) {
 
-    public AppProperties(String frontendBaseUrl) {
-        this(frontendBaseUrl, List.of(frontendBaseUrl));
-    }
-
     public AppProperties {
         if (frontendBaseUrl == null || frontendBaseUrl.isBlank()) {
             throw new IllegalArgumentException("app.frontend-base-url은 비어 있을 수 없습니다.");

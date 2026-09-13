@@ -14,6 +14,7 @@ import com.jeontongjuro.backend.member.MemberRepository;
 import com.jeontongjuro.backend.security.session.SessionService;
 import com.jeontongjuro.backend.terms.TermsService;
 import java.util.Optional;
+import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -33,7 +34,7 @@ class AuthServiceTest {
         termsService = mock(TermsService.class);
         authService = new AuthService(kakaoClient,
                 new KakaoProperties("rest-key", "client-secret", "http://localhost:8080/callback"),
-                new AppProperties("http://localhost:5173"),
+                new AppProperties("http://localhost:5173", List.of("http://localhost:5173")),
                 memberRepository, sessionService, termsService);
     }
 
