@@ -47,6 +47,27 @@ DB·Redirect URI·프론트 주소·세션 기간·쿠키 보안은 `application
 7. 필수 약관 미동의 회원은 `/terms`, 온보딩 미완료 회원은 `/onboarding`, 완료 회원은 `returnTo`로 이동한다.
 8. 신규 회원도 약관과 온보딩을 모두 완료하면 로그인 직전 경로로 복귀한다.
 
+### 환경별 프론트 주소
+
+기본적으로 로그인 완료 후 `FRONTEND_BASE_URL`로 이동한다. 로컬 프론트로 돌아가야
+하는 경우 백엔드 실행 환경에 다음처럼 설정한다.
+
+```properties
+FRONTEND_BASE_URL=http://localhost:5173
+FRONTEND_ALLOWED_ORIGINS=http://localhost:5173,https://jeontongjuro.vercel.app
+KAKAO_REDIRECT_URI=http://localhost:8080/api/v1/auth/kakao/callback
+```
+
+배포 환경에서는 `FRONTEND_BASE_URL`을 배포 프론트 주소로 설정하고, 카카오 개발자
+콘솔의 Redirect URI에 `KAKAO_REDIRECT_URI` 값을 정확히 등록해야 한다. `returnTo`에
+전체 URL을 전달하는 경우에도 `FRONTEND_ALLOWED_ORIGINS`에 등록된 origin만 허용되며,
+그 외 주소는 `/`로 대체된다.
+
+현재 프론트와 백엔드가 서로 다른 최상위 도메인(`vercel.app`와 `onrender.com`)에
+있으므로, 위 설정만으로 iPhone Safari의 세션 쿠키 차단 문제는 해결되지 않는다.
+세션 문제의 근본 해결에는 동일 상위 도메인/프록시 구성 또는 쿠키 없는 토큰 인증
+전환이 필요하다.
+
 카카오 로그인 취소 또는 오류가 발생하면 프론트의 `/login`으로 돌아간다.
 
 ```text
