@@ -1,6 +1,7 @@
 package com.jeontongjuro.backend.brewery.query;
 
 import com.jeontongjuro.backend.brewery.Brewery;
+import com.jeontongjuro.backend.brewery.BreweryVisibilityPolicy;
 import com.jeontongjuro.backend.brewery.VisitState;
 import com.jeontongjuro.backend.liquortype.LiquorType;
 import com.jeontongjuro.backend.liquortype.ProductLiquorType;
@@ -30,6 +31,7 @@ public final class BreweryQuerySpecifications {
     /** 조건의 지정된 필터만 모아 AND 결합. 전부 미지정이면 무제약(전체 조회). */
     public static Specification<Brewery> build(BrewerySearchCondition cond) {
         List<Specification<Brewery>> specs = new ArrayList<>();
+        addIfPresent(specs, visible());
         addIfPresent(specs, regions(cond.regions()));
         addIfPresent(specs, reservationVisit(cond.reservationVisit()));
         addIfPresent(specs, alwaysVisit(cond.alwaysVisit()));
@@ -37,6 +39,12 @@ public final class BreweryQuerySpecifications {
         addIfPresent(specs, liquorTypes(cond.liquorTypes()));
         addIfPresent(specs, alcoholRange(cond.minAbv(), cond.maxAbv()));
         return Specification.allOf(specs);
+    }
+
+    /** 운영상 비노출 처리된 양조장은 페이징·totalElements 계산 전부터 제외한다. */
+    public static Specification<Brewery> visible() {
+        return (root, query, cb) -> cb.not(root.get("breweryId").in(
+                BreweryVisibilityPolicy.excludedBreweryIds()));
     }
 
     /**

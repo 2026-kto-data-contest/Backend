@@ -3,6 +3,7 @@ package com.jeontongjuro.backend.brewery.query;
 import com.jeontongjuro.backend.brewery.Brewery;
 import com.jeontongjuro.backend.brewery.BreweryRepository;
 import com.jeontongjuro.backend.brewery.BrewerySigunguParser;
+import com.jeontongjuro.backend.brewery.BreweryVisibilityPolicy;
 import com.jeontongjuro.backend.experience.BreweryExperience;
 import com.jeontongjuro.backend.experience.BreweryExperienceRepository;
 import com.jeontongjuro.backend.feature.BreweryFeatureTag;
@@ -128,7 +129,8 @@ public class BreweryQueryService {
                 productQueryService.displayedProductNamesByBreweryId();
 
         List<RankedBrewery> matched = new ArrayList<>();
-        for (Brewery brewery : breweryRepository.findAll()) {
+        for (Brewery brewery : breweryRepository.findAll().stream()
+                .filter(b -> BreweryVisibilityPolicy.isVisible(b.getBreweryId())).toList()) {
             int tier = tierOf(brewery, needle,
                     productNamesByBrewery.getOrDefault(brewery.getBreweryId(), List.of()));
             if (tier > 0) {
@@ -211,6 +213,9 @@ public class BreweryQueryService {
         Brewery brewery = breweryRepository.findById(breweryId)
                 .orElseThrow(() -> new BreweryNotFoundException(
                         "양조장을 찾을 수 없습니다: " + breweryId));
+        if (!BreweryVisibilityPolicy.isVisible(breweryId)) {
+            throw new BreweryNotFoundException("양조장을 찾을 수 없습니다: " + breweryId);
+        }
 
         List<Brewery> one = List.of(brewery);
         List<FeatureType> tags = featureTagsFor(one).getOrDefault(breweryId, List.of());
