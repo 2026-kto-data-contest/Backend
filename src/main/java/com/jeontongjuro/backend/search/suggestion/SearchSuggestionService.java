@@ -2,6 +2,7 @@ package com.jeontongjuro.backend.search.suggestion;
 
 import com.jeontongjuro.backend.brewery.Brewery;
 import com.jeontongjuro.backend.brewery.BreweryRepository;
+import com.jeontongjuro.backend.brewery.BreweryVisibilityPolicy;
 import com.jeontongjuro.backend.product.query.ProductNameSuggestion;
 import com.jeontongjuro.backend.product.query.ProductQueryService;
 import com.jeontongjuro.backend.search.SearchKeyword;
@@ -67,6 +68,9 @@ public class SearchSuggestionService {
     /** 상호명 부분일치. 매칭은 {@link SearchKeyword#normalizeTarget} 기준, 정렬·응답은 원문 기준(sortKey()). */
     private void collectBreweryCandidates(String needle, List<Candidate> candidates) {
         for (Brewery brewery : breweryRepository.findAll()) {
+            if (!BreweryVisibilityPolicy.isVisible(brewery.getBreweryId())) {
+                continue;
+            }
             String displayName = brewery.getBusinessName();
             String normalizedName = SearchKeyword.normalizeTarget(displayName);
             if (!normalizedName.contains(needle)) {

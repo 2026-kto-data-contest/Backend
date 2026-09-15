@@ -3,6 +3,7 @@ package com.jeontongjuro.backend.course;
 import com.jeontongjuro.backend.brewery.Brewery;
 import com.jeontongjuro.backend.brewery.BreweryRepository;
 import com.jeontongjuro.backend.brewery.BrewerySigunguParser;
+import com.jeontongjuro.backend.brewery.BreweryVisibilityPolicy;
 import com.jeontongjuro.backend.brewery.query.BreweryNotFoundException;
 import com.jeontongjuro.backend.feature.BreweryFeatureTagRepository;
 import com.jeontongjuro.backend.liquortype.ProductLiquorTypeRepository;
@@ -68,6 +69,9 @@ public class RecommendedCourseService {
 
     @Transactional(readOnly = true)
     public RecommendedCourseResponse findByBreweryId(String breweryId) {
+        if (!BreweryVisibilityPolicy.isVisible(breweryId)) {
+            throw new BreweryNotFoundException("양조장을 찾을 수 없습니다: " + breweryId);
+        }
         Brewery brewery = breweryRepository.findById(breweryId)
                 .orElseThrow(() -> new BreweryNotFoundException("양조장을 찾을 수 없습니다: " + breweryId));
         ProductQueryService.CourseProductData courseProducts = productQueryService.loadCourseData(breweryId);
