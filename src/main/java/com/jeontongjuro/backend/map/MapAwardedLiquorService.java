@@ -35,6 +35,9 @@ public class MapAwardedLiquorService {
 
         List<BreweryListItemResponse> breweries = breweryQueryService.searchAllCards();
         Map<String, Brewery> breweryById = loadBreweries(breweries);
+        Map<String, List<ProductCardResponse>> productsByBrewery =
+                productQueryService.displayedCardsByBreweryId(breweries.stream()
+                        .map(BreweryListItemResponse::breweryId).toList());
         List<MapAwardedLiquorResponse> awarded = new ArrayList<>();
 
         for (BreweryListItemResponse breweryCard : breweries) {
@@ -42,7 +45,7 @@ public class MapAwardedLiquorService {
             if (brewery == null || brewery.getLatitude() == null || brewery.getLongitude() == null) {
                 continue;
             }
-            productQueryService.listProducts(breweryCard.breweryId(), 0, MAX_SIZE).content().stream()
+            productsByBrewery.getOrDefault(breweryCard.breweryId(), List.of()).stream()
                     .filter(product -> product.awardBadge() != null)
                     .map(product -> toResponse(product, breweryCard, brewery))
                     .forEach(awarded::add);

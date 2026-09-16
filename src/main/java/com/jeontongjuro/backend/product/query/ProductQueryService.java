@@ -127,12 +127,14 @@ public class ProductQueryService {
     }
 
     private List<ProductCardResponse> buildCardsFromKept(List<RawProduct> kept) {
+        return buildCardsFromKept(kept, loadLiquorTypes(kept));
+    }
+
+    private List<ProductCardResponse> buildCardsFromKept(List<RawProduct> kept,
+                                                         Map<Integer, List<LiquorType>> typesByRef) {
 
         // ④ 중복 병합 — 제품명 공백 정규화로 그룹핑(삽입 순서 유지)
         Map<String, List<RawProduct>> groups = groupByNormalizedName(kept);
-
-        // ⑦ 주종 배치 로딩 — 남은 모든 ref 기준(병합 그룹은 멤버 ref들의 합집합으로 노출)
-        Map<Integer, List<LiquorType>> typesByRef = loadLiquorTypes(kept);
 
         // ④~⑦ 그룹별 병합 → 카드
         List<ProductCardResponse> cards = new ArrayList<>(groups.size());
@@ -235,6 +237,35 @@ public class ProductQueryService {
         return result;
     }
 
+    /** 여러 양조장의 표시 제품 카드를 한 번에 계산해 지도 추천 API의 N+1 조회를 피한다. */
+    public Map<String, List<ProductCardResponse>> displayedCardsByBreweryId(Collection<String> breweryIds) {
+        if (breweryIds.isEmpty()) {
+            return Map.of();
+        }
+        List<ProductBreweryLink> allLinks = linkRepository.findByBreweryIdIn(breweryIds);
+        if (allLinks.isEmpty()) {
+            return Map.of();
+        }
+        Map<Integer, ProductRawView> rawByRef = loadRawByRef(allLinks);
+        List<Integer> refs = allLinks.stream()
+                .filter(link -> rawByRef.containsKey(link.getSourceRowRef()))
+                .map(ProductBreweryLink::getSourceRowRef).toList();
+        Map<Integer, List<LiquorType>> typesByRef = loadLiquorTypesByRefs(refs);
+        Map<String, List<ProductBreweryLink>> linksByBrewery = new LinkedHashMap<>();
+        for (ProductBreweryLink link : allLinks) {
+            linksByBrewery.computeIfAbsent(link.getBreweryId(), ignored -> new ArrayList<>()).add(link);
+        }
+
+        Map<String, List<ProductCardResponse>> result = new HashMap<>();
+        for (Map.Entry<String, List<ProductBreweryLink>> entry : linksByBrewery.entrySet()) {
+            List<RawProduct> kept = filterKept(entry.getValue(), rawByRef);
+            if (!kept.isEmpty()) {
+                result.put(entry.getKey(), buildCardsFromKept(kept, typesByRef));
+            }
+        }
+        return result;
+    }
+
     /** ①~③ 조인 + 판매중단 제외 + 원본오류 제외. */
     private List<RawProduct> filterKept(List<ProductBreweryLink> links, Map<Integer, ProductRawView> rawByRef) {
         List<RawProduct> kept = new ArrayList<>();
@@ -298,7 +329,10 @@ public class ProductQueryService {
     }
 
     private Map<Integer, List<LiquorType>> loadLiquorTypes(List<RawProduct> kept) {
-        List<Integer> refs = kept.stream().map(p -> p.link().getSourceRowRef()).toList();
+        return loadLiquorTypesByRefs(kept.stream().map(p -> p.link().getSourceRowRef()).toList());
+    }
+
+    private Map<Integer, List<LiquorType>> loadLiquorTypesByRefs(Collection<Integer> refs) {
         Map<Integer, List<LiquorType>> byRef = new HashMap<>();
         for (Object[] row : liquorTypeRepository.findTypesBySourceRowRefIn(refs)) {
             Integer ref = (Integer) row[0];
