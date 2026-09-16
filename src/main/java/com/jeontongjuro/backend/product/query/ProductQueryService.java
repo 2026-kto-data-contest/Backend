@@ -1,6 +1,7 @@
 package com.jeontongjuro.backend.product.query;
 
 import com.jeontongjuro.backend.brewery.BreweryRepository;
+import com.jeontongjuro.backend.brewery.BreweryVisibilityPolicy;
 import com.jeontongjuro.backend.brewery.query.BreweryNotFoundException;
 import com.jeontongjuro.backend.global.web.PageResponse;
 import com.jeontongjuro.backend.liquortype.LiquorType;
@@ -67,7 +68,7 @@ public class ProductQueryService {
     }
 
     public PageResponse<ProductCardResponse> listProducts(String breweryId, int page, int size) {
-        if (!breweryRepository.existsById(breweryId)) {
+        if (!BreweryVisibilityPolicy.isVisible(breweryId) || !breweryRepository.existsById(breweryId)) {
             throw new BreweryNotFoundException("양조장을 찾을 수 없습니다: " + breweryId);
         }
         int clampedSize = clampSize(size);
@@ -310,8 +311,9 @@ public class ProductQueryService {
     /**
      * 검색 자동완성용 — 전 양조장의 노출 제품(판매중단·원본오류 제외, 중복 병합 적용 후) 이름 전체를 반환한다.
      * {@link #buildCards}와 동일한 제외(②③)·중복 병합(④) 규칙을 그룹핑 단위(양조장별)까지 그대로 재사용해
-     * 노출 모집단을 카드 API와 일치시킨다. 정렬·설명·주종 등 카드의 나머지 계산은 하지 않는다(호출자는
-     * 제품명·id만 필요).
+     * 노출 모집단을 카드 API와 일치시킨다. 노출 제외 양조장({@link BreweryVisibilityPolicy})의 제품은
+     * 여기서 걸러진다 — 후보 레코드가 breweryId를 들고 있지 않아 호출자 쪽에서는 거를 수 없다.
+     * 정렬·설명·주종 등 카드의 나머지 계산은 하지 않는다(호출자는 제품명·id만 필요).
      * <p>
      * 링크 전체 조회 1쿼리 + raw 배치 조회 1쿼리로 고정된다(양조장 수·결과 건수와 무관 — N+1 없음).
      */
@@ -328,8 +330,11 @@ public class ProductQueryService {
         }
 
         List<ProductNameSuggestion> result = new ArrayList<>();
-        for (List<ProductBreweryLink> links : linksByBrewery.values()) {
-            List<RawProduct> kept = filterKept(links, rawByRef);
+        for (Map.Entry<String, List<ProductBreweryLink>> e : linksByBrewery.entrySet()) {
+            if (!BreweryVisibilityPolicy.isVisible(e.getKey())) {
+                continue;
+            }
+            List<RawProduct> kept = filterKept(e.getValue(), rawByRef);
             if (kept.isEmpty()) {
                 continue;
             }

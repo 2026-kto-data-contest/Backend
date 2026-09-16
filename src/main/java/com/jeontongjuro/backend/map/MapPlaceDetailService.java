@@ -2,6 +2,7 @@ package com.jeontongjuro.backend.map;
 
 import com.jeontongjuro.backend.brewery.Brewery;
 import com.jeontongjuro.backend.brewery.BreweryRepository;
+import com.jeontongjuro.backend.brewery.BreweryVisibilityPolicy;
 import com.jeontongjuro.backend.course.CourseStopType;
 import com.jeontongjuro.backend.tour.TourContent;
 import com.jeontongjuro.backend.tour.TourContentRepository;
@@ -43,6 +44,9 @@ public class MapPlaceDetailService {
 
     /** 양조장 상세. 대표 이미지는 brewery에 컬럼이 없어 매칭된 content_id로 tour_content에서 읽는다(최대 2쿼리). */
     private MapPlaceDetailResponse breweryDetail(String placeId) {
+        if (!BreweryVisibilityPolicy.isVisible(placeId)) {
+            throw notFound(placeId);
+        }
         Brewery brewery = breweryRepository.findById(placeId).orElseThrow(() -> notFound(placeId));
         return new MapPlaceDetailResponse(
                 brewery.getBreweryId(),

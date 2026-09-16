@@ -1,6 +1,7 @@
 package com.jeontongjuro.backend.brewery;
 
 import java.math.BigDecimal;
+import java.util.Collection;
 import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
@@ -28,9 +29,12 @@ public interface BreweryRepository extends JpaRepository<Brewery, String>, JpaSp
     /**
      * region 칩별 양조장 수(필터 메타데이터 조회용). 8칩 GROUP BY 1쿼리 — 칩별로 따로 세지 않는다.
      * region이 아직 파싱되지 않은 행(null)도 그룹 하나로 나올 수 있어 호출자가 null 그룹을 건너뛴다.
+     * <p>
+     * ★{@code excludedIds}는 노출 제외 양조장(BreweryVisibilityPolicy)이다. 목록 API가 Specification으로
+     * 빼는 것과 같은 집합을 집계 원천에서도 빼야 칩 숫자와 실제 목록 건수가 어긋나지 않는다.
      *
      * @return {@code [region(String), breweryCount(Long)]} 튜플 목록
      */
-    @Query("SELECT b.region, COUNT(b) FROM Brewery b GROUP BY b.region")
-    List<Object[]> countGroupByRegion();
+    @Query("SELECT b.region, COUNT(b) FROM Brewery b WHERE b.breweryId NOT IN :excludedIds GROUP BY b.region")
+    List<Object[]> countGroupByRegion(@Param("excludedIds") Collection<String> excludedIds);
 }

@@ -140,6 +140,25 @@ class BreweryFilterMetadataApiTest {
     }
 
     @Test
+    @DisplayName("노출 제외 양조장은 지역축·주종축 어느 쪽에도 집계되지 않는다(이슈 #141)")
+    void excludedBreweryIsCountedInNeitherAxis() throws Exception {
+        Brewery excluded = Brewery.seed("BRW-040", "제외대상", "제외대상", "경북", null, 0L,
+                VisitState.UNKNOWN, VisitState.UNKNOWN);
+        excluded.applyRegion("경북", "경상");
+        breweryRepository.save(excluded);
+        linkRepository.save(ProductBreweryLink.of(70003, "제외-제품", "제외대상", "제외대상", "BRW-040",
+                JoinSource.AUTO, null, null));
+        productLiquorTypeRepository.save(ProductLiquorType.manual(70003, "BRW-040", LiquorType.탁주));
+
+        mockMvc.perform(get("/api/v1/metadata/brewery-filters"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.regions[4].value").value("경상"))
+                .andExpect(jsonPath("$.regions[4].breweryCount").value(0))   // 제외 전이면 1
+                .andExpect(jsonPath("$.liquorTypes[0].value").value("탁주"))
+                .andExpect(jsonPath("$.liquorTypes[0].breweryCount").value(1)); // 제외 전이면 2(A + BRW-040)
+    }
+
+    @Test
     @DisplayName("enum 직렬화: 주종·지역 value가 한글 값으로 나간다(코드·ordinal 아님)")
     void enumValuesSerializeAsKoreanStrings() throws Exception {
         mockMvc.perform(get("/api/v1/metadata/brewery-filters"))

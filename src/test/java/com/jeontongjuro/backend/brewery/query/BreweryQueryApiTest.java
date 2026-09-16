@@ -39,12 +39,12 @@ import org.springframework.test.web.servlet.MvcResult;
 /**
  * 양조장 리스트 조회 API 인수 검증(이슈 #13). 골든 brewery 59행을 적재하고 sido/region을 채운 뒤
  * GET /api/v1/breweries를 MockMvc로 호출해 웹 스택 전체(컨트롤러·검증·Specification·직렬화·에러 어드바이스)를 본다:
- *   (1) 필터 없음 → totalElements 59
- *   (2) region 8칩 골든 개수(수도권 13·경상 14·전라 8)
- *   (3) visit 분포 골든(예약 Y 24·상시 UNKNOWN 9)
+ *   (1) 필터 없음 → totalElements 58 (적재 59행 − 노출 제외 1)
+ *   (2) region 8칩 골든 개수(수도권 13·경상 13·전라 8)
+ *   (3) visit 분포 골든(예약 Y 23·상시 UNKNOWN 9)
  *   (4) 잘못된 값 400 + 에러 바디 {code,message}(region=경기·reservationVisit=X)
  *   (5) size 상한 클램프(1000→100)
- *   (6) 고정 정렬(business_name ASC, brewery_id ASC) 전순서 — 59건 중복·누락 없이 오름차순
+ *   (6) 고정 정렬(business_name ASC, brewery_id ASC) 전순서 — 58건 중복·누락 없이 오름차순
  *   (7) keyword 부분일치 1건 이상 포함
  * ★수치는 골든/DB 실측 대조값이다(재계산 금지). DB 미기동 시 조용한 그린 방지를 위해 @EnabledIf로 명시 스킵한다.
  */
@@ -99,28 +99,28 @@ class BreweryQueryApiTest {
     }
 
     @Test
-    @DisplayName("필터 없음: totalElements == 59 (전체 골든)")
-    void noFilterReturnsAll59() throws Exception {
+    @DisplayName("필터 없음: totalElements == 58 (골든 59행 − 노출 제외 1)")
+    void noFilterReturnsAllVisible() throws Exception {
         mockMvc.perform(get("/api/v1/breweries").param("size", "100"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.totalElements").value(59))
-                .andExpect(jsonPath("$.content.length()").value(59));
+                .andExpect(jsonPath("$.totalElements").value(58))
+                .andExpect(jsonPath("$.content.length()").value(58));
     }
 
     @Test
-    @DisplayName("region 칩 골든: 수도권 13 · 경상 14 · 전라 8")
+    @DisplayName("region 칩 골든: 수도권 13 · 경상 13 · 전라 8")
     void regionChipGoldenCounts() throws Exception {
         assertRegionCount("수도권", 13);
-        assertRegionCount("경상", 14);
+        assertRegionCount("경상", 13);
         assertRegionCount("전라", 8);
     }
 
     @Test
-    @DisplayName("visit 분포 골든: 예약방문 Y 24 · 상시방문 UNKNOWN 9")
+    @DisplayName("visit 분포 골든: 예약방문 Y 23 · 상시방문 UNKNOWN 9")
     void visitStateGoldenCounts() throws Exception {
         mockMvc.perform(get("/api/v1/breweries").param("reservationVisit", "Y").param("size", "100"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.totalElements").value(24));
+                .andExpect(jsonPath("$.totalElements").value(23));
         mockMvc.perform(get("/api/v1/breweries").param("alwaysVisit", "UNKNOWN").param("size", "100"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.totalElements").value(9));
@@ -151,21 +151,21 @@ class BreweryQueryApiTest {
     // ── region 다중 선택(#NN) ────────────────────────────────────────────────
     // liquorType 다중 처리(원소별 트림·검증, IN OR, 하나라도 정의 밖이면 400)를 그대로 따른다.
     @Test
-    @DisplayName("region 다중(반복 파라미터): region=수도권&region=경상 → OR, 13+14=27건")
+    @DisplayName("region 다중(반복 파라미터): region=수도권&region=경상 → OR, 13+13=26건")
     void regionMultiRepeatedParam() throws Exception {
         mockMvc.perform(get("/api/v1/breweries")
                         .param("region", "수도권").param("region", "경상").param("size", "100"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.totalElements").value(27));
+                .andExpect(jsonPath("$.totalElements").value(26));
     }
 
     @Test
-    @DisplayName("region 다중(콤마 구분): region=수도권,경상 → 반복 파라미터와 동일 27건")
+    @DisplayName("region 다중(콤마 구분): region=수도권,경상 → 반복 파라미터와 동일 26건")
     void regionMultiCommaSeparated() throws Exception {
         mockMvc.perform(get("/api/v1/breweries")
                         .param("region", "수도권,경상").param("size", "100"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.totalElements").value(27));
+                .andExpect(jsonPath("$.totalElements").value(26));
     }
 
     @Test
@@ -224,19 +224,19 @@ class BreweryQueryApiTest {
     }
 
     @Test
-    @DisplayName("트림 후 빈값: region '   '(공백만) → 200, 필터 미적용 전체 59(기존 blank→null 유지)")
+    @DisplayName("트림 후 빈값: region '   '(공백만) → 200, 필터 미적용 전체 58(기존 blank→null 유지)")
     void regionWhitespaceOnlyIsNoFilter() throws Exception {
         mockMvc.perform(get("/api/v1/breweries").param("region", "   ").param("size", "100"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.totalElements").value(59));
+                .andExpect(jsonPath("$.totalElements").value(58));
     }
 
     @Test
-    @DisplayName("트림: reservationVisit 뒤 공백 'Y ' → 200, 예약 Y 24건")
+    @DisplayName("트림: reservationVisit 뒤 공백 'Y ' → 200, 예약 Y 23건")
     void reservationVisitTrailingSpaceIsTrimmed() throws Exception {
         mockMvc.perform(get("/api/v1/breweries").param("reservationVisit", "Y ").param("size", "100"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.totalElements").value(24));
+                .andExpect(jsonPath("$.totalElements").value(23));
     }
 
     @Test
@@ -282,15 +282,15 @@ class BreweryQueryApiTest {
         mockMvc.perform(get("/api/v1/breweries").param("size", "1000"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.size").value(100))
-                .andExpect(jsonPath("$.totalElements").value(59))
+                .andExpect(jsonPath("$.totalElements").value(58))
                 .andExpect(jsonPath("$.totalPages").value(1));
     }
 
     @Test
-    @DisplayName("고정 정렬 전순서: business_name ASC · brewery_id ASC — 59건 오름차순, 중복·누락 없음")
-    void fixedSortIsTotalOrderOver59() throws Exception {
+    @DisplayName("고정 정렬 전순서: business_name ASC · brewery_id ASC — 58건 오름차순, 중복·누락 없음")
+    void fixedSortIsTotalOrderOverAllVisible() throws Exception {
         JsonNode content = readContent(get("/api/v1/breweries").param("size", "100"));
-        assertThat(content).hasSize(59);
+        assertThat(content).hasSize(58);
 
         List<String> names = new ArrayList<>();
         List<String> ids = new ArrayList<>();
@@ -310,8 +310,8 @@ class BreweryQueryApiTest {
                         .isLessThan(0);
             }
         }
-        // (2) 누락·중복 없음: 59개 distinct brewery_id
-        assertThat(ids).doesNotHaveDuplicates().hasSize(59);
+        // (2) 누락·중복 없음: 58개 distinct brewery_id
+        assertThat(ids).doesNotHaveDuplicates().hasSize(58);
         // (3) 가장 앞은 가나다 최소(갈기산) — 콜레이션 정상 확인
         assertThat(names.get(0)).isEqualTo("갈기산");
     }
@@ -460,12 +460,12 @@ class BreweryQueryApiTest {
     }
 
     @Test
-    @DisplayName("주종 미지정 → 필터 미적용, 전체 59")
+    @DisplayName("주종 미지정 → 필터 미적용, 전체 58")
     void liquorTypeAbsentReturnsAll() throws Exception {
         seedLiquorTags();
         mockMvc.perform(get("/api/v1/breweries").param("size", "100"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.totalElements").value(59));
+                .andExpect(jsonPath("$.totalElements").value(58));
     }
 
     @Test
@@ -594,12 +594,12 @@ class BreweryQueryApiTest {
     }
 
     @Test
-    @DisplayName("도수 미지정 → 필터 미적용, 전체 59")
+    @DisplayName("도수 미지정 → 필터 미적용, 전체 58")
     void abvAbsentReturnsAll() throws Exception {
         seedAbvLinks();
         mockMvc.perform(get("/api/v1/breweries").param("size", "100"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.totalElements").value(59));
+                .andExpect(jsonPath("$.totalElements").value(58));
     }
 
     @Test
@@ -650,7 +650,7 @@ class BreweryQueryApiTest {
         mockMvc.perform(get("/api/v1/breweries").param("page", "2147483647").param("size", "100"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.page").value(21474836))
-                .andExpect(jsonPath("$.totalElements").value(59));
+                .andExpect(jsonPath("$.totalElements").value(58));
     }
 
     @Test
@@ -659,7 +659,32 @@ class BreweryQueryApiTest {
         mockMvc.perform(get("/api/v1/breweries").param("page", "-2147483648").param("size", "20"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.page").value(0))
-                .andExpect(jsonPath("$.totalElements").value(59));
+                .andExpect(jsonPath("$.totalElements").value(58));
+    }
+
+    // ── 노출 제외 양조장(BreweryVisibilityPolicy, 이슈 #141) ────────────────────
+    /** 운영 제외 대상. 행은 DB에 그대로 있고 조회 계층에서만 빠진다 — 아래 테스트는 그 둘을 함께 단정한다. */
+    private static final String EXCLUDED_BREWERY = "BRW-040";
+
+    @Test
+    @DisplayName("노출 제외 양조장은 목록에 없다 — 행은 남아 있고 조회에서만 빠진다")
+    void excludedBreweryIsAbsentFromList() throws Exception {
+        assertThat(breweryRepository.existsById(EXCLUDED_BREWERY))
+                .as("제외 대상 행이 실제로 적재돼 있어야 이 단정이 공허하지 않다").isTrue();
+
+        JsonNode content = readContent(get("/api/v1/breweries").param("size", "100"));
+        List<String> ids = new ArrayList<>();
+        content.forEach(item -> ids.add(item.get("breweryId").asText()));
+        assertThat(ids).doesNotContain(EXCLUDED_BREWERY);
+    }
+
+    @Test
+    @DisplayName("필터 메타 지역 칩도 제외 반영: 경상 13 — 목록 건수와 어긋나지 않는다")
+    void excludedBreweryIsNotCountedInRegionChip() throws Exception {
+        mockMvc.perform(get("/api/v1/metadata/brewery-filters"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.regions[4].value").value("경상"))
+                .andExpect(jsonPath("$.regions[4].breweryCount").value(13));
     }
 
     // ── helpers ──────────────────────────────────────────────────────────────

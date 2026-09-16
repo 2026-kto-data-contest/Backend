@@ -207,6 +207,18 @@ class ProductQueryApiTest {
     }
 
     @Test
+    @DisplayName("노출 제외 양조장 제품 목록 → 행은 있어도 404 BREWERY_NOT_FOUND(상세와 같은 계약, 이슈 #141)")
+    void excludedBrewery404() throws Exception {
+        assertThat(breweryRepository.existsById("BRW-040"))
+                .as("제외 대상 행이 실제로 적재돼 있어야 이 단정이 공허하지 않다").isTrue();
+
+        mockMvc.perform(get("/api/v1/breweries/{id}/products", "BRW-040"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("BREWERY_NOT_FOUND"))
+                .andExpect(jsonPath("$.message").isNotEmpty());
+    }
+
+    @Test
     @DisplayName("page 타입 파싱 실패 → 400 INVALID_QUERY_PARAMETER")
     void typeMismatch400() throws Exception {
         mockMvc.perform(get("/api/v1/breweries/{id}/products", BREWERY).param("size", "abc"))
