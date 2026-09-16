@@ -39,7 +39,7 @@ class RecommendedCourseListServiceTest {
 
         assertThat(response.totalElements()).isEqualTo(1);
         assertThat(response.content()).containsExactly(new RecommendedCourseCardResponse(
-                "BRW-001", "https://example.com/image.jpg", "충북 영동", "갈기산 양조장 코스"));
+                "BRW-001", "/recommended-courses/BRW-001.png", "충북 영동", "3대째 이어온 포도 농사와 와인"));
     }
 
     @Test
@@ -63,7 +63,7 @@ class RecommendedCourseListServiceTest {
 
     @Test
     void missingImageAndDetailedRegionRemainNullable() {
-        BreweryListItemResponse brewery = brewery("BRW-002", "무명 양조장", null, null, null);
+        BreweryListItemResponse brewery = brewery("BRW-999", "무명 양조장", null, null, null);
         given(recommendedBreweryService.recommend(null, 0, 20))
                 .willReturn(PageResponse.of(List.of(brewery), 0, 20, 1));
 

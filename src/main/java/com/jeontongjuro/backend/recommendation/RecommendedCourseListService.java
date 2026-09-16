@@ -2,7 +2,11 @@ package com.jeontongjuro.backend.recommendation;
 
 import com.jeontongjuro.backend.brewery.query.BreweryListItemResponse;
 import com.jeontongjuro.backend.global.web.PageResponse;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -16,6 +20,7 @@ public class RecommendedCourseListService {
     static final int DEFAULT_SIZE = 20;
     static final int HOME_SIZE = 5;
     static final int MAX_SIZE = 100;
+    private static final Map<String, CourseTitle> COURSE_TITLES = loadCourseTitles();
 
     private final RecommendedBreweryService recommendedBreweryService;
 
@@ -41,12 +46,35 @@ public class RecommendedCourseListService {
     }
 
     private RecommendedCourseCardResponse toCard(BreweryListItemResponse brewery) {
-        String imageUrl = brewery.mainImage() == null ? null : brewery.mainImage().url();
+        String imageUrl = localAssetUrl(brewery.breweryId());
+        if (imageUrl == null && brewery.mainImage() != null) {
+            imageUrl = brewery.mainImage().url();
+        }
+        CourseTitle courseTitle = COURSE_TITLES.get(brewery.breweryId());
         return new RecommendedCourseCardResponse(
                 brewery.breweryId(),
                 imageUrl,
                 regionLabel(brewery),
-                brewery.businessName() + " 코스");
+                courseTitle == null ? brewery.businessName() + " 코스" : courseTitle.title());
+    }
+
+    private String localAssetUrl(String breweryId) {
+        String assetPath = "/recommended-courses/" + breweryId + ".png";
+        return getClass().getResource("/static" + assetPath) == null ? null : assetPath;
+    }
+
+    private static Map<String, CourseTitle> loadCourseTitles() {
+        try (var stream = RecommendedCourseListService.class.getResourceAsStream("/recommended_course_titles.json")) {
+            if (stream == null) {
+                throw new IllegalStateException("추천 코스 타이틀 리소스를 찾을 수 없습니다.");
+            }
+            return new ObjectMapper().readValue(stream, new TypeReference<>() {});
+        } catch (IOException e) {
+            throw new IllegalStateException("추천 코스 타이틀 리소스를 읽을 수 없습니다.", e);
+        }
+    }
+
+    private record CourseTitle(String brewery, String title) {
     }
 
     private String regionLabel(BreweryListItemResponse brewery) {
