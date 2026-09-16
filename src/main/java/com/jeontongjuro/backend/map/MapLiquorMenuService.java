@@ -44,11 +44,14 @@ public class MapLiquorMenuService {
         List<BreweryListItemResponse> cards = breweryQueryService.searchAllCards();
         breweryRepository.findAllById(cards.stream().map(BreweryListItemResponse::breweryId).toList())
                 .forEach(b -> breweries.put(b.getBreweryId(), b));
+        Map<String, List<ProductCardResponse>> productsByBrewery =
+                productQueryService.displayedCardsByBreweryId(cards.stream()
+                        .map(BreweryListItemResponse::breweryId).toList());
         List<MapLiquorMenuItemResponse> result = new ArrayList<>();
         for (BreweryListItemResponse card : cards) {
             Brewery brewery = breweries.get(card.breweryId());
             if (brewery == null || brewery.getLatitude() == null || brewery.getLongitude() == null) continue;
-            for (ProductCardResponse product : productQueryService.listProducts(card.breweryId(), 0, MAX_SIZE).content()) {
+            for (ProductCardResponse product : productsByBrewery.getOrDefault(card.breweryId(), List.of())) {
                 if (menu.matches(product)) result.add(new MapLiquorMenuItemResponse(product.productId(),
                         product.productName(), card.breweryId(), card.businessName(), product.liquorTypes(),
                         product.flavorTags(), product.alcoholMin(), product.alcoholMax(), product.volume(),
