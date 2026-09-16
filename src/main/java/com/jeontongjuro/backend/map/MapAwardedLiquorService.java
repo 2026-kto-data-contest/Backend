@@ -71,6 +71,6 @@ public class MapAwardedLiquorService {
                 product.productId(), product.productName(), brewery.getBreweryId(),
                 breweryCard.businessName(), product.awardBadge(), product.liquorTypes(),
                 product.alcoholMin(), product.alcoholMax(), product.volume(), brewery.getAddress(),
-                brewery.getLatitude(), brewery.getLongitude());
+                brewery.getLatitude(), brewery.getLongitude(), breweryCard.mainImage());
     }
 }

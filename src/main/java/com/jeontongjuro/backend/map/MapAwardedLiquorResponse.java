@@ -1,6 +1,7 @@
 package com.jeontongjuro.backend.map;
 
 import com.jeontongjuro.backend.liquortype.LiquorType;
+import com.jeontongjuro.backend.brewery.query.MainImageResponse;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.math.BigDecimal;
 import java.util.List;
@@ -18,5 +19,15 @@ public record MapAwardedLiquorResponse(
         String volume,
         String address,
         BigDecimal latitude,
-        BigDecimal longitude) {
+        BigDecimal longitude,
+        MainImageResponse image) {
+
+    /** 이미지 필드 추가 전 호출부와의 호환용 생성자. */
+    public MapAwardedLiquorResponse(Integer productId, String productName, String breweryId, String breweryName,
+                                    String awardBadge, List<LiquorType> liquorTypes, BigDecimal alcoholMin,
+                                    BigDecimal alcoholMax, String volume, String address, BigDecimal latitude,
+                                    BigDecimal longitude) {
+        this(productId, productName, breweryId, breweryName, awardBadge, liquorTypes, alcoholMin, alcoholMax,
+                volume, address, latitude, longitude, null);
+    }
 }
