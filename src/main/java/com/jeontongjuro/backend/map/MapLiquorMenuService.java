@@ -12,6 +12,8 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -20,9 +22,11 @@ import org.springframework.transaction.annotation.Transactional;
 public class MapLiquorMenuService {
     private static final int DEFAULT_SIZE = 4;
     private static final int MAX_SIZE = 100;
+    private static final long CACHE_TTL_MILLIS = 5 * 60 * 1000L;
     private final BreweryQueryService breweryQueryService;
     private final ProductQueryService productQueryService;
     private final BreweryRepository breweryRepository;
+    private final ConcurrentMap<CacheKey, CacheEntry> productCache = new ConcurrentHashMap<>();
 
     public MapLiquorMenuService(BreweryQueryService breweryQueryService, ProductQueryService productQueryService,
                                 BreweryRepository breweryRepository) {
@@ -40,6 +44,25 @@ public class MapLiquorMenuService {
         MapLiquorMenu menu = MapLiquorMenu.parse(menuValue);
         int actualPage = Math.max(0, page);
         int actualSize = size < 1 ? DEFAULT_SIZE : Math.min(size, MAX_SIZE);
+        CacheKey key = new CacheKey(menu, actualPage, actualSize);
+        CacheEntry cached = productCache.get(key);
+        long now = System.currentTimeMillis();
+        if (cached != null && now - cached.createdAt() < CACHE_TTL_MILLIS) {
+            return cached.response();
+        }
+        synchronized (productCache) {
+            cached = productCache.get(key);
+            now = System.currentTimeMillis();
+            if (cached != null && now - cached.createdAt() < CACHE_TTL_MILLIS) {
+                return cached.response();
+            }
+            PageResponse<MapLiquorMenuItemResponse> response = loadProducts(menu, actualPage, actualSize);
+            productCache.put(key, new CacheEntry(response, now));
+            return response;
+        }
+    }
+
+    private PageResponse<MapLiquorMenuItemResponse> loadProducts(MapLiquorMenu menu, int actualPage, int actualSize) {
         Map<String, Brewery> breweries = new HashMap<>();
         List<BreweryListItemResponse> cards = breweryQueryService.searchAllCards();
         breweryRepository.findAllById(cards.stream().map(BreweryListItemResponse::breweryId).toList())
@@ -64,5 +87,11 @@ public class MapLiquorMenuService {
         int from = (int) Math.min((long) actualPage * actualSize, result.size());
         int to = Math.min(from + actualSize, result.size());
         return PageResponse.of(result.subList(from, to), actualPage, actualSize, result.size());
+    }
+
+    private record CacheKey(MapLiquorMenu menu, int page, int size) {
+    }
+
+    private record CacheEntry(PageResponse<MapLiquorMenuItemResponse> response, long createdAt) {
     }
 }
