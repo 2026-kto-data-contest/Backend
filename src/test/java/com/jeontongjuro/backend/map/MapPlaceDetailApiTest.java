@@ -185,6 +185,19 @@ class MapPlaceDetailApiTest {
     }
 
     @Test
+    @DisplayName("노출 제외 양조장 → 행은 있어도 404 MAP_PLACE_NOT_FOUND(이슈 #141)")
+    void excludedBreweryReturns404() throws Exception {
+        breweryRepository.save(brewery("BRW-040", "제외 대상 양조장"));
+        assertThat(breweryRepository.existsById("BRW-040"))
+                .as("제외 대상 행이 실제로 있어야 이 단정이 공허하지 않다").isTrue();
+
+        mockMvc.perform(get("/api/v1/map/places/{id}", "BRW-040").param("category", "BREWERY"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("MAP_PLACE_NOT_FOUND"))
+                .andExpect(jsonPath("$.message").isNotEmpty());
+    }
+
+    @Test
     @DisplayName("요청 category와 실제 분류가 다르면 404")
     void mismatchedCategoryReturns404() throws Exception {
         mockMvc.perform(get("/api/v1/map/places/{id}", CONTENT_RESTAURANT).param("category", "CAFE"))

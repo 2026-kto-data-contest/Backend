@@ -148,6 +148,18 @@ class BreweryDetailApiTest {
                 .andExpect(jsonPath("$.message").isNotEmpty());
     }
 
+    @Test
+    @DisplayName("노출 제외 양조장 상세 → 행은 있어도 404 BREWERY_NOT_FOUND(이슈 #141)")
+    void excludedBreweryReturns404() throws Exception {
+        assertThat(breweryRepository.existsById("BRW-040"))
+                .as("제외 대상 행이 실제로 적재돼 있어야 이 단정이 공허하지 않다").isTrue();
+
+        mockMvc.perform(get("/api/v1/breweries/{id}", "BRW-040"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("BREWERY_NOT_FOUND"))
+                .andExpect(jsonPath("$.message").isNotEmpty());
+    }
+
     // ── 도수 집계(판단1: DB MIN/MAX GROUP BY, null 무시 규약) ──────────────────────
     @Test
     @DisplayName("도수 단일값: A(6.0~6.0) → alcoholMin=6.0, alcoholMax=6.0")
