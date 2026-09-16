@@ -45,6 +45,7 @@ public class SecurityConfig {
             "/api/v1/map/places",
             "/api/v1/map/places/**",
             "/api/v1/map/recommended-breweries",
+            "/api/v1/map/awarded-liquors",
             "/swagger-ui.html",
             "/swagger-ui/**",
             "/v3/api-docs/**",
