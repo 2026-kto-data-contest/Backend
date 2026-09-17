@@ -10,14 +10,14 @@ class AuthPropertiesTest {
 
     @Test
     void normalizesSameSiteValue() {
-        AuthProperties properties = new AuthProperties(Duration.ofDays(14), true, "none");
+        AuthProperties properties = new AuthProperties(Duration.ofDays(14), Duration.ofMinutes(10), true, "none");
 
         assertThat(properties.cookieSameSite()).isEqualTo("None");
     }
 
     @Test
     void sameSiteNoneRequiresSecureCookie() {
-        assertThatThrownBy(() -> new AuthProperties(Duration.ofDays(14), false, "None"))
+        assertThatThrownBy(() -> new AuthProperties(Duration.ofDays(14), Duration.ofMinutes(10), false, "None"))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("cookie-secure=true");
     }

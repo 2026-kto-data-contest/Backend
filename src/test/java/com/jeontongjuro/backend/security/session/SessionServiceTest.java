@@ -17,7 +17,7 @@ class SessionServiceTest {
 
     private final AuthSessionRepository repository = mock(AuthSessionRepository.class);
     private final SessionService service =
-            new SessionService(repository, new AuthProperties(Duration.ofDays(14), false, "Lax"));
+            new SessionService(repository, new AuthProperties(Duration.ofDays(14), Duration.ofMinutes(10), false, "Lax"));
 
     @Test
     void storesOnlyHashWhenCreatingSession() {

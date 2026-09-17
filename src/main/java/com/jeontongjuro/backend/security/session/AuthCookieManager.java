@@ -30,13 +30,13 @@ public class AuthCookieManager {
     }
 
     public void addOAuthState(HttpServletResponse response, String state) {
-        add(response, OAUTH_STATE_COOKIE, state, Duration.ofMinutes(5), true);
+        add(response, OAUTH_STATE_COOKIE, state, properties.oauthStateDuration(), true);
     }
 
     public void addReturnTo(HttpServletResponse response, String returnTo) {
         String encoded = Base64.getUrlEncoder().withoutPadding()
                 .encodeToString(returnTo.getBytes(StandardCharsets.UTF_8));
-        add(response, RETURN_TO_COOKIE, encoded, Duration.ofMinutes(5), true);
+        add(response, RETURN_TO_COOKIE, encoded, properties.oauthStateDuration(), true);
     }
 
     public String readReturnTo(HttpServletRequest request) {
