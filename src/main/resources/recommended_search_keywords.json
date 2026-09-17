@@ -1,18 +1,21 @@
 {
   "entries": [
-    { "keyword": "막걸리", "resultCount": 20 },
-    { "keyword": "와인", "resultCount": 16 },
-    { "keyword": "로제", "resultCount": 10 },
-    { "keyword": "양조", "resultCount": 9 },
-    { "keyword": "탁주", "resultCount": 8 },
-    { "keyword": "소주", "resultCount": 7 },
-    { "keyword": "화이트", "resultCount": 7 },
-    { "keyword": "드라이", "resultCount": 6 },
-    { "keyword": "레드", "resultCount": 6 },
-    { "keyword": "스위트", "resultCount": 6 },
-    { "keyword": "생막걸리", "resultCount": 6 },
-    { "keyword": "와이너리", "resultCount": 5 },
-    { "keyword": "머루", "resultCount": 5 },
-    { "keyword": "주조", "resultCount": 5 }
+    { "keyword": "막걸리" },
+    { "keyword": "와인" },
+    { "keyword": "로제" },
+    { "keyword": "양조" },
+    { "keyword": "탁주" },
+    { "keyword": "소주" },
+    { "keyword": "화이트" },
+    { "keyword": "드라이" },
+    { "keyword": "레드" },
+    { "keyword": "스위트" },
+    { "keyword": "생막걸리" },
+    { "keyword": "와이너리" },
+    { "keyword": "머루" },
+    { "keyword": "주조" },
+    { "keyword": "양조장" },
+    { "keyword": "복순도가" },
+    { "keyword": "국순당" }
   ]
 }
