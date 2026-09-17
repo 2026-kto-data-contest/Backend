@@ -19,7 +19,7 @@ public class RecommendedSearchKeywordController {
     private final RecommendedSearchKeywordService service;
 
     @GetMapping
-    @Operation(summary = "추천 검색어 조회", description = "검색 화면에 노출할 서버 관리 추천 검색어를 반환합니다. 인증 없이 호출할 수 있습니다.")
+    @Operation(summary = "추천 검색어 조회", description = "운영에서 지정한 고정 추천 검색어를 순서대로 최대 10개 반환합니다. 인증 없이 호출할 수 있습니다.")
     @ApiResponse(responseCode = "200", description = "추천 검색어 조회 성공")
     public List<RecommendedSearchKeywordResponse> list() {
         return service.list();

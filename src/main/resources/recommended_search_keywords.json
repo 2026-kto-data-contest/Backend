@@ -1,21 +1,11 @@
 {
   "entries": [
     { "keyword": "막걸리" },
-    { "keyword": "와인" },
-    { "keyword": "로제" },
-    { "keyword": "양조" },
-    { "keyword": "탁주" },
-    { "keyword": "소주" },
-    { "keyword": "화이트" },
-    { "keyword": "드라이" },
-    { "keyword": "레드" },
-    { "keyword": "스위트" },
-    { "keyword": "생막걸리" },
-    { "keyword": "와이너리" },
-    { "keyword": "머루" },
-    { "keyword": "주조" },
-    { "keyword": "양조장" },
     { "keyword": "복순도가" },
-    { "keyword": "국순당" }
+    { "keyword": "와인" },
+    { "keyword": "소주" },
+    { "keyword": "국순당" },
+    { "keyword": "양조" },
+    { "keyword": "와이너리" }
   ]
 }

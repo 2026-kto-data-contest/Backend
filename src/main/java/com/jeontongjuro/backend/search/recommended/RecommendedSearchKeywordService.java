@@ -2,48 +2,33 @@ package com.jeontongjuro.backend.search.recommended;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.jeontongjuro.backend.brewery.query.BreweryQueryService;
-import com.jeontongjuro.backend.search.SearchKeyword;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/** 검색 화면 추천 검색어 후보를 배포 리소스에서 읽고, 현재 검색 결과 수로 필터링해 제공한다. */
+/** 검색 화면에 운영이 지정한 고정 추천 검색어를 배포 리소스 순서대로 제공한다. */
 @Service
 @Transactional(readOnly = true)
 public class RecommendedSearchKeywordService {
 
     private static final String RESOURCE = "/recommended_search_keywords.json";
 
-    private static final int MIN_RESULT_COUNT = 5;
-
-    private final BreweryQueryService breweryQueryService;
+    private static final int MAX_KEYWORD_COUNT = 10;
     private final List<String> candidateKeywords;
 
-    public RecommendedSearchKeywordService(ObjectMapper objectMapper, BreweryQueryService breweryQueryService) {
-        this.breweryQueryService = breweryQueryService;
+    public RecommendedSearchKeywordService(ObjectMapper objectMapper) {
         this.candidateKeywords = load(objectMapper);
     }
 
     public List<RecommendedSearchKeywordResponse> list() {
-        List<String> normalizedKeywords = candidateKeywords.stream()
-                .map(SearchKeyword::normalizeForMatch)
+        return candidateKeywords.stream()
+                .limit(MAX_KEYWORD_COUNT)
+                .map(RecommendedSearchKeywordResponse::new)
                 .toList();
-        Map<String, Long> counts = breweryQueryService.countByAccuracy(normalizedKeywords);
-        List<RecommendedSearchKeywordResponse> result = new ArrayList<>();
-        for (String keyword : candidateKeywords) {
-            long resultCount = counts.getOrDefault(SearchKeyword.normalizeForMatch(keyword), 0L);
-            if (resultCount >= MIN_RESULT_COUNT) {
-                result.add(new RecommendedSearchKeywordResponse(keyword, resultCount));
-            }
-        }
-        return List.copyOf(result);
     }
 
     private static List<String> load(ObjectMapper objectMapper) {
@@ -54,6 +39,9 @@ public class RecommendedSearchKeywordService {
             JsonNode entries = objectMapper.readTree(in).get("entries");
             if (entries == null || !entries.isArray()) {
                 throw new IllegalStateException("추천 검색어 리소스 형식 오류: entries 배열 없음 — " + RESOURCE);
+            }
+            if (entries.size() > MAX_KEYWORD_COUNT) {
+                throw new IllegalStateException("추천 검색어는 최대 " + MAX_KEYWORD_COUNT + "개까지 설정할 수 있습니다 — " + RESOURCE);
             }
 
             Set<String> seen = new HashSet<>();
