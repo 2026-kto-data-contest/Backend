@@ -246,12 +246,12 @@ CREATE TABLE IF NOT EXISTS member_preference (
     CONSTRAINT fk_member_preference_member FOREIGN KEY (member_id)
         REFERENCES member_account (id) ON DELETE CASCADE,
     CONSTRAINT uq_member_preference_member_value UNIQUE (member_id, category, value),
-    CONSTRAINT ck_member_preference_category CHECK (category IN ('LIQUOR_TYPE', 'REGION', 'ALCOHOL_LEVEL'))
+    CONSTRAINT ck_member_preference_category CHECK (category IN ('LIQUOR_TYPE', 'REGION', 'ALCOHOL_LEVEL', 'FLAVOR'))
 );
 CREATE INDEX IF NOT EXISTS ix_member_preference_member ON member_preference (member_id);
 ALTER TABLE member_preference DROP CONSTRAINT IF EXISTS ck_member_preference_category;
 ALTER TABLE member_preference ADD CONSTRAINT ck_member_preference_category
-    CHECK (category IN ('LIQUOR_TYPE', 'REGION', 'ALCOHOL_LEVEL'));
+    CHECK (category IN ('LIQUOR_TYPE', 'REGION', 'ALCOHOL_LEVEL', 'FLAVOR'));
 
 CREATE TABLE IF NOT EXISTS auth_session (
     id            BIGSERIAL PRIMARY KEY,
