@@ -232,7 +232,7 @@ public class BreweryQueryService {
                             abv == null ? null : abv.min(),
                             abv == null ? null : abv.max(),
                             liquorsByBrewery.getOrDefault(b.getBreweryId(), List.of()),
-                            imageByBrewery.get(b.getBreweryId()),
+                            imageByBrewery.getOrDefault(b.getBreweryId(), localMainImage(b.getBreweryId())),
                             BrewerySigunguParser.parse(b.getAddress()),
                             flavorTags,
                             introByBrewery.get(b.getBreweryId()));
@@ -433,6 +433,15 @@ public class BreweryQueryService {
             }
         });
         return byBrewery;
+    }
+
+    /** 관광공사 대표 이미지가 없는 경우, breweryId에 대응하는 기존 정적 양조장 사진을 fallback으로 사용한다. */
+    private MainImageResponse localMainImage(String breweryId) {
+        String assetPath = "/recommended-courses/" + breweryId + ".png";
+        if (getClass().getResource("/static" + assetPath) == null) {
+            return null;
+        }
+        return MainImageResponse.from(assetPath, null);
     }
 
     /**
