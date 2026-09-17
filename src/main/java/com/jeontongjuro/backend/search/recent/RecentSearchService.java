@@ -34,9 +34,11 @@ public class RecentSearchService {
 
     @Transactional
     public RecentSearchResponse save(Long memberId, RecentSearchSaveRequest request) {
-        String targetId = request.id().strip();
         String keyword = request.keyword().strip();
         String displayName = request.displayName().strip();
+        String targetId = request.type() == RecentSearchType.KEYWORD
+                ? keyword
+                : request.id() == null ? "" : request.id().strip();
         validate(request.type(), targetId, keyword, displayName);
 
         RecentSearch recentSearch = recentSearchRepository
@@ -112,6 +114,9 @@ public class RecentSearchService {
                 if (!REGIONS.contains(targetId) || !targetId.equals(displayName)) {
                     throw invalid("지역 ID와 표시명은 지원하는 8개 지역 중 같은 값이어야 합니다.");
                 }
+            }
+            case KEYWORD -> {
+                // 자유 입력은 특정 양조장·상품·지역을 특정할 수 없으므로 keyword를 중복 판별 키로 사용한다.
             }
         }
     }

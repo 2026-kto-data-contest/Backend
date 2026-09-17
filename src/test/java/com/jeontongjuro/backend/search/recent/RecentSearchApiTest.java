@@ -156,6 +156,20 @@ class RecentSearchApiTest {
     }
 
     @Test
+    void freeInputKeywordCanBeSavedWithoutId() throws Exception {
+        mockMvc.perform(post("/api/v1/search/recent")
+                        .with(auth(member)).with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"type":"KEYWORD","keyword":"복순도가","displayName":"복순도가"}
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.type").value("KEYWORD"))
+                .andExpect(jsonPath("$.id").value("복순도가"))
+                .andExpect(jsonPath("$.keyword").value("복순도가"));
+    }
+
+    @Test
     void deleteAllOnlyDeletesCurrentMembersEntries() throws Exception {
         mockMvc.perform(post("/api/v1/search/recent")
                         .with(auth(member)).with(csrf())

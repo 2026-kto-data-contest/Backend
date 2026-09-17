@@ -230,8 +230,12 @@ CREATE TABLE IF NOT EXISTS recent_search (
     searched_at  TIMESTAMP NOT NULL,
     CONSTRAINT fk_recent_search_member FOREIGN KEY (member_id) REFERENCES member_account (id) ON DELETE CASCADE,
     CONSTRAINT uq_recent_search_member_target UNIQUE (member_id, search_type, target_id),
-    CONSTRAINT ck_recent_search_type CHECK (search_type IN ('BREWERY', 'PRODUCT', 'REGION'))
+    CONSTRAINT ck_recent_search_type CHECK (search_type IN ('BREWERY', 'PRODUCT', 'REGION', 'KEYWORD'))
 );
+-- 기존 DB에도 KEYWORD를 반영한다(schema.sql은 재기동마다 실행되므로 멱등).
+ALTER TABLE recent_search DROP CONSTRAINT IF EXISTS ck_recent_search_type;
+ALTER TABLE recent_search ADD CONSTRAINT ck_recent_search_type
+    CHECK (search_type IN ('BREWERY', 'PRODUCT', 'REGION', 'KEYWORD'));
 CREATE INDEX IF NOT EXISTS ix_recent_search_member_latest
     ON recent_search (member_id, searched_at DESC, id DESC);
 
