@@ -77,8 +77,33 @@ public class RecommendedBreweryService {
             Long memberId, List<BreweryListItemResponse> allBreweries, int page, int size) {
         int clampedSize = clampSize(size);
         int clampedPage = clampPage(page, clampedSize);
-        List<BreweryListItemResponse> ordered = orderFor(memberId, allBreweries, clampedSize);
+        List<BreweryListItemResponse> eligible = allBreweries.stream()
+                .filter(RecommendedBreweryService::hasIntroduction)
+                .toList();
+        List<BreweryListItemResponse> ordered = orderFor(memberId, eligible, clampedSize);
         return slice(ordered, clampedPage, clampedSize);
+    }
+
+    /** 추천 카드에서 최소한의 설명이 없는 양조장은 노출하지 않는다. */
+    private static boolean hasIntroduction(BreweryListItemResponse item) {
+        return item.introduction() != null && !item.introduction().isBlank();
+    }
+
+    /** 이미지·이름·위치·소개가 모두 채워진 카드가 먼저 보이도록 완성도를 계산한다. */
+    private static int cardCompleteness(BreweryListItemResponse item) {
+        int score = item.mainImage() == null ? 0 : 1;
+        score += hasText(item.businessName()) ? 1 : 0;
+        score += hasLocation(item) ? 1 : 0;
+        score += hasIntroduction(item) ? 1 : 0;
+        return score;
+    }
+
+    private static boolean hasLocation(BreweryListItemResponse item) {
+        return hasText(item.sido()) && hasText(item.sigungu());
+    }
+
+    private static boolean hasText(String value) {
+        return value != null && !value.isBlank();
     }
 
     /** 전체 양조장을 목록 API와 동일한 카드로, 동일한 고정 정렬(상호명 ASC → breweryId ASC)로 읽는다. */
@@ -119,8 +144,9 @@ public class RecommendedBreweryService {
 
         List<BreweryListItemResponse> ranked = new ArrayList<>(all);
         ranked.sort(Comparator
-                .comparingInt((BreweryListItemResponse item) -> scoreByBreweryId.get(item.breweryId()))
-                .reversed()
+                .comparingInt(RecommendedBreweryService::cardCompleteness).reversed()
+                .thenComparing(Comparator.comparingInt(
+                        (BreweryListItemResponse item) -> scoreByBreweryId.get(item.breweryId())).reversed())
                 .thenComparing(BreweryListItemResponse::businessName)
                 .thenComparing(BreweryListItemResponse::breweryId));
 
@@ -166,7 +192,9 @@ public class RecommendedBreweryService {
                 ordered.add(item);
             }
         }
-        return ordered;
+        return ordered.stream()
+                .sorted(Comparator.comparingInt(RecommendedBreweryService::cardCompleteness).reversed())
+                .toList();
     }
 
     /**
