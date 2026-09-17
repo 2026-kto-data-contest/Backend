@@ -126,7 +126,9 @@ class BreweryDetailApiTest {
                 // 이 픽스처는 지오코딩을 돌리지 않아 값이 null일 수 있어 exists()로는 검증하지 않는다)
                 .andExpect(jsonPath("$.featureTags").isArray())
                 .andExpect(jsonPath("$.liquorTypes").isArray())
-                .andExpect(jsonPath("$.mainImage").doesNotExist());
+                .andExpect(jsonPath("$.mainImage.url").value("/recommended-courses/BRW-001.png"))
+                .andExpect(jsonPath("$.mainImage.copyright").doesNotExist())
+                .andExpect(jsonPath("$.mainImage.modifiable").value(false));
     }
 
     @Test
@@ -256,8 +258,8 @@ class BreweryDetailApiTest {
     @Test
     @DisplayName("대표 이미지 Type3 → modifiable=false(변경금지)")
     void mainImageType3NotModifiable() throws Exception {
-        attachImage(BREWERY_B, "CONTENT-B", "http://img/type3.jpg", "Type3");
-        mockMvc.perform(get("/api/v1/breweries/{id}", BREWERY_B))
+        attachImage(BREWERY_A, "CONTENT-B", "http://img/type3.jpg", "Type3");
+        mockMvc.perform(get("/api/v1/breweries/{id}", BREWERY_A))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.mainImage.copyright").value("Type3"))
                 .andExpect(jsonPath("$.mainImage.modifiable").value(false));
@@ -266,8 +268,8 @@ class BreweryDetailApiTest {
     @Test
     @DisplayName("content_id는 있으나 first_image 공백 → mainImage=null(빈 URL 미노출)")
     void mainImageNullWhenBlankImage() throws Exception {
-        attachImage(BREWERY_C, "CONTENT-C", "   ", "Type1");
-        mockMvc.perform(get("/api/v1/breweries/{id}", BREWERY_C))
+        attachImage(BREWERY_A, "CONTENT-C", "   ", "Type1");
+        mockMvc.perform(get("/api/v1/breweries/{id}", BREWERY_A))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.mainImage").doesNotExist());
     }
@@ -275,7 +277,7 @@ class BreweryDetailApiTest {
     @Test
     @DisplayName("content_id 미매칭 → mainImage=null")
     void mainImageNullWhenNoContent() throws Exception {
-        mockMvc.perform(get("/api/v1/breweries/{id}", BREWERY_D))
+        mockMvc.perform(get("/api/v1/breweries/{id}", BREWERY_A))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.mainImage").doesNotExist());
     }

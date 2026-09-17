@@ -258,7 +258,13 @@ public class BreweryQueryService {
         List<FeatureType> tags = featureTagsFor(one).getOrDefault(breweryId, List.of());
         List<LiquorType> liquors = liquorTypesFor(one).getOrDefault(breweryId, List.of());
         AbvRange abv = abvFor(one).get(breweryId);
-        MainImageResponse image = mainImagesFor(one).get(breweryId);
+        // 상세 화면도 백엔드가 보유한 정적 이미지를 우선 사용한다.
+        // 정적 이미지가 없는 양조장만 기존 TourAPI 이미지를 fallback으로 유지해
+        // 상세 응답의 외부 이미지 의존성과 첫 로딩 지연을 줄인다.
+        MainImageResponse image = localMainImage(breweryId);
+        if (image == null) {
+            image = mainImagesFor(one).get(breweryId);
+        }
         String overview = overviewFor(brewery);
         List<ExperienceResponse> experiences = experiencesFor(breweryId);
         List<ProductCardResponse> products = productQueryService.listProducts(breweryId, 0, 100).content();
