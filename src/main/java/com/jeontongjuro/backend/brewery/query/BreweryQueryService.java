@@ -100,8 +100,10 @@ public class BreweryQueryService {
 
     /** 추천·홈에서 공유하는 전체 카드 조회. 같은 요청 안에서 반복되는 배치 매핑을 줄인다. */
     public List<BreweryListItemResponse> searchAllCards() {
-        return search(BrewerySearchCondition.of(null, null, null, null, null, null, null),
-                0, MAX_SIZE).content();
+        Specification<Brewery> spec = BreweryQuerySpecifications.build(
+                BrewerySearchCondition.of(null, null, null, null, null, null, null));
+        // 홈/추천은 전체 목록이 필요하지만 페이지 total은 사용하지 않으므로 count 쿼리를 실행하지 않는다.
+        return toListItems(breweryRepository.findAll(spec, FIXED_SORT));
     }
 
     /**

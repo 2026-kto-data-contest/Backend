@@ -9,6 +9,7 @@ import com.jeontongjuro.backend.onboarding.dto.OnboardingPreferencesRequest;
 import com.jeontongjuro.backend.onboarding.dto.OnboardingPreferencesResponse;
 import com.jeontongjuro.backend.product.query.SensoryTag;
 import java.util.LinkedHashSet;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import lombok.RequiredArgsConstructor;
@@ -47,10 +48,12 @@ public class OnboardingPreferenceService {
 
         preferenceRepository.deleteByMemberId(memberId);
         preferenceRepository.flush();
-        save(member, PreferenceCategory.LIQUOR_TYPE, liquorTypes);
-        save(member, PreferenceCategory.REGION, regions);
-        save(member, PreferenceCategory.ALCOHOL_LEVEL, Set.of(alcoholLevel));
-        save(member, PreferenceCategory.FLAVOR, flavors);
+        List<OnboardingPreference> newPreferences = new ArrayList<>();
+        add(newPreferences, member, PreferenceCategory.LIQUOR_TYPE, liquorTypes);
+        add(newPreferences, member, PreferenceCategory.REGION, regions);
+        add(newPreferences, member, PreferenceCategory.ALCOHOL_LEVEL, Set.of(alcoholLevel));
+        add(newPreferences, member, PreferenceCategory.FLAVOR, flavors);
+        preferenceRepository.saveAll(newPreferences);
         return new OnboardingPreferencesResponse(List.copyOf(liquorTypes), List.copyOf(regions), alcoholLevel,
                 List.copyOf(flavors));
     }
@@ -73,8 +76,9 @@ public class OnboardingPreferenceService {
         return mapped;
     }
 
-    private void save(Member member, PreferenceCategory category, Set<String> values) {
-        preferenceRepository.saveAll(values.stream()
+    private void add(List<OnboardingPreference> target, Member member, PreferenceCategory category,
+                     Set<String> values) {
+        target.addAll(values.stream()
                 .map(value -> OnboardingPreference.create(member, category, value))
                 .toList());
     }
