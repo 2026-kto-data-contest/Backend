@@ -22,8 +22,10 @@ import com.jeontongjuro.backend.tour.TourContent;
 import com.jeontongjuro.backend.tour.TourContentRepository;
 import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -150,6 +152,39 @@ public class BreweryQueryService {
                 .toList();
 
         return PageResponse.of(toListItems(pageBreweries), clampedPage, clampedSize, totalElements);
+    }
+
+    /** 통합 검색과 같은 기준으로 양조장 결과 수만 계산한다(추천 검색어 동적 필터용). */
+    public long countByAccuracy(String needle) {
+        if (needle == null || needle.isEmpty()) {
+            return 0L;
+        }
+        return countByAccuracy(List.of(needle)).getOrDefault(needle, 0L);
+    }
+
+    /** 여러 추천 후보를 한 번에 계산해 후보마다 상품 매칭 원천을 반복 조회하지 않는다. */
+    public Map<String, Long> countByAccuracy(Collection<String> needles) {
+        Map<String, Long> counts = new LinkedHashMap<>();
+        needles.stream()
+                .filter(needle -> needle != null && !needle.isEmpty())
+                .distinct()
+                .forEach(needle -> counts.put(needle, 0L));
+        if (counts.isEmpty()) {
+            return counts;
+        }
+
+        Map<String, List<String>> productNamesByBrewery =
+                productQueryService.displayedProductNamesByBreweryId();
+        for (Brewery brewery : breweryRepository.findAll().stream()
+                .filter(b -> BreweryVisibilityPolicy.isVisible(b.getBreweryId())).toList()) {
+            List<String> productNames = productNamesByBrewery.getOrDefault(brewery.getBreweryId(), List.of());
+            for (String needle : counts.keySet()) {
+                if (tierOf(brewery, needle, productNames) > 0) {
+                    counts.computeIfPresent(needle, (key, count) -> count + 1);
+                }
+            }
+        }
+        return counts;
     }
 
     /**
