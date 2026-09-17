@@ -42,6 +42,7 @@ public class SecurityConfig {
             "/api/v1/metadata/brewery-filters",
             "/api/v1/search",
             "/api/v1/search/suggestions",
+            "/api/v1/search/recommended-keywords",
             "/api/v1/map/places",
             "/api/v1/map/places/**",
             "/api/v1/map/recommended-breweries",
