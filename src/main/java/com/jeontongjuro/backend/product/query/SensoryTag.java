@@ -1,11 +1,6 @@
 package com.jeontongjuro.backend.product.query;
 
-/**
- * 표준 맛 태그 8종(기획 확정). 나열 순서 고정(응답 배열 순서 = 이 선언 순서). 온보딩 취향 기반 정렬은
- * 구현하지 않는다 — 취향은 저장되고 추천 정렬에 쓰이지만(온보딩 선택값은 주종으로 매핑돼 저장된다),
- * 이 카드의 맛 태그(characteristics 도출 표준 8종)와 온보딩 저장값(주종)은 같은 어휘 공간이 아니라
- * 대조할 축이 없다.
- */
+/** 표준 맛 태그 8종(기획 확정). 나열 순서는 카드 응답과 온보딩 맛 취향에 공통으로 사용한다. */
 public enum SensoryTag {
     상큼함,
     달콤함,
@@ -14,5 +9,16 @@ public enum SensoryTag {
     부드러움,
     묵직함,
     깔끔함,
-    향긋함
+    향긋함;
+
+    public static SensoryTag from(String raw) {
+        if (raw != null && !raw.isBlank()) {
+            try {
+                return valueOf(raw.strip());
+            } catch (IllegalArgumentException ignored) {
+                // 아래의 공통 오류 메시지를 사용한다.
+            }
+        }
+        throw new IllegalArgumentException("허용되지 않은 맛 취향입니다: '" + raw + "'");
+    }
 }

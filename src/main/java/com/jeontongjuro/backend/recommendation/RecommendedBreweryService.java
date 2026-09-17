@@ -26,17 +26,14 @@ import org.springframework.transaction.annotation.Transactional;
  * 추천 양조장 조회(GET /api/v1/recommendations/breweries) — 홈 「추천 양조장」 섹션, 검색
  * 「이런 양조장은 어때요?」 그리드, 두 화면의 '더보기' 전체 목록이 공유하는 단일 진입점이다.
  * <p>
- * <b>필터가 아니라 정렬이다.</b> 매칭 우선순위 "주종 &gt; 지역 &gt; 맛"을 점수로 환산해 전체 양조장을
- * 재정렬한다 — 점수 0인 양조장도 결과에 포함되고 뒤 순위로 밀릴 뿐이다.
+ * 온보딩 완료 회원은 선택 지역을 모집단으로 제한한 뒤 주종·맛 취향을 반영해 재정렬한다.
  * <pre>
  * ① 비로그인                    → 고정 목록 순서
  * ② 로그인 + 온보딩 전(취향 없음)  → 고정 목록 순서 (①과 결과 동일)
  * ③ 로그인 + 온보딩 후(취향 있음)  → 취향 점수 내림차순(동점 시 상호명 가나다순)
  * </pre>
- * ★'맛' 축은 별도 구현이 필요 없다 — 온보딩 1단계는 "어떤 맛의 술을 좋아하세요?"로 묻지만, 선택값은
- * 화면에서 이미 주종으로 매핑돼 {@link PreferenceCategory#LIQUOR_TYPE}로 저장된다. 즉 명세의
- * "주종 &gt; 지역 &gt; 맛"에서 맛은 주종의 사용자 표현일 뿐 별도 매칭 입력이 아니고, 현재 점수식
- * (주종 {@value #LIQUOR_MATCH_SCORE}점 + 지역 {@value #REGION_MATCH_SCORE}점)이 세 축을 전부 충족한다.
+ * 맛 취향은 카드의 {@code flavorTags}와 직접 매칭한다. 지역을 선택한 회원에게는 선택 지역 밖의
+ * 양조장을 추천하지 않아 수도권 선택 후 강원 양조장이 노출되는 문제를 막는다.
  * <p>
  * 카드 매핑은 새로 만들지 않는다 — {@link BreweryQueryService#search}가 이미 하는 태그·도수·주종·이미지·
  * 시군구·맛태그·소개 배치 조회 결과({@link BreweryListItemResponse})를 그대로 재사용해 순서만 바꾼다.
@@ -54,10 +51,10 @@ public class RecommendedBreweryService {
     static final int MAX_SIZE = 100;
     /** 전체 모집단을 한 번에 읽기 위한 조회 크기(현재 양조장 59곳 &lt; 100 이라 한 페이지로 전량 커버). */
     private static final int POPULATION_FETCH_SIZE = MAX_SIZE;
-    /** 주종 일치 가중치. 지역보다 커야 "주종 &gt; 지역" 서열이 정렬에 반영된다. */
-    private static final int LIQUOR_MATCH_SCORE = 2;
-    /** 지역 일치 가중치. */
-    private static final int REGION_MATCH_SCORE = 1;
+    /** 주종 일치 가중치. */
+    private static final int LIQUOR_MATCH_SCORE = 3;
+    /** 맛 태그 일치 가중치. */
+    private static final int FLAVOR_MATCH_SCORE = 2;
 
     private final BreweryQueryService breweryQueryService;
     private final MemberRepository memberRepository;
@@ -136,24 +133,26 @@ public class RecommendedBreweryService {
     private List<BreweryListItemResponse> tasteRanked(Long memberId, List<BreweryListItemResponse> all,
                                                        int requestedSize) {
         Preferences preferences = preferencesOf(memberId);
+        List<BreweryListItemResponse> regional = all.stream()
+                .filter(item -> preferences.regions().isEmpty() || preferences.regions().contains(item.region()))
+                .toList();
 
         Map<String, Integer> scoreByBreweryId = new HashMap<>();
-        for (BreweryListItemResponse item : all) {
+        for (BreweryListItemResponse item : regional) {
             scoreByBreweryId.put(item.breweryId(), score(item, preferences));
         }
 
-        List<BreweryListItemResponse> ranked = new ArrayList<>(all);
+        List<BreweryListItemResponse> ranked = new ArrayList<>(regional);
         ranked.sort(Comparator
-                .comparingInt(RecommendedBreweryService::cardCompleteness).reversed()
-                .thenComparing(Comparator.comparingInt(
-                        (BreweryListItemResponse item) -> scoreByBreweryId.get(item.breweryId())).reversed())
+                .comparingInt((BreweryListItemResponse item) -> scoreByBreweryId.get(item.breweryId())).reversed()
+                .thenComparing(Comparator.comparingInt(RecommendedBreweryService::cardCompleteness).reversed())
                 .thenComparing(BreweryListItemResponse::businessName)
                 .thenComparing(BreweryListItemResponse::breweryId));
 
         if (ranked.size() >= requestedSize) {
             return ranked;
         }
-        return fillWithFixedList(ranked, all, requestedSize);
+        return fillWithFixedList(ranked, regional, requestedSize);
     }
 
     private List<BreweryListItemResponse> fillWithFixedList(List<BreweryListItemResponse> ranked,
@@ -197,10 +196,7 @@ public class RecommendedBreweryService {
                 .toList();
     }
 
-    /**
-     * 주종 &gt; 지역 우선순위를 가중치 차이로 반영한다(주종만 일치 2점 &gt; 지역만 일치 1점).
-     * 지역 취향이 빈 배열(= 전국)이면 지역 항은 적용하지 않는다(전원 0점 처리하지 않고 항 자체를 뺀다).
-     */
+    /** 주종·맛 취향 일치 점수를 계산한다. 지역은 tasteRanked에서 먼저 모집단을 제한한다. */
     private int score(BreweryListItemResponse item, Preferences preferences) {
         int score = 0;
         boolean liquorMatch = item.liquorTypes().stream()
@@ -208,8 +204,10 @@ public class RecommendedBreweryService {
         if (liquorMatch) {
             score += LIQUOR_MATCH_SCORE;
         }
-        if (!preferences.regions().isEmpty() && preferences.regions().contains(item.region())) {
-            score += REGION_MATCH_SCORE;
+        boolean flavorMatch = item.flavorTags().stream()
+                .anyMatch(tag -> preferences.flavors().contains(tag.name()));
+        if (flavorMatch) {
+            score += FLAVOR_MATCH_SCORE;
         }
         return score;
     }
@@ -218,7 +216,8 @@ public class RecommendedBreweryService {
         List<OnboardingPreference> saved = onboardingPreferenceRepository.findByMemberId(memberId);
         return new Preferences(
                 valuesOf(saved, PreferenceCategory.LIQUOR_TYPE),
-                valuesOf(saved, PreferenceCategory.REGION));
+                valuesOf(saved, PreferenceCategory.REGION),
+                valuesOf(saved, PreferenceCategory.FLAVOR));
     }
 
     private Set<String> valuesOf(List<OnboardingPreference> saved, PreferenceCategory category) {
@@ -259,8 +258,7 @@ public class RecommendedBreweryService {
         return Math.min(size, MAX_SIZE);
     }
 
-    /** 회원의 저장된 취향 스냅샷(주종·지역 원시값 집합). 맛은 저장 시점에 이미 주종으로 매핑되어
-     * liquorTypes에 담긴다 — 도수만 이번 매칭 범위 밖이라 담지 않는다. */
-    private record Preferences(Set<String> liquorTypes, Set<String> regions) {
+    /** 회원의 저장된 취향 스냅샷(주종·지역·맛 원시값 집합). */
+    private record Preferences(Set<String> liquorTypes, Set<String> regions, Set<String> flavors) {
     }
 }

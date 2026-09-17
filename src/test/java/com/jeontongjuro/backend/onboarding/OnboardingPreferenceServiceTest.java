@@ -35,7 +35,7 @@ class OnboardingPreferenceServiceTest {
         assertThat(response.alcoholLevel()).isEqualTo("MEDIUM");
         verify(repository).deleteByMemberId(10L);
         verify(repository).flush();
-        verify(repository, org.mockito.Mockito.times(3)).saveAll(anyList());
+        verify(repository, org.mockito.Mockito.times(4)).saveAll(anyList());
     }
 
     @Test
