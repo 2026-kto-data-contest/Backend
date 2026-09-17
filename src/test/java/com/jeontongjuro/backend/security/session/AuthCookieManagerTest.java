@@ -11,7 +11,7 @@ class AuthCookieManagerTest {
     @Test
     void productionCookieUsesConfiguredSameSiteAndSecure() {
         AuthCookieManager manager = new AuthCookieManager(
-                new AuthProperties(Duration.ofDays(14), true, "None"));
+                new AuthProperties(Duration.ofDays(14), Duration.ofMinutes(10), true, "None"));
         MockHttpServletResponse response = new MockHttpServletResponse();
 
         manager.addSession(response, "session-token", 3600);
@@ -26,7 +26,7 @@ class AuthCookieManagerTest {
     @Test
     void csrfCookieIsClearedWithTheSameSecurityAttributes() {
         AuthCookieManager manager = new AuthCookieManager(
-                new AuthProperties(Duration.ofDays(14), true, "None"));
+                new AuthProperties(Duration.ofDays(14), Duration.ofMinutes(10), true, "None"));
         MockHttpServletResponse response = new MockHttpServletResponse();
 
         manager.clearCsrfToken(response);

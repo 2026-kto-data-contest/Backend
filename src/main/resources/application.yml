@@ -28,6 +28,7 @@ app:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173}
   auth:
     session-duration: ${AUTH_SESSION_DURATION:14d}
+    oauth-state-duration: ${AUTH_OAUTH_STATE_DURATION:10m}
     cookie-secure: ${AUTH_COOKIE_SECURE:false}
     cookie-same-site: ${AUTH_COOKIE_SAME_SITE:Lax}
   kakao:

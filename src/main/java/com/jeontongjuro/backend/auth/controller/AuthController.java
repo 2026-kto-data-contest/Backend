@@ -23,6 +23,8 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -37,6 +39,8 @@ import org.springframework.web.util.UriComponentsBuilder;
 @RequestMapping("/api/v1/auth")
 @RequiredArgsConstructor
 public class AuthController {
+
+    private static final Logger log = LoggerFactory.getLogger(AuthController.class);
 
     private final AuthService authService;
     private final SessionService sessionService;
@@ -89,6 +93,9 @@ public class AuthController {
             return;
         }
         if (code == null || !sameValue(expectedState, state)) {
+            log.warn("Kakao OAuth state validation failed: expectedPresent={}, receivedPresent={}, matches={}, "
+                            + "callbackUri={}",
+                    expectedState != null, state != null, sameValue(expectedState, state), request.getRequestURI());
             response.sendRedirect(loginErrorUrl("invalid_oauth_state"));
             return;
         }
