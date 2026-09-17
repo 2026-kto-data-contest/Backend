@@ -7,6 +7,7 @@ import com.jeontongjuro.backend.member.Member;
 import com.jeontongjuro.backend.member.MemberRepository;
 import com.jeontongjuro.backend.onboarding.dto.OnboardingPreferencesRequest;
 import com.jeontongjuro.backend.onboarding.dto.OnboardingPreferencesResponse;
+import com.jeontongjuro.backend.product.query.SensoryTag;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
@@ -42,13 +43,16 @@ public class OnboardingPreferenceService {
             return region.name();
         });
         String alcoholLevel = AlcoholPreferenceLevel.from(request.alcoholLevel()).name();
+        Set<String> flavors = mapOptional(request.flavors(), this::flavor);
 
         preferenceRepository.deleteByMemberId(memberId);
         preferenceRepository.flush();
         save(member, PreferenceCategory.LIQUOR_TYPE, liquorTypes);
         save(member, PreferenceCategory.REGION, regions);
         save(member, PreferenceCategory.ALCOHOL_LEVEL, Set.of(alcoholLevel));
-        return new OnboardingPreferencesResponse(List.copyOf(liquorTypes), List.copyOf(regions), alcoholLevel);
+        save(member, PreferenceCategory.FLAVOR, flavors);
+        return new OnboardingPreferencesResponse(List.copyOf(liquorTypes), List.copyOf(regions), alcoholLevel,
+                List.copyOf(flavors));
     }
 
     private Set<String> map(List<String> values, java.util.function.Function<String, String> mapper) {
@@ -87,12 +91,21 @@ public class OnboardingPreferenceService {
                 + "' (허용: 탁주, 약주, 청주, 증류주, 과실주, 기타)");
     }
 
+    private String flavor(String raw) {
+        try {
+            return SensoryTag.from(raw).name();
+        } catch (IllegalArgumentException e) {
+            throw invalidPreferences(e.getMessage());
+        }
+    }
+
     private OnboardingPreferencesResponse response(List<OnboardingPreference> preferences) {
         List<String> liquorTypes = values(preferences, PreferenceCategory.LIQUOR_TYPE);
         List<String> regions = values(preferences, PreferenceCategory.REGION);
         String alcoholLevel = values(preferences, PreferenceCategory.ALCOHOL_LEVEL).stream()
                 .findFirst().orElse(null);
-        return new OnboardingPreferencesResponse(liquorTypes, regions, alcoholLevel);
+        List<String> flavors = values(preferences, PreferenceCategory.FLAVOR);
+        return new OnboardingPreferencesResponse(liquorTypes, regions, alcoholLevel, flavors);
     }
 
     private List<String> values(List<OnboardingPreference> preferences, PreferenceCategory category) {
