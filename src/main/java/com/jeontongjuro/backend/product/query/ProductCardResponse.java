@@ -4,6 +4,7 @@ import com.jeontongjuro.backend.liquortype.LiquorType;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.math.BigDecimal;
 import java.util.List;
+import org.springframework.web.util.HtmlUtils;
 
 /**
  * 양조장 상세 화면의 제품 카드 응답 DTO(엔티티 직노출 금지 — 명시 프로젝션).
@@ -15,7 +16,7 @@ import java.util.List;
  * <ul>
  *   <li>{@code alcoholMin/Max} — 도수 정보가 없으면 null. 단일 도수 제품은 min==max.</li>
  *   <li>{@code volume} — 원문 그대로(파싱·정규화 안 함). 복수 표기도 원문 유지. 없으면 null.</li>
- *   <li>{@code description} — 절단 되돌림/미노출 처리 후. 노출할 문장이 없으면 null.</li>
+ *   <li>{@code description} — 절단 되돌림/미노출 처리 후 HTML 엔티티를 디코딩한 값. 노출할 문장이 없으면 null.</li>
  *   <li>{@code awardBadge} — 최상위 등급 라벨 또는 {@code "수상"}. 수상 이력이 없으면 null.</li>
  * </ul>
  */
@@ -47,6 +48,45 @@ public record ProductCardResponse(
         @Schema(description = "최상위 수상 등급 뱃지 또는 '수상'. 수상 이력이 없으면 null", example = "대상",
                 nullable = true)
         String awardBadge) {
+
+    /** 설명 HTML 엔티티 디코딩 횟수. 관측된 최대 인코딩 깊이가 2라서 2회 고정이다(무한 반복 금지 — 표준 생성자 주석 참고). */
+    private static final int UNESCAPE_PASSES = 2;
+
+    /**
+     * 표준 생성자 — {@code description}의 HTML 엔티티를 디코딩한다(응답 레벨 파생).
+     * <p>
+     * aT 원본이 이미 인코딩된 상태로 저장돼 있다({@code &quot;} 1중 · {@code &amp;quot;}·{@code &amp;#039;}
+     * 2중이 한 양조장 안에서도 섞인다). 우리 파이프라인이 건 것이 아니라 원본 훼손이므로
+     * <b>DB 컬럼({@code product_raw.description})은 고치지 않는다</b> —
+     * {@link com.jeontongjuro.backend.brewery.query.BreweryDetailResponse#withHttpScheme homepage_url 스킴 보정}과
+     * 같은 사상으로 raw 원문을 보존하고 화면에 나가는 값만 파생한다.
+     * <p>
+     * ★디코딩은 반드시 {@link DescriptionTruncationPolicy} 절단 판정이 <b>끝난 뒤</b>여야 한다.
+     * 엔티티가 길이를 부풀려 78/79 게이트에 도달시키고 있어서({@code "&amp;quot;} 8자 · {@code "&quot;} 6자로 센다),
+     * DB·파이프라인 단에서 먼저 디코딩하면 게이트를 통과해 <b>잘린 꼬리가 그대로 노출된다</b>.
+     * 이 생성자는 정책을 거친 값만 받으므로 그 순서가 코드 배치로 강제된다.
+     * <p>
+     * ★2회 고정이고 무한 반복이 아니다. 표시 범위 실측상 인코딩 깊이는 최대 2이고
+     * 2회가 멱등이다(3회 결과 = 2회 결과). 무한 반복은 종료 조건이 데이터에 의존해 테스트로 못 박을 수 없고,
+     * 같은 aT 원본 계열에 리터럴 앰퍼샌드 실사용례가 있어(예: {@code "와인&재즈 페스티벌"})
+     * 의도적으로 이스케이프된 {@code &amp;amp;}까지 끝까지 벗겨 원문을 훼손할 수 있다.
+     * 깊이 3이 새로 들어오면 조용히 틀리는 대신 화면에 {@code &quot;}가 보여 눈에 띄게 틀린다.
+     */
+    public ProductCardResponse {
+        description = unescapeEntities(description);
+    }
+
+    /** null 안전 디코딩. {@code description} 외의 필드는 건드리지 않는다. */
+    private static String unescapeEntities(String value) {
+        if (value == null) {
+            return null;
+        }
+        String decoded = value;
+        for (int i = 0; i < UNESCAPE_PASSES; i++) {
+            decoded = HtmlUtils.htmlUnescape(decoded);
+        }
+        return decoded;
+    }
 
     /** flavorTags 추가 전 호출부와의 소스 호환용 생성자. 태그는 주종에서 동일 규칙으로 계산한다. */
     public ProductCardResponse(
