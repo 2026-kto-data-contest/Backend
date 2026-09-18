@@ -36,6 +36,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 /**
  * 양조장 조회 서비스. 리스트(필터·페이징)와 상세(단건) 두 진입점을 제공한다.
@@ -443,13 +444,21 @@ public class BreweryQueryService {
         return byBrewery;
     }
 
-    /** 관광공사 대표 이미지가 없는 경우, breweryId에 대응하는 기존 정적 양조장 사진을 fallback으로 사용한다. */
+    /**
+     * 관광공사 대표 이미지가 없는 경우, breweryId에 대응하는 기존 정적 양조장 사진을 fallback으로 사용한다.
+     *
+     * 프론트 배포지는 알 수 없는 상대경로를 index.html로 rewrite할 수 있으므로,
+     * 상세 응답에는 현재 백엔드 origin을 포함한 절대 URL을 내려준다.
+     */
     private MainImageResponse localMainImage(String breweryId) {
         String assetPath = "/recommended-courses/" + breweryId + ".png";
         if (getClass().getResource("/static" + assetPath) == null) {
             return null;
         }
-        return MainImageResponse.from(assetPath, null);
+        String absoluteAssetUrl = ServletUriComponentsBuilder.fromCurrentContextPath()
+                .path(assetPath)
+                .toUriString();
+        return MainImageResponse.from(absoluteAssetUrl, null);
     }
 
     /**
