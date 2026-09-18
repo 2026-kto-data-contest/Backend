@@ -115,7 +115,7 @@ class BreweryDetailApiTest {
     }
 
     @Test
-    @DisplayName("존재하는 양조장 → 200 + 상세 필드(주소·좌표·홈페이지) 노출, 기본 계약")
+    @DisplayName("존재하는 양조장 → 200 + 상세 필드와 정적 이미지 절대 URL 노출")
     void existingBreweryReturnsDetail() throws Exception {
         mockMvc.perform(get("/api/v1/breweries/{id}", BREWERY_D))
                 .andExpect(status().isOk())
@@ -126,7 +126,7 @@ class BreweryDetailApiTest {
                 // 이 픽스처는 지오코딩을 돌리지 않아 값이 null일 수 있어 exists()로는 검증하지 않는다)
                 .andExpect(jsonPath("$.featureTags").isArray())
                 .andExpect(jsonPath("$.liquorTypes").isArray())
-                .andExpect(jsonPath("$.mainImage.url").value("/recommended-courses/BRW-001.png"))
+                .andExpect(jsonPath("$.mainImage.url").value("http://localhost/recommended-courses/BRW-001.png"))
                 .andExpect(jsonPath("$.mainImage.copyright").doesNotExist())
                 .andExpect(jsonPath("$.mainImage.modifiable").value(false));
     }
