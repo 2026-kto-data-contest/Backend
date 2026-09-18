@@ -34,9 +34,9 @@
 - 상태: `실재`=코드/DB에 그대로 있음 · `해소`=해결됨 · `오등록`=애초에 부채 아님
 - 위험도: `[지금]` 현재 동작에 영향 · `[트리거]` 특정 행동을 하면 터짐 · `[심사까지X]` 10월 심사까지 무영향
 
-## 열린 부채 (실재 22건)
+## 열린 부채 (실재 21건)
 
-### [트리거] 10건 — 무엇을 하면 무엇이 터지는가
+### [트리거] 9건 — 무엇을 하면 무엇이 터지는가
 
 | # | 제목 | 근거 위치 | 트리거 → 결과 |
 |---|---|---|---|
@@ -48,8 +48,8 @@
 | 24 | 외부 API 타임아웃·재시도 전무 | `CollectHttpConfig`:22 | 외부 API 호출(collect/process) → 무한 대기 또는 1회 실패로 단계 사망 |
 | 25 | 구조 봉인 12/13 시드 — 잔여 1종은 Postgres 게이트 테스트에서만 검증 | `*SeedFileStructureTest`류 10파일(11시드) + `LiquorKeywordDictionaryTest`(1시드, DB-free 단위) | `recommended_brewery_seed` 구조 오류 → `FixedBrewerySeed`는 fail-fast하지만 유일 소비 테스트 `RecommendedBreweryApiTest`가 `@EnabledIf(LocalPostgres)`라 Postgres 미기동 CI를 무검증 통과 |
 | a | prod 프로파일 활성화 미고정 | `application-prod.yml` / main resources grep 0 | env(`SPRING_PROFILES_ACTIVE`) 누락 배포 → prod 하드닝 조용히 미적용 |
-| c | `RecommendedBreweryService` 무필터 조회가 100곳 상한을 무경계 전제(100 상한 실경유는 `BreweryQueryService.MAX_SIZE`) | `RecommendedBreweryService`:56(죽은 상수, Javadoc `{@value}`만 참조), :86(호출부) / `BreweryQueryService`:99-101(`searchAllCards`) / `RecommendedCourseListService`:26 / `HomeService`:41 | 양조장이 100곳 초과 → 상위 100곳만 정렬되고 `slice`의 `totalElements`도 100으로 거짓 보고. 현재 59곳이라 무해, 경계 방어(assert/log) 없음 |
-| g | 양조장 상세 조회가 `listProducts(breweryId, 0, 100)` 고정 인자로 전체 제품 파이프라인을 매번 재실행(무경계 전제, #c와 동일 패턴) | `BreweryQueryService.java`:227 | 양조장당 노출 제품이 100건 초과 → 뒤 제품 누락(현재 최대 19건 BRW-020, 평균 5.92건, 전체 349건/59곳이라 무해). #c와 마찬가지로 경계 방어(assert/log) 없음 |
+| c | `RecommendedBreweryService` 무필터 조회가 100곳 상한을 무경계 전제(100 상한 실경유는 `BreweryQueryService.MAX_SIZE`) | `RecommendedBreweryService`:53(죽은 상수, Javadoc `{@value}`만 참조), :108(호출부) / `BreweryQueryService`:102(`searchAllCards`) / `RecommendedCourseListService`:26 / `HomeService`:41 | 양조장이 100곳 초과 → 상위 100곳만 정렬되고 `slice`의 `totalElements`도 100으로 거짓 보고. 현재 59곳이라 무해, 경계 방어(assert/log) 없음 |
+| g | ~~양조장 상세 조회가 `listProducts(breweryId, 0, 100)` 고정 인자로 전체 제품 파이프라인을 매번 재실행(무경계 전제, #c와 동일 패턴)~~ **해소**(PR #184) | `BreweryQueryService.java`:270 → `ProductQueryService.cardsForVerifiedBrewery`:91 | 상세 경로가 페이지네이션 없이 전량 반환으로 바뀌어 100 상한 자체가 사라졌다(누락 불가). 동일 패턴은 `RecommendedCourseService`:80에 남아 있으나 그쪽은 #c 범위다 |
 
 > #25 잔여 미봉인 1종: `recommended_brewery_seed`. `liquor_keyword`는 2026-08-28 재검증에서 `LiquorKeywordDictionaryTest`(`new LiquorKeywordDictionary(new ObjectMapper())`, Spring 컨텍스트 불필요)가 DB 없이 사전 파싱 자체를 검증한다는 사실을 확인해 실질 봉인으로 재분류했다. `recommended_brewery_seed`도 `FixedBrewerySeed` 생성자가 동일하게 fail-fast하지만, 저장소의 `@SpringBootTest` 29개 전부가 `@EnabledIf(LocalPostgres#isUp)`로 게이트돼 있어 그 생성자가 Postgres 없이는 아예 실행되지 않는다 — 그래서 이 한 종만 [트리거]에 남긴다.
 
