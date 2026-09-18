@@ -83,6 +83,15 @@ public class ProductQueryService {
         return PageResponse.of(pageContent, clampedPage, clampedSize, totalElements);
     }
 
+    /**
+     * 이 양조장의 노출 제품 카드 전체를 가드 없이 반환한다.
+     * 호출자가 양조장 존재·노출 가드를 이미 통과했다는 전제이므로 {@link #listProducts} 선두의
+     * 중복 검증(존재 확인 쿼리)을 수행하지 않는다. 페이지네이션도 하지 않고 전량 반환한다.
+     */
+    public List<ProductCardResponse> cardsForVerifiedBrewery(String breweryId) {
+        return buildCards(breweryId);
+    }
+
     /** 추천 코스 음식점 페어링용 원문. 노출 대상 제품의 소개와 실제 안주 정보가 있는 특징을 함께 반환한다. */
     public List<String> pairingTexts(String breweryId) {
         List<RawProduct> kept = loadKeptProducts(breweryId);

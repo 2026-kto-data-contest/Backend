@@ -267,7 +267,7 @@ public class BreweryQueryService {
         }
         String overview = overviewFor(brewery);
         List<ExperienceResponse> experiences = experiencesFor(breweryId);
-        List<ProductCardResponse> products = productQueryService.listProducts(breweryId, 0, 100).content();
+        List<ProductCardResponse> products = productQueryService.cardsForVerifiedBrewery(breweryId);
         RepresentativeLiquorTypesResponse representativeLiquorTypes =
                 RepresentativeLiquorTypeSelector.select(liquors, products);
 
