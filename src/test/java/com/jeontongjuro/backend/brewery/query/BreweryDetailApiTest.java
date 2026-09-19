@@ -74,6 +74,8 @@ class BreweryDetailApiTest {
     private static final String BREWERY_B = "BRW-002";
     private static final String BREWERY_C = "BRW-006";
     private static final String BREWERY_D = "BRW-001";
+    /** 한 줄 요약 카피 대상. ★BRW-032 양촌양조가 아니라 BRW-033 양촌와이너리가 대상인 점에 주의. */
+    private static final String SUMMARY_TARGET = "BRW-029";
 
     @Autowired
     private MockMvc mockMvc;
@@ -515,6 +517,33 @@ class BreweryDetailApiTest {
         Brewery b = breweryRepository.findById(breweryId).orElseThrow();
         b.applyContentMatch(contentId, OffsetDateTime.now(ZoneOffset.UTC));
         breweryRepository.save(b);
+    }
+
+    // ── 한 줄 요약 카피 편입(#205, additive) ──────────────────────────────────
+    @Test
+    @DisplayName("summaryLines: 대상 BRW-029 술아원은 디자이너 원문 2줄이 순서대로 내려간다")
+    void summaryLinesForTargetBrewery() throws Exception {
+        JsonNode body = readBody(get("/api/v1/breweries/{id}", SUMMARY_TARGET));
+        assertThat(body.get("summaryLines").isArray()).isTrue();
+        List<String> lines = new ArrayList<>();
+        body.get("summaryLines").forEach(n -> lines.add(n.asText()));
+        assertThat(lines).containsExactly(
+                "여주산 찹쌀로 전통 방식의 과하주를 빚어요.",
+                "옛 과하주를 복원하고 장기 숙성해 술을 완성해요.");
+    }
+
+    @Test
+    @DisplayName("summaryLines: 비대상은 빈 배열이며 null이 아니다(★BRW-032 양촌양조도 비대상)")
+    void summaryLinesEmptyForNonTarget() throws Exception {
+        assertThat(readBody(get("/api/v1/breweries/{id}", BREWERY_A)).get("summaryLines")).isEmpty();
+        assertThat(readBody(get("/api/v1/breweries/{id}", "BRW-032")).get("summaryLines")).isEmpty();
+    }
+
+    @Test
+    @DisplayName("summaryLines: 키는 대상 여부와 무관하게 항상 존재한다(required 계약)")
+    void summaryLinesKeyAlwaysPresent() throws Exception {
+        assertThat(readBody(get("/api/v1/breweries/{id}", SUMMARY_TARGET)).has("summaryLines")).isTrue();
+        assertThat(readBody(get("/api/v1/breweries/{id}", BREWERY_D)).has("summaryLines")).isTrue();
     }
 
     private JsonNode readBody(org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder req)

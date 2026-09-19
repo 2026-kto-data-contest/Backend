@@ -1,6 +1,7 @@
 package com.jeontongjuro.backend.brewery.query;
 
 import com.jeontongjuro.backend.brewery.Brewery;
+import com.jeontongjuro.backend.brewery.BrewerySummaryCopyPolicy;
 import com.jeontongjuro.backend.brewery.ContactSupplementPolicy;
 import com.jeontongjuro.backend.brewery.PhoneSource;
 import com.jeontongjuro.backend.brewery.UnreachableHomepagePolicy;
@@ -91,11 +92,18 @@ public record BreweryDetailResponse(
         // ── 카카오 place URL 편입(#54, additive). 없으면 null. 리스트 API엔 노출하지 않는다(스캔용). ──
         @Schema(description = "카카오 place 딥링크 URL(지도·상세). 없으면 null. http:// 원문(접속 시 https 리다이렉트)",
                 example = "http://place.map.kakao.com/17112140", nullable = true)
-        String kakaoPlaceUrl) {
+        String kakaoPlaceUrl,
+        // ── 한 줄 요약 카피 편입(#205, additive). 대상 8곳만 값. 나머지는 빈 배열. 리스트 API엔 노출하지 않는다. ──
+        @Schema(description = "한 줄 요약 카피(디자이너 원문, 곳당 2줄). 요약 재료가 없는 8곳만 값이며 나머지는 빈 배열",
+                requiredMode = Schema.RequiredMode.REQUIRED)
+        List<String> summaryLines) {
 
     /**
      * 엔티티 + 배치 조회로 모은 파생값(태그·도수·주종·대표 이미지·소개글)을 합쳐 상세 응답을 만든다.
      * overview는 tour_content에서 오므로 별도 인자로 받는다(엔티티 밖 값). 나머지 상세 필드는 brewery 엔티티에 있다.
+     * <p>
+     * ★summaryLines는 {@link BrewerySummaryCopyPolicy}에서 온다 — 요약 재료(foundedYear·featureTags·experiences)가
+     * 없는 8곳만 디자이너 카피를 문장 그대로 내려보낸다. 나머지는 빈 배열이고 기존 동작은 그대로다.
      * <p>
      * ★phone·phoneSource·kakaoPlaceUrl은 {@link ContactSupplementPolicy}를 거친다 — 자동 수집이 놓친 한 곳만
      * 값이 없을 때 보충한다(DB는 그대로). homepageUrl의 {@link UnreachableHomepagePolicy} 게이팅과 같은 층이다.
@@ -136,7 +144,8 @@ public record BreweryDetailResponse(
                 b.getDesignatedYear(),
                 b.getDesignationNote(),
                 experiences,
-                ContactSupplementPolicy.kakaoPlaceUrl(b.getBreweryId(), b.getKakaoPlaceUrl()));
+                ContactSupplementPolicy.kakaoPlaceUrl(b.getBreweryId(), b.getKakaoPlaceUrl()),
+                BrewerySummaryCopyPolicy.summaryLines(b.getBreweryId()));
     }
 
     /**
