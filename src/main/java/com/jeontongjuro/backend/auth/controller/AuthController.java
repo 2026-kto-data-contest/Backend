@@ -26,6 +26,7 @@ import org.springframework.http.HttpStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -156,6 +157,33 @@ public class AuthController {
     public void logout(HttpServletRequest request, HttpServletResponse response) {
         String sessionToken = cookieManager.read(request, AuthCookieManager.SESSION_COOKIE);
         sessionService.revoke(sessionToken);
+        cookieManager.clearSession(response);
+        cookieManager.clearCsrfToken(response);
+    }
+
+    @Operation(
+            summary = "회원 탈퇴",
+            description = """
+                    현재 로그인 회원의 계정과 회원에 종속된 세션·약관 동의·온보딩 취향·최근 검색을 삭제합니다.
+
+                    먼저 GET /api/v1/auth/csrf를 호출한 뒤, 받은 토큰을 X-XSRF-TOKEN 헤더에 넣으세요.
+                    성공 응답은 내용이 없는 204이며 세션과 CSRF 쿠키를 삭제합니다.
+                    삭제된 회원 정보는 복구할 수 없습니다. 법령상 별도 보관 대상 정보는 관련 보존 정책에 따릅니다.
+                    카카오 계정 연결 해제는 카카오 Admin Key 연동 설정이 필요하므로 별도 연동 범위입니다.
+                    """)
+    @SecurityRequirement(name = "sessionCookie")
+    @Parameter(name = "X-XSRF-TOKEN", in = ParameterIn.HEADER, required = true,
+            description = "GET /api/v1/auth/csrf에서 발급받은 CSRF 토큰")
+    @ApiResponses({
+            @ApiResponse(responseCode = "204", description = "회원 탈퇴 성공"),
+            @ApiResponse(responseCode = "401", description = "로그인 필요"),
+            @ApiResponse(responseCode = "403", description = "CSRF 토큰 누락 또는 불일치")
+    })
+    @DeleteMapping("/me")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void withdraw(@AuthenticationPrincipal AuthenticatedMember member,
+                         HttpServletResponse response) {
+        authService.withdraw(member.id());
         cookieManager.clearSession(response);
         cookieManager.clearCsrfToken(response);
     }

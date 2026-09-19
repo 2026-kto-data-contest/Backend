@@ -89,6 +89,16 @@ public class AuthService {
     }
 
     @Transactional
+    public void withdraw(Long memberId) {
+        Member member = memberRepository.findById(memberId)
+                .orElseThrow(() -> new AuthException(
+                        HttpStatus.UNAUTHORIZED,
+                        "MEMBER_NOT_FOUND",
+                        "회원 정보를 찾을 수 없습니다."));
+        memberRepository.delete(member);
+    }
+
+    @Transactional
     protected Member upsertMember(KakaoUserResponse kakaoUser) {
         String nickname = kakaoUser.nickname() == null || kakaoUser.nickname().isBlank()
                 ? "카카오 사용자" : kakaoUser.nickname();

@@ -100,4 +100,14 @@ class AuthServiceTest {
 
         assertThat(authService.continueLogin(10L)).isEqualTo("/breweries/BRW-001");
     }
+
+    @Test
+    void withdrawDeletesMemberAccount() {
+        Member member = mock(Member.class);
+        when(memberRepository.findById(10L)).thenReturn(Optional.of(member));
+
+        authService.withdraw(10L);
+
+        verify(memberRepository).delete(member);
+    }
 }
