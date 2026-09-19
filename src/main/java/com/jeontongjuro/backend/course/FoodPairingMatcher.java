@@ -21,12 +21,13 @@ final class FoodPairingMatcher {
     private static final Pattern SASHIMI_FOOD_CONTEXT = Pattern.compile(
             "(?:생선회|모둠회|모듬회|회무침|회덮밥|횟감|횟집|(?:^|[\\s,·/])회(?:$|[\\s,·/]))");
 
-    static Optional<String> pairingComment(List<String> descriptions, TourContent restaurant, String breweryName) {
-        return pairingComment(descriptions, restaurant, breweryName, null);
+    static Optional<String> pairingComment(List<String> descriptions, TourContent restaurant,
+                                           String breweryName, String liquorTypes) {
+        return pairingComment(descriptions, restaurant, breweryName, liquorTypes, null);
     }
 
     static Optional<String> pairingComment(List<String> descriptions, TourContent restaurant,
-                                           String breweryName, String externalCategory) {
+                                           String breweryName, String liquorTypes, String externalCategory) {
         String source = String.join(" ", descriptions).toLowerCase(Locale.ROOT);
         String restaurantText = String.join(" ", nonNull(
                 restaurant.getTitle(), restaurant.getCat1(), restaurant.getCat2(), restaurant.getCat3(),
@@ -37,8 +38,8 @@ final class FoodPairingMatcher {
             if (!matchesSource(entry.getKey(), source)) continue;
             PairingRule rule = entry.getValue();
             if (rule.restaurantTokens().stream().anyMatch(restaurantText::contains)) {
-                return Optional.of(breweryName + "의 " + entry.getKey()
-                        + " 페어링과 어울리는 " + rule.label() + " 음식점");
+                return Optional.of(breweryName + "의 " + liquorTypes
+                        + "와 어울리는 " + rule.label() + " 음식점");
             }
         }
         return Optional.empty();

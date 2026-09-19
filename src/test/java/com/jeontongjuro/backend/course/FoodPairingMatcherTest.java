@@ -15,8 +15,9 @@ class FoodPairingMatcherTest {
     @Test
     void jeonFoodContextMatchesAndIncludesBreweryAndReason() {
         assertThat(FoodPairingMatcher.pairingComment(
-                List.of("해물전 안주와 잘 어울립니다"), koreanRestaurant(), "갈기산양조장"))
-                .get().asString().contains("갈기산양조장의 전 페어링", "한식");
+                List.of("해물전 안주와 잘 어울립니다"), koreanRestaurant(), "갈기산양조장", "탁주"))
+                .get().asString().contains("갈기산양조장의 탁주와 어울리는", "한식")
+                .doesNotContain("전 페어링");
     }
 
     @ParameterizedTest
@@ -24,7 +25,7 @@ class FoodPairingMatcherTest {
             "이전 제품보다 산뜻합니다", "오래전부터 이어온 술"})
     void jeonFalsePositiveContextsDoNotMatch(String description) {
         assertThat(FoodPairingMatcher.pairingComment(
-                List.of(description), koreanRestaurant(), "갈기산양조장")).isEmpty();
+                List.of(description), koreanRestaurant(), "갈기산양조장", "탁주")).isEmpty();
     }
 
     @ParameterizedTest
@@ -32,14 +33,15 @@ class FoodPairingMatcherTest {
             "국제소믈리에협회 인증"})
     void sashimiFalsePositiveContextsDoNotMatch(String description) {
         assertThat(FoodPairingMatcher.pairingComment(
-                List.of(description), japaneseRestaurant(), "갈기산양조장")).isEmpty();
+                List.of(description), japaneseRestaurant(), "갈기산양조장", "탁주")).isEmpty();
     }
 
     @Test
     void sashimiFoodContextStillMatches() {
         assertThat(FoodPairingMatcher.pairingComment(
-                List.of("족발, 삼겹살, 회 등 다양한 안주와 어울린다"), japaneseRestaurant(), "갈기산양조장"))
-                .get().asString().contains("회 페어링");
+                List.of("족발, 삼겹살, 회 등 다양한 안주와 어울린다"), japaneseRestaurant(), "갈기산양조장", "탁주"))
+                .get().asString().contains("갈기산양조장의 탁주와 어울리는", "회 음식점")
+                .doesNotContain("회 페어링");
     }
 
     private TourContent koreanRestaurant() {

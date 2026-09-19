@@ -78,13 +78,15 @@ public class RecommendedCourseService {
         List<String> descriptions = courseProducts == null
                 ? productQueryService.pairingTexts(breweryId)
                 : courseProducts.pairingTexts();
+        String liquorTypes = pairingLiquorTypes(breweryId, products);
         List<BreweryNearby> nearby = nearbyRepository.findCourseCandidates(breweryId);
         Map<String, TourContent> contentById = loadContent(nearby);
-        List<Candidate> candidates = refineNearbyFoodTypes(candidates(brewery, nearby, contentById, descriptions));
+        List<Candidate> candidates = refineNearbyFoodTypes(
+                candidates(brewery, nearby, contentById, descriptions, liquorTypes));
 
         List<CourseStopResponse> stops = new ArrayList<>();
         stops.add(centerStop(brewery, contentById.get(brewery.getContentId()), products));
-        append(stops, selectRestaurants(candidates, descriptions, brewery.getBusinessName()));
+        append(stops, selectRestaurants(candidates, descriptions, brewery.getBusinessName(), liquorTypes));
         append(stops, select(candidates, RecommendedCourseService::isTourist, false));
         append(stops, select(candidates, c -> c.type() == CourseStopType.CAFE, false));
         append(stops, select(candidates, c -> c.type() == CourseStopType.ACCOMMODATION, false));
@@ -102,7 +104,8 @@ public class RecommendedCourseService {
     }
 
     private List<Candidate> candidates(Brewery brewery, List<BreweryNearby> nearby,
-                                       Map<String, TourContent> contentById, List<String> descriptions) {
+                                       Map<String, TourContent> contentById, List<String> descriptions,
+                                       String liquorTypes) {
         Set<String> seen = new HashSet<>();
         List<Candidate> result = new ArrayList<>();
         for (BreweryNearby row : nearby) {
@@ -112,7 +115,8 @@ public class RecommendedCourseService {
             if (content == null || row.getDistanceM() == null) continue;
             CourseStopType type = CourseStopType.from(content);
             String pairing = type == CourseStopType.RESTAURANT
-                    ? FoodPairingMatcher.pairingComment(descriptions, content, brewery.getBusinessName()).orElse(null) : null;
+                    ? FoodPairingMatcher.pairingComment(
+                            descriptions, content, brewery.getBusinessName(), liquorTypes).orElse(null) : null;
             result.add(new Candidate(distance(row), content, type, pairing, null));
         }
         // brewery_nearby는 현재 운영 수집 반경이 20km라 그 밖의 후보가 없다. 20km까지 넓혀도
@@ -127,7 +131,8 @@ public class RecommendedCourseService {
                 int meters = (int) Math.round(TourGeoValidator.haversineMeters(
                         brewery.getLatitude(), brewery.getLongitude(), content.getLatitude(), content.getLongitude()));
                 String pairing = type == CourseStopType.RESTAURANT
-                        ? FoodPairingMatcher.pairingComment(descriptions, content, brewery.getBusinessName()).orElse(null) : null;
+                        ? FoodPairingMatcher.pairingComment(
+                                descriptions, content, brewery.getBusinessName(), liquorTypes).orElse(null) : null;
                 result.add(new Candidate(meters, content, type, pairing, null));
             }
         }
@@ -234,27 +239,43 @@ public class RecommendedCourseService {
     }
 
     private List<Candidate> selectRestaurants(List<Candidate> candidates, List<String> descriptions,
-                                              String breweryName) {
+                                              String breweryName, String liquorTypes) {
         List<Candidate> restaurants = candidates.stream()
                 .filter(c -> c.type() == CourseStopType.RESTAURANT).toList();
         if (restaurants.isEmpty()) return List.of();
         int finalRadius = selectionRadius(restaurants);
         return restaurants.stream().filter(c -> distance(c) <= finalRadius)
-                .map(candidate -> enrichRestaurant(candidate, descriptions, breweryName))
+                .map(candidate -> enrichRestaurant(candidate, descriptions, breweryName, liquorTypes))
                 .sorted(Comparator.comparing((Candidate c) -> c.pairingComment() != null).reversed()
                         .thenComparingInt(RecommendedCourseService::distance)
                         .thenComparing(c -> c.content().getContentId()))
                 .limit(PER_CATEGORY_LIMIT).toList();
     }
 
-    private Candidate enrichRestaurant(Candidate candidate, List<String> descriptions, String breweryName) {
+    private Candidate enrichRestaurant(Candidate candidate, List<String> descriptions, String breweryName,
+                                       String liquorTypes) {
         KakaoPlaceMatch kakao = candidate.kakaoPlaceMatch() != null ? candidate.kakaoPlaceMatch()
                 : kakaoPlaceSearchClient.findPlace(candidate.content().getTitle(),
                         candidate.content().getLatitude(), candidate.content().getLongitude()).orElse(null);
         String externalCategory = kakao == null ? null : kakao.categoryName();
         String pairing = FoodPairingMatcher.pairingComment(
-                descriptions, candidate.content(), breweryName, externalCategory).orElse(null);
+                descriptions, candidate.content(), breweryName, liquorTypes, externalCategory).orElse(null);
         return new Candidate(candidate.distanceMeters(), candidate.content(), candidate.type(), pairing, kakao);
+    }
+
+    private String pairingLiquorTypes(String breweryId, List<ProductCardResponse> products) {
+        List<String> types = liquorTypeRepository.findDistinctTypesByBreweryIdIn(List.of(breweryId)).stream()
+                .map(row -> ((Enum<?>) row[1]).name())
+                .distinct()
+                .toList();
+        if (types.isEmpty()) {
+            types = products.stream()
+                    .flatMap(product -> product.liquorTypes().stream())
+                    .map(Enum::name)
+                    .distinct()
+                    .toList();
+        }
+        return String.join("·", types);
     }
 
     private int selectionRadius(List<Candidate> categoryCandidates) {
