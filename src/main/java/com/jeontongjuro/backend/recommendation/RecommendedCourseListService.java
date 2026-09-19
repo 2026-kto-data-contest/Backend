@@ -46,10 +46,10 @@ public class RecommendedCourseListService {
     }
 
     private RecommendedCourseCardResponse toCard(BreweryListItemResponse brewery) {
-        String imageUrl = localAssetUrl(brewery.breweryId());
-        if (imageUrl == null && brewery.mainImage() != null) {
-            imageUrl = brewery.mainImage().url();
-        }
+        // 목록 API가 이미 관광공사 원본 우선·로컬 정적 이미지 fallback 순서로 매핑한다.
+        String imageUrl = brewery.mainImage() == null
+                ? localAssetUrl(brewery.breweryId())
+                : brewery.mainImage().url();
         CourseTitle courseTitle = COURSE_TITLES.get(brewery.breweryId());
         return new RecommendedCourseCardResponse(
                 brewery.breweryId(),
