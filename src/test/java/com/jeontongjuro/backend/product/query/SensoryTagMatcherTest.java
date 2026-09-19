@@ -55,10 +55,20 @@ class SensoryTagMatcherTest {
     }
 
     @Test
-    @DisplayName("부정문 배제 없음(스펙 규칙): '산미는 적지만'도 산미로 매칭된다")
-    void noNegationHandling() {
+    @DisplayName("부정 표현에 포함된 맛 키워드는 태그에서 제외")
+    void negatedFlavorIsExcluded() {
         assertThat(SensoryTagMatcher.match("산미는 적지만 끝맛이 깔끔하다"))
-                .containsExactlyInAnyOrder(SensoryTag.산미, SensoryTag.깔끔함);
+                .containsExactly(SensoryTag.깔끔함);
+        assertThat(SensoryTagMatcher.match("단맛과 신맛이 거의 느껴지지 않는다")).isEmpty();
+    }
+
+    @Test
+    @DisplayName("음식 설명에 포함된 부드러움은 술 맛 태그에서 제외")
+    void foodDescriptionSoftnessIsExcluded() {
+        assertThat(SensoryTagMatcher.match("부드럽고 담백한 생선회 및 한식 요리와 잘 어울린다")).isEmpty();
+        assertThat(SensoryTagMatcher.match("부드럽게 익힌 어패류와 잘 맞는다")).isEmpty();
+        assertThat(SensoryTagMatcher.match("부드러운 목넘김과 은은한 향긋함"))
+                .containsExactly(SensoryTag.부드러움, SensoryTag.향긋함);
     }
 
     @Test
