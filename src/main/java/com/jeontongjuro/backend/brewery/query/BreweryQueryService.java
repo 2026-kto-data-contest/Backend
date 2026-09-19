@@ -235,7 +235,7 @@ public class BreweryQueryService {
                             abv == null ? null : abv.min(),
                             abv == null ? null : abv.max(),
                             liquorsByBrewery.getOrDefault(b.getBreweryId(), List.of()),
-                            imageByBrewery.getOrDefault(b.getBreweryId(), localMainImage(b.getBreweryId())),
+                            preferredMainImage(b.getBreweryId(), imageByBrewery.get(b.getBreweryId())),
                             BrewerySigunguParser.parse(b.getAddress()),
                             flavorTags,
                             introByBrewery.get(b.getBreweryId()));
@@ -432,7 +432,7 @@ public class BreweryQueryService {
         return byBrewery;
     }
 
-    /** {@link #tourContentByBreweryId} 결과에서 대표 이미지만 파생(추가 쿼리 없음). */
+    /** {@link #tourContentByBreweryId} 결과에서 관광공사 대표 이미지만 파생(추가 쿼리 없음). */
     private Map<String, MainImageResponse> mainImagesFrom(Map<String, TourContent> tourContentByBrewery) {
         Map<String, MainImageResponse> byBrewery = new HashMap<>();
         tourContentByBrewery.forEach((breweryId, tc) -> {
@@ -442,6 +442,15 @@ public class BreweryQueryService {
             }
         });
         return byBrewery;
+    }
+
+    /**
+     * 목록과 상세가 같은 대표 이미지를 사용하도록 로컬 정적 이미지를 우선하고,
+     * 로컬 이미지가 없는 양조장만 관광공사 이미지를 fallback으로 사용한다.
+     */
+    private MainImageResponse preferredMainImage(String breweryId, MainImageResponse tourImage) {
+        MainImageResponse localImage = localMainImage(breweryId);
+        return localImage == null ? tourImage : localImage;
     }
 
     /**
