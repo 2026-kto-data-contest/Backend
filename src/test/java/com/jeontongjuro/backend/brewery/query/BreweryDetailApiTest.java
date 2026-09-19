@@ -351,6 +351,32 @@ class BreweryDetailApiTest {
         assertThat(body.get("kakaoPlaceUrl").asText()).isEqualTo("http://place.map.kakao.com/17112140");
     }
 
+    // ── 홈페이지 미노출 게이팅(UnreachableHomepagePolicy) ─────────────────────────
+    @Test
+    @DisplayName("접속 불가 확인된 양조장 → homepageUrl=null(키는 존재). DB 원문은 보존한다")
+    void unreachableHomepageIsNulledButKeyRemains() throws Exception {
+        for (String id : new String[] {"BRW-001", "BRW-021", "BRW-051", "BRW-053", "BRW-054"}) {
+            assertThat(breweryRepository.findById(id).orElseThrow().getHomepageUrl())
+                    .as("%s은 DB에 홈페이지 원문을 그대로 갖고 있어야 이 단정이 공허하지 않다", id)
+                    .isNotBlank();
+
+            JsonNode body = readBody(get("/api/v1/breweries/{id}", id));
+            assertThat(body.has("homepageUrl")).as("%s: 키는 응답에 남는다", id).isTrue();
+            assertThat(body.get("homepageUrl").isNull()).as("%s: 값만 null", id).isTrue();
+        }
+    }
+
+    @Test
+    @DisplayName("목록 밖 양조장 → homepageUrl 그대로 노출 + 스킴 없는 원문에 http:// 보정 유지")
+    void reachableHomepageKeepsSchemeCorrection() throws Exception {
+        // BRW-003(안동소주)의 골든 원문은 스킴 없는 www.… — 게이팅이 스킴 보정을 삼키지 않는지 같이 본다.
+        String raw = breweryRepository.findById("BRW-003").orElseThrow().getHomepageUrl();
+        assertThat(raw).as("스킴 없는 원문이어야 보정 검증이 성립한다").doesNotStartWith("http");
+
+        JsonNode body = readBody(get("/api/v1/breweries/{id}", "BRW-003"));
+        assertThat(body.get("homepageUrl").asText()).isEqualTo("http://" + raw);
+    }
+
     // ── 체험 프로그램 편입(#52, additive) ─────────────────────────────────────────
     @Test
     @DisplayName("체험 없는 양조장 → experiences 빈 배열(키는 존재)")

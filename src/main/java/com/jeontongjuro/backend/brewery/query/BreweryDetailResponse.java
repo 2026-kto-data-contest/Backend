@@ -2,6 +2,7 @@ package com.jeontongjuro.backend.brewery.query;
 
 import com.jeontongjuro.backend.brewery.Brewery;
 import com.jeontongjuro.backend.brewery.PhoneSource;
+import com.jeontongjuro.backend.brewery.UnreachableHomepagePolicy;
 import com.jeontongjuro.backend.brewery.VisitState;
 import com.jeontongjuro.backend.feature.FeatureType;
 import com.jeontongjuro.backend.liquortype.LiquorType;
@@ -34,7 +35,8 @@ public record BreweryDetailResponse(
         BigDecimal latitude,
         @Schema(description = "경도(WGS84). 지오코딩 실패 시 null", example = "126.598912", nullable = true)
         BigDecimal longitude,
-        @Schema(description = "홈페이지 URL. 없으면 null. 스킴 없는 원문은 http://를 붙여 내린다",
+        @Schema(description = "홈페이지 URL. 없으면 null. 스킴 없는 원문은 http://를 붙여 내린다. "
+                + "접속 불가로 확인된 양조장은 원문이 있어도 null",
                 example = "http://example.co.kr", nullable = true) String homepageUrl,
         @Schema(description = "예약 방문 가능 여부: Y(가능), N(불가), UNKNOWN(정보 없음)", example = "Y",
                 requiredMode = Schema.RequiredMode.REQUIRED)
@@ -108,7 +110,8 @@ public record BreweryDetailResponse(
                 b.getAddress(),
                 b.getLatitude(),
                 b.getLongitude(),
-                withHttpScheme(b.getHomepageUrl()),
+                UnreachableHomepagePolicy.isReachable(b.getBreweryId())
+                        ? withHttpScheme(b.getHomepageUrl()) : null,
                 b.getReservationVisitState(),
                 b.getAlwaysVisitState(),
                 featureTags,
