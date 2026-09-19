@@ -108,13 +108,16 @@ class OnboardingFlowApiTest {
     }
 
     @Test
-    void completionWithoutPreferencesReturns409AfterRequiredTermsAgreement() throws Exception {
+    void completionWithoutPreferencesSucceedsAfterRequiredTermsAgreement() throws Exception {
         agreeToTerms();
 
         mockMvc.perform(post("/api/v1/onboarding/complete")
                         .cookie(sessionCookie, csrfCookie).header(csrfHeader, csrfToken))
-                .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.code").value("ONBOARDING_PREFERENCES_REQUIRED"));
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.nextPath").value("/"));
+
+        assertThat(memberRepository.findById(member.getId()).orElseThrow().isOnboardingCompleted())
+                .isTrue();
     }
 
     @Test
