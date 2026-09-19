@@ -4,6 +4,7 @@ import com.jeontongjuro.backend.brewery.Brewery;
 import com.jeontongjuro.backend.brewery.BreweryRepository;
 import com.jeontongjuro.backend.brewery.BrewerySigunguParser;
 import com.jeontongjuro.backend.brewery.BreweryVisibilityPolicy;
+import com.jeontongjuro.backend.brewery.ContactSupplementPolicy;
 import com.jeontongjuro.backend.brewery.query.BreweryNotFoundException;
 import com.jeontongjuro.backend.feature.BreweryFeatureTagRepository;
 import com.jeontongjuro.backend.liquortype.ProductLiquorTypeRepository;
@@ -311,7 +312,8 @@ public class RecommendedCourseService {
                 : firstNonBlank(matchedContent.getFirstImage(), matchedContent.getFirstImage2());
         return new CourseStopResponse(1, CourseStopType.BREWERY, brewery.getBreweryId(), brewery.getBusinessName(),
                 brewery.getAddress(), brewery.getLatitude(), brewery.getLongitude(), 0, image, "여행의 시작",
-                "양조장", null, brewery.getKakaoPlaceUrl(), null, featureTags, liquorTypes);
+                "양조장", null, ContactSupplementPolicy.kakaoPlaceUrl(
+                        brewery.getBreweryId(), brewery.getKakaoPlaceUrl()), null, featureTags, liquorTypes);
     }
 
     private CourseStopResponse toStop(int order, Candidate candidate) {

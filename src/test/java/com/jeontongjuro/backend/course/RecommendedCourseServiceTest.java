@@ -207,6 +207,19 @@ class RecommendedCourseServiceTest {
     }
 
     @Test
+    void 청산녹수추천코스중심정류장은보충된카카오장소링크를사용한다() {
+        Brewery brewery = Brewery.seed("BRW-051", "청산녹수", "청산녹수", "전라남도 장성군", null,
+                1L, VisitState.UNKNOWN, VisitState.UNKNOWN);
+        given(breweryRepository.findById("BRW-051")).willReturn(Optional.of(brewery));
+        given(nearbyRepository.findCourseCandidates("BRW-051")).willReturn(List.of());
+        given(tourContentRepository.findAllById(any())).willReturn(List.of());
+
+        CourseStopResponse center = service.findByBreweryId("BRW-051").stops().get(0);
+
+        assertThat(center.placeUrl()).isEqualTo("http://place.map.kakao.com/17505055");
+    }
+
+    @Test
     void kakaoCafeCategoryMovesTourRestaurantCandidateToCafeSection() {
         Brewery brewery = brewery();
         TourContent ambiguous = content("AMBIGUOUS", "39", "A05020200", "메이비");

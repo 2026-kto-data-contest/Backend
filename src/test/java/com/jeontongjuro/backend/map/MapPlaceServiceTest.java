@@ -57,6 +57,18 @@ class MapPlaceServiceTest {
     }
 
     @Test
+    void 청산녹수지도목록은전화보충값을사용한다() {
+        Brewery brewery = brewery("BRW-051", "청산녹수", "35.345218", "126.812851");
+        when(breweryRepository.findWithinBounds(any(), any(), any(), any())).thenReturn(List.of(brewery));
+
+        PageResponse<MapPlaceResponse> result = service.find(
+                bd("35"), bd("126"), bd("36"), bd("127"), "BREWERY", null, null, 0, 20);
+
+        assertThat(result.content()).singleElement()
+                .extracting(MapPlaceResponse::phone).isEqualTo("061-393-4141");
+    }
+
+    @Test
     void 잘못된영역과좌표쌍과카테고리를거부한다() {
         assertThatThrownBy(() -> service.find(bd("38"), bd("126"), bd("37"), bd("128"),
                 "BREWERY", null, null, 0, 20)).isInstanceOf(InvalidQueryParameterException.class);
