@@ -20,8 +20,9 @@ import java.util.Set;
  * <p>
  * ★DB 원문(brewery.homepage_url)은 고치지 않는다 — raw 원문 보존 원칙. 응답에서만 내린다.
  * <p>
- * ★BRW-051은 phone·kakao_place_url이 이미 null이라 이 정책까지 적용되면 연락 버튼 3개가 전부 비활성이 된다.
- * 디자이너 승인된 케이스라 예외 처리하지 않는다.
+ * ★BRW-051은 여기서 homepageUrl이 null로 내려가지만 연락 버튼 3개가 전부 비활성이 되지는 않는다 —
+ * phone·kakao_place_url이 DB에 없는 대신 {@link ContactSupplementPolicy}가 응답에서 보충한다.
+ * 홈페이지는 도메인 자체가 죽어 있어 보충 대상이 아니다.
  */
 public final class UnreachableHomepagePolicy {
 

@@ -1,6 +1,7 @@
 package com.jeontongjuro.backend.brewery.query;
 
 import com.jeontongjuro.backend.brewery.Brewery;
+import com.jeontongjuro.backend.brewery.ContactSupplementPolicy;
 import com.jeontongjuro.backend.brewery.PhoneSource;
 import com.jeontongjuro.backend.brewery.UnreachableHomepagePolicy;
 import com.jeontongjuro.backend.brewery.VisitState;
@@ -95,6 +96,9 @@ public record BreweryDetailResponse(
     /**
      * 엔티티 + 배치 조회로 모은 파생값(태그·도수·주종·대표 이미지·소개글)을 합쳐 상세 응답을 만든다.
      * overview는 tour_content에서 오므로 별도 인자로 받는다(엔티티 밖 값). 나머지 상세 필드는 brewery 엔티티에 있다.
+     * <p>
+     * ★phone·phoneSource·kakaoPlaceUrl은 {@link ContactSupplementPolicy}를 거친다 — 자동 수집이 놓친 한 곳만
+     * 값이 없을 때 보충한다(DB는 그대로). homepageUrl의 {@link UnreachableHomepagePolicy} 게이팅과 같은 층이다.
      */
     public static BreweryDetailResponse of(Brewery b, List<FeatureType> featureTags,
                                            BigDecimal alcoholMin, BigDecimal alcoholMax,
@@ -121,8 +125,8 @@ public record BreweryDetailResponse(
                 representativeLiquorTypes,
                 mainImage,
                 overview,
-                b.getPhone(),
-                b.getPhoneSource(),
+                ContactSupplementPolicy.phone(b.getBreweryId(), b.getPhone()),
+                ContactSupplementPolicy.phoneSource(b.getBreweryId(), b.getPhone(), b.getPhoneSource()),
                 b.getOperatingHours(),
                 b.getRestDate(),
                 b.getParkingInfo(),
@@ -132,7 +136,7 @@ public record BreweryDetailResponse(
                 b.getDesignatedYear(),
                 b.getDesignationNote(),
                 experiences,
-                b.getKakaoPlaceUrl());
+                ContactSupplementPolicy.kakaoPlaceUrl(b.getBreweryId(), b.getKakaoPlaceUrl()));
     }
 
     /**
