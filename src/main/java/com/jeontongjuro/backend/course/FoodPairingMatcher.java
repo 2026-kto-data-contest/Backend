@@ -43,7 +43,8 @@ final class FoodPairingMatcher {
             if (!matchesSource(entry.getKey(), source)) continue;
             PairingRule rule = entry.getValue();
             if (rule.restaurantTokens().stream().anyMatch(restaurantText::contains)) {
-                return Optional.of(breweryName + "의 " + liquorTypeLabel + "와 어울리는 식당");
+                return Optional.of(breweryName + "의 " + liquorTypeLabel
+                        + "와 어울리는 " + rule.label() + " 음식점");
             }
         }
         return Optional.empty();
