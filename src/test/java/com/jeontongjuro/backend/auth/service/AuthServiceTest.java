@@ -34,7 +34,7 @@ class AuthServiceTest {
         sessionService = mock(SessionService.class);
         termsService = mock(TermsService.class);
         authService = new AuthService(kakaoClient,
-                new KakaoProperties("rest-key", "client-secret", "http://localhost:8080/callback"),
+                new KakaoProperties("rest-key", "client-secret", "http://localhost:8080/callback", "admin-key"),
                 new AppProperties("http://localhost:5173", List.of("http://localhost:5173")),
                 memberRepository, sessionService, termsService);
     }
@@ -105,11 +105,13 @@ class AuthServiceTest {
     @Test
     void withdrawDeletesMemberAccount() {
         Member member = mock(Member.class);
+        when(member.getKakaoUserId()).thenReturn(123L);
         when(memberRepository.findById(10L)).thenReturn(Optional.of(member));
 
         authService.withdraw(10L);
 
         verify(memberRepository).delete(member);
+        verify(kakaoClient).unlink(123L);
     }
 
     @Test

@@ -95,6 +95,7 @@ public class AuthService {
                         HttpStatus.UNAUTHORIZED,
                         "MEMBER_NOT_FOUND",
                         "회원 정보를 찾을 수 없습니다."));
+        kakaoClient.unlink(member.getKakaoUserId());
         memberRepository.delete(member);
     }
 

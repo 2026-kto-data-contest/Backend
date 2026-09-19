@@ -169,7 +169,7 @@ public class AuthController {
                     먼저 GET /api/v1/auth/csrf를 호출한 뒤, 받은 토큰을 X-XSRF-TOKEN 헤더에 넣으세요.
                     성공 응답은 내용이 없는 204이며 세션과 CSRF 쿠키를 삭제합니다.
                     삭제된 회원 정보는 복구할 수 없습니다. 법령상 별도 보관 대상 정보는 관련 보존 정책에 따릅니다.
-                    카카오 계정 연결 해제는 카카오 Admin Key 연동 설정이 필요하므로 별도 연동 범위입니다.
+                    카카오 Admin Key가 설정되어 있으면 카카오 계정 연결도 함께 해제합니다.
                     """)
     @SecurityRequirement(name = "sessionCookie")
     @Parameter(name = "X-XSRF-TOKEN", in = ParameterIn.HEADER, required = true,

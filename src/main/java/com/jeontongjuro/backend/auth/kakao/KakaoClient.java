@@ -42,6 +42,27 @@ public class KakaoClient {
         }
     }
 
+    public void unlink(Long kakaoUserId) {
+        if (!properties.adminKeyConfigured()) {
+            return;
+        }
+        MultiValueMap<String, String> form = new LinkedMultiValueMap<>();
+        form.add("target_id_type", "user_id");
+        form.add("target_id", String.valueOf(kakaoUserId));
+        try {
+            restClient.post()
+                    .uri("https://kapi.kakao.com/v1/user/unlink")
+                    .header(HttpHeaders.AUTHORIZATION, "KakaoAK " + properties.adminKey())
+                    .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                    .body(form)
+                    .retrieve()
+                    .toBodilessEntity();
+        } catch (RestClientException exception) {
+            throw new AuthException(HttpStatus.BAD_GATEWAY, "KAKAO_UNLINK_FAILED",
+                    "카카오 계정 연결 해제에 실패했습니다.");
+        }
+    }
+
     private KakaoTokenResponse requestToken(String authorizationCode) {
         MultiValueMap<String, String> form = new LinkedMultiValueMap<>();
         form.add("grant_type", "authorization_code");
