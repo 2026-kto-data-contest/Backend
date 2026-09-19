@@ -7,6 +7,7 @@
 ```dotenv
 KAKAO_REST_API_KEY=<카카오 앱 REST API 키>
 KAKAO_CLIENT_SECRET=<카카오 앱 Client Secret>
+KAKAO_ADMIN_KEY=<카카오 앱 Admin Key>
 ```
 
 `.env`에는 실제 비밀값이 들어가므로 Git에 커밋하지 않는다.
@@ -26,6 +27,10 @@ DB·Redirect URI·프론트 주소·세션 기간·쿠키 보안은 `application
 `AUTH_COOKIE_SECURE=true`, `AUTH_COOKIE_SAME_SITE=None`을 함께 사용한다.
 운영·개발 서버에서는 `.env` 파일을 배포하지 않고 배포 플랫폼의 Secret/Environment Variables에 등록한다.
 운영 환경에서는 HTTPS를 사용하고 `AUTH_COOKIE_SECURE=true`로 설정한다.
+
+회원 탈퇴 시 `KAKAO_ADMIN_KEY`가 설정되어 있으면 카카오의 `/v1/user/unlink`를 호출해
+카카오 계정 연결도 해제한다. Admin Key가 없는 환경에서는 로컬 회원 정보만 삭제되므로,
+운영 Render 환경변수에 Admin Key를 등록해야 카카오 연결 해제까지 수행된다.
 
 ## 카카오 디벨로퍼스 설정
 
