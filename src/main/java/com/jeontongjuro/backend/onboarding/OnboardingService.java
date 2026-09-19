@@ -15,7 +15,6 @@ public class OnboardingService {
 
     private final MemberRepository memberRepository;
     private final TermsService termsService;
-    private final OnboardingPreferenceRepository preferenceRepository;
 
     @Transactional
     public void complete(Long memberId) {
@@ -24,12 +23,6 @@ public class OnboardingService {
                     HttpStatus.CONFLICT,
                     "TERMS_AGREEMENT_REQUIRED",
                     "필수 약관 동의 후 온보딩을 완료할 수 있습니다.");
-        }
-        if (!preferenceRepository.hasAllRequiredCategories(memberId)) {
-            throw new AuthException(
-                    HttpStatus.CONFLICT,
-                    "ONBOARDING_PREFERENCES_REQUIRED",
-                    "선호 주종과 도수 취향을 저장한 후 온보딩을 완료할 수 있습니다.");
         }
         Member member = memberRepository.findById(memberId)
                 .orElseThrow(() -> new AuthException(
