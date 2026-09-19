@@ -60,6 +60,33 @@ class RecentSearchServiceTest {
     }
 
     @Test
+    void freeInputKeywordDoesNotRequireTargetId() {
+        RecentSearchResponse response = recentSearchService.save(
+                1L,
+                new RecentSearchSaveRequest(RecentSearchType.KEYWORD, null, "  복순도가  ", "  복순도가  "));
+
+        assertThat(response.type()).isEqualTo(RecentSearchType.KEYWORD);
+        assertThat(response.id()).isEqualTo("복순도가");
+        assertThat(response.keyword()).isEqualTo("복순도가");
+    }
+
+    @Test
+    void sameFreeInputKeywordRefreshesExistingRow() {
+        RecentSearch existing = RecentSearch.create(
+                member, RecentSearchType.KEYWORD, "복순도가", "이전 검색어", "이전 표시명");
+        when(recentSearchRepository.findByMemberIdAndTypeAndTargetId(
+                1L, RecentSearchType.KEYWORD, "복순도가"))
+                .thenReturn(Optional.of(existing));
+
+        RecentSearchResponse response = recentSearchService.save(
+                1L,
+                new RecentSearchSaveRequest(RecentSearchType.KEYWORD, null, "복순도가", "복순도가"));
+
+        assertThat(response.displayName()).isEqualTo("복순도가");
+        verify(recentSearchRepository).save(existing);
+    }
+
+    @Test
     void sameTypeAndTargetRefreshesExistingRow() {
         RecentSearch existing = RecentSearch.create(
                 member, RecentSearchType.PRODUCT, "PRD-0003", "옛 검색어", "옛 제품명");

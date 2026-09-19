@@ -27,7 +27,7 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 @RequiredArgsConstructor
 public class SecurityConfig {
 
-    private static final String PRODUCTION_FRONTEND_ORIGIN = "https://jeontongjuro.vercel.app";
+    private static final String PRODUCTION_FRONTEND_ORIGIN = "https://jeontongjuro.com";
 
     private static final String[] PUBLIC_ENDPOINTS = {
             "/actuator/health",
@@ -42,8 +42,16 @@ public class SecurityConfig {
             "/api/v1/metadata/brewery-filters",
             "/api/v1/search",
             "/api/v1/search/suggestions",
+            "/api/v1/search/recommended-keywords",
             "/api/v1/map/places",
             "/api/v1/map/places/**",
+            "/api/v1/map/recommended-breweries",
+            "/api/v1/map/awarded-liquors",
+            "/api/v1/map/menus",
+            "/api/v1/map/menus/**",
+            "/api/v1/map/liquor-menus",
+            "/api/v1/map/liquor-menus/**",
+            "/recommended-courses/**",
             "/swagger-ui.html",
             "/swagger-ui/**",
             "/v3/api-docs/**",

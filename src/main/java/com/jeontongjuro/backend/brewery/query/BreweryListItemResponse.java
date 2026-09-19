@@ -21,8 +21,10 @@ import java.util.List;
  * 도수(alcoholMin/alcoholMax)·주종(liquorTypes)·대표 이미지(mainImage)를 additive로 추가한다 —
  * 기존 7필드(breweryId~featureTags)의 이름·타입·순서는 그대로 유지한다(계약 불변).
  * <p>
- * 대표 이미지는 tour_content(TourAPI 캐시)의 first_image에서 온다({@link MainImageResponse}).
- * 대표 이미지가 없으면 mainImage=null. ★brewery.image_url 격리 컬럼(C-10)은 #56에서 제거됐다.
+ * 대표 이미지는 breweryId에 대응하는 정적 양조장 사진을 우선 사용하고, 없으면
+ * tour_content(TourAPI 캐시)의 first_image를 fallback으로 사용한다({@link MainImageResponse}).
+ * 두 사진이 모두 없으면 mainImage=null.
+ * ★brewery.image_url 격리 컬럼(C-10)은 #56에서 제거됐다.
  * <p>
  * ★목록 응답 3차 additive(시군구·맛 태그·소개): 기존 11필드의 이름·타입·순서는 그대로 유지한다(계약 불변).
  * sigungu는 {@link com.jeontongjuro.backend.brewery.BrewerySigunguParser}(주소 파싱 파생값이라 nullable), flavorTags는

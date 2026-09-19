@@ -10,6 +10,12 @@ spring:
     username: ${DB_USERNAME:jeontongjuro}
     password: ${DB_PASSWORD:jeontongjuro}
     driver-class-name: org.postgresql.Driver
+    hikari:
+      # Supabase session pooler의 pool_size(15)보다 낮게 유지해
+      # Render 무중단 교체 시 기존·신규 인스턴스가 동시에 떠도 연결 수를 넘기지 않는다.
+      maximum-pool-size: ${DB_MAX_POOL_SIZE:5}
+      minimum-idle: ${DB_MIN_IDLE:1}
+      connection-timeout: ${DB_CONNECTION_TIMEOUT_MS:10000}
   jpa:
     # 스키마의 단일 진실은 schema.sql(BIGSERIAL·UNIQUE 제약 명시). Hibernate는 검증만 수행.
     hibernate:
@@ -28,12 +34,14 @@ app:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173}
   auth:
     session-duration: ${AUTH_SESSION_DURATION:14d}
+    oauth-state-duration: ${AUTH_OAUTH_STATE_DURATION:10m}
     cookie-secure: ${AUTH_COOKIE_SECURE:false}
     cookie-same-site: ${AUTH_COOKIE_SAME_SITE:Lax}
   kakao:
     rest-api-key: ${KAKAO_REST_API_KEY:}
     client-secret: ${KAKAO_CLIENT_SECRET:}
     redirect-uri: ${KAKAO_REDIRECT_URI:http://localhost:8080/api/v1/auth/kakao/callback}
+    admin-key: ${KAKAO_ADMIN_KEY:}
 
 # 지오코딩(#28 8단계) — 수빈 인증 라인 app.kakao.*와 분리한다. 같은 REST 키를 재사용하되 네임스페이스는 별개.
 # api-key는 환경변수 KAKAO_REST_API_KEY 로만 주입(코드·yml·로그에 키 문자열 미기재). 미주입 시 8단계에서 명확히 중단.

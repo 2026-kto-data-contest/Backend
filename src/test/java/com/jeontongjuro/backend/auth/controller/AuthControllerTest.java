@@ -10,7 +10,9 @@ import com.jeontongjuro.backend.auth.config.AppProperties;
 import com.jeontongjuro.backend.auth.dto.response.LoginResult;
 import com.jeontongjuro.backend.auth.exception.AuthException;
 import com.jeontongjuro.backend.auth.service.AuthService;
+import com.jeontongjuro.backend.member.MemberRole;
 import com.jeontongjuro.backend.security.session.AuthCookieManager;
+import com.jeontongjuro.backend.security.session.AuthenticatedMember;
 import com.jeontongjuro.backend.security.session.SessionService;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
@@ -79,6 +81,22 @@ class AuthControllerTest {
         controller.logout(request, response);
 
         verify(sessionService).revoke("session-token");
+        verify(cookieManager).clearSession(response);
+        verify(cookieManager).clearCsrfToken(response);
+    }
+
+    @Test
+    void withdrawDeletesAccountAndClearsAuthenticationAndCsrfCookies() {
+        AuthService authService = mock(AuthService.class);
+        SessionService sessionService = mock(SessionService.class);
+        AuthCookieManager cookieManager = mock(AuthCookieManager.class);
+        AuthController controller = new AuthController(authService, sessionService, cookieManager,
+                new AppProperties("http://localhost:3000", List.of("http://localhost:3000")));
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        controller.withdraw(new AuthenticatedMember(10L, "user@example.com", MemberRole.USER), response);
+
+        verify(authService).withdraw(10L);
         verify(cookieManager).clearSession(response);
         verify(cookieManager).clearCsrfToken(response);
     }

@@ -1,6 +1,7 @@
 package com.jeontongjuro.backend.product.query;
 
 import com.jeontongjuro.backend.brewery.BreweryRepository;
+import com.jeontongjuro.backend.brewery.BreweryVisibilityPolicy;
 import com.jeontongjuro.backend.brewery.query.BreweryNotFoundException;
 import com.jeontongjuro.backend.global.web.PageResponse;
 import com.jeontongjuro.backend.liquortype.LiquorType;
@@ -67,7 +68,7 @@ public class ProductQueryService {
     }
 
     public PageResponse<ProductCardResponse> listProducts(String breweryId, int page, int size) {
-        if (!breweryRepository.existsById(breweryId)) {
+        if (!BreweryVisibilityPolicy.isVisible(breweryId) || !breweryRepository.existsById(breweryId)) {
             throw new BreweryNotFoundException("양조장을 찾을 수 없습니다: " + breweryId);
         }
         int clampedSize = clampSize(size);
@@ -80,6 +81,15 @@ public class ProductQueryService {
         int to = Math.min(from + clampedSize, all.size());
         List<ProductCardResponse> pageContent = all.subList(from, to);
         return PageResponse.of(pageContent, clampedPage, clampedSize, totalElements);
+    }
+
+    /**
+     * 이 양조장의 노출 제품 카드 전체를 가드 없이 반환한다.
+     * 호출자가 양조장 존재·노출 가드를 이미 통과했다는 전제이므로 {@link #listProducts} 선두의
+     * 중복 검증(존재 확인 쿼리)을 수행하지 않는다. 페이지네이션도 하지 않고 전량 반환한다.
+     */
+    public List<ProductCardResponse> cardsForVerifiedBrewery(String breweryId) {
+        return buildCards(breweryId);
     }
 
     /** 추천 코스 음식점 페어링용 원문. 노출 대상 제품의 소개와 실제 안주 정보가 있는 특징을 함께 반환한다. */
@@ -126,12 +136,14 @@ public class ProductQueryService {
     }
 
     private List<ProductCardResponse> buildCardsFromKept(List<RawProduct> kept) {
+        return buildCardsFromKept(kept, loadLiquorTypes(kept));
+    }
+
+    private List<ProductCardResponse> buildCardsFromKept(List<RawProduct> kept,
+                                                         Map<Integer, List<LiquorType>> typesByRef) {
 
         // ④ 중복 병합 — 제품명 공백 정규화로 그룹핑(삽입 순서 유지)
         Map<String, List<RawProduct>> groups = groupByNormalizedName(kept);
-
-        // ⑦ 주종 배치 로딩 — 남은 모든 ref 기준(병합 그룹은 멤버 ref들의 합집합으로 노출)
-        Map<Integer, List<LiquorType>> typesByRef = loadLiquorTypes(kept);
 
         // ④~⑦ 그룹별 병합 → 카드
         List<ProductCardResponse> cards = new ArrayList<>(groups.size());
@@ -234,6 +246,35 @@ public class ProductQueryService {
         return result;
     }
 
+    /** 여러 양조장의 표시 제품 카드를 한 번에 계산해 지도 추천 API의 N+1 조회를 피한다. */
+    public Map<String, List<ProductCardResponse>> displayedCardsByBreweryId(Collection<String> breweryIds) {
+        if (breweryIds.isEmpty()) {
+            return Map.of();
+        }
+        List<ProductBreweryLink> allLinks = linkRepository.findByBreweryIdIn(breweryIds);
+        if (allLinks.isEmpty()) {
+            return Map.of();
+        }
+        Map<Integer, ProductRawView> rawByRef = loadRawByRef(allLinks);
+        List<Integer> refs = allLinks.stream()
+                .filter(link -> rawByRef.containsKey(link.getSourceRowRef()))
+                .map(ProductBreweryLink::getSourceRowRef).toList();
+        Map<Integer, List<LiquorType>> typesByRef = loadLiquorTypesByRefs(refs);
+        Map<String, List<ProductBreweryLink>> linksByBrewery = new LinkedHashMap<>();
+        for (ProductBreweryLink link : allLinks) {
+            linksByBrewery.computeIfAbsent(link.getBreweryId(), ignored -> new ArrayList<>()).add(link);
+        }
+
+        Map<String, List<ProductCardResponse>> result = new HashMap<>();
+        for (Map.Entry<String, List<ProductBreweryLink>> entry : linksByBrewery.entrySet()) {
+            List<RawProduct> kept = filterKept(entry.getValue(), rawByRef);
+            if (!kept.isEmpty()) {
+                result.put(entry.getKey(), buildCardsFromKept(kept, typesByRef));
+            }
+        }
+        return result;
+    }
+
     /** ①~③ 조인 + 판매중단 제외 + 원본오류 제외. */
     private List<RawProduct> filterKept(List<ProductBreweryLink> links, Map<Integer, ProductRawView> rawByRef) {
         List<RawProduct> kept = new ArrayList<>();
@@ -297,7 +338,10 @@ public class ProductQueryService {
     }
 
     private Map<Integer, List<LiquorType>> loadLiquorTypes(List<RawProduct> kept) {
-        List<Integer> refs = kept.stream().map(p -> p.link().getSourceRowRef()).toList();
+        return loadLiquorTypesByRefs(kept.stream().map(p -> p.link().getSourceRowRef()).toList());
+    }
+
+    private Map<Integer, List<LiquorType>> loadLiquorTypesByRefs(Collection<Integer> refs) {
         Map<Integer, List<LiquorType>> byRef = new HashMap<>();
         for (Object[] row : liquorTypeRepository.findTypesBySourceRowRefIn(refs)) {
             Integer ref = (Integer) row[0];
@@ -310,8 +354,9 @@ public class ProductQueryService {
     /**
      * 검색 자동완성용 — 전 양조장의 노출 제품(판매중단·원본오류 제외, 중복 병합 적용 후) 이름 전체를 반환한다.
      * {@link #buildCards}와 동일한 제외(②③)·중복 병합(④) 규칙을 그룹핑 단위(양조장별)까지 그대로 재사용해
-     * 노출 모집단을 카드 API와 일치시킨다. 정렬·설명·주종 등 카드의 나머지 계산은 하지 않는다(호출자는
-     * 제품명·id만 필요).
+     * 노출 모집단을 카드 API와 일치시킨다. 노출 제외 양조장({@link BreweryVisibilityPolicy})의 제품은
+     * 여기서 걸러진다 — 후보 레코드가 breweryId를 들고 있지 않아 호출자 쪽에서는 거를 수 없다.
+     * 정렬·설명·주종 등 카드의 나머지 계산은 하지 않는다(호출자는 제품명·id만 필요).
      * <p>
      * 링크 전체 조회 1쿼리 + raw 배치 조회 1쿼리로 고정된다(양조장 수·결과 건수와 무관 — N+1 없음).
      */
@@ -328,8 +373,11 @@ public class ProductQueryService {
         }
 
         List<ProductNameSuggestion> result = new ArrayList<>();
-        for (List<ProductBreweryLink> links : linksByBrewery.values()) {
-            List<RawProduct> kept = filterKept(links, rawByRef);
+        for (Map.Entry<String, List<ProductBreweryLink>> e : linksByBrewery.entrySet()) {
+            if (!BreweryVisibilityPolicy.isVisible(e.getKey())) {
+                continue;
+            }
+            List<RawProduct> kept = filterKept(e.getValue(), rawByRef);
             if (kept.isEmpty()) {
                 continue;
             }

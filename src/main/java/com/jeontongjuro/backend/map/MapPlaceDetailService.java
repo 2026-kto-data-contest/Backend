@@ -2,6 +2,8 @@ package com.jeontongjuro.backend.map;
 
 import com.jeontongjuro.backend.brewery.Brewery;
 import com.jeontongjuro.backend.brewery.BreweryRepository;
+import com.jeontongjuro.backend.brewery.BreweryVisibilityPolicy;
+import com.jeontongjuro.backend.brewery.ContactSupplementPolicy;
 import com.jeontongjuro.backend.course.CourseStopType;
 import com.jeontongjuro.backend.tour.TourContent;
 import com.jeontongjuro.backend.tour.TourContentRepository;
@@ -41,8 +43,16 @@ public class MapPlaceDetailService {
                 : tourContentDetail(placeId, requested);
     }
 
-    /** 양조장 상세. 대표 이미지는 brewery에 컬럼이 없어 매칭된 content_id로 tour_content에서 읽는다(최대 2쿼리). */
+    /**
+     * 양조장 상세. 대표 이미지는 brewery에 컬럼이 없어 매칭된 content_id로 tour_content에서 읽는다(최대 2쿼리).
+     * <p>
+     * ★phone·kakao place URL은 {@link ContactSupplementPolicy}를 거친다(값이 없는 한 곳만 보충, DB는 불변).
+     * 상세 API({@code BreweryDetailResponse})와 DTO를 공유하지 않아 보충을 여기서 한 번 더 건다.
+     */
     private MapPlaceDetailResponse breweryDetail(String placeId) {
+        if (!BreweryVisibilityPolicy.isVisible(placeId)) {
+            throw notFound(placeId);
+        }
         Brewery brewery = breweryRepository.findById(placeId).orElseThrow(() -> notFound(placeId));
         return new MapPlaceDetailResponse(
                 brewery.getBreweryId(),
@@ -54,10 +64,11 @@ public class MapPlaceDetailService {
                 brewery.getLongitude(),
                 null,
                 blankToNull(brewery.getAddress()),
-                blankToNull(brewery.getPhone()),
+                ContactSupplementPolicy.phone(brewery.getBreweryId(), blankToNull(brewery.getPhone())),
                 breweryImageUrl(brewery),
-                kakaoMapUrl(brewery.getKakaoPlaceUrl(), brewery.getBusinessName(),
-                        brewery.getLatitude(), brewery.getLongitude()));
+                kakaoMapUrl(ContactSupplementPolicy.kakaoPlaceUrl(
+                                brewery.getBreweryId(), blankToNull(brewery.getKakaoPlaceUrl())),
+                        brewery.getBusinessName(), brewery.getLatitude(), brewery.getLongitude()));
     }
 
     /**

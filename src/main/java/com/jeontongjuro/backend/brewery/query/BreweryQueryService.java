@@ -3,6 +3,7 @@ package com.jeontongjuro.backend.brewery.query;
 import com.jeontongjuro.backend.brewery.Brewery;
 import com.jeontongjuro.backend.brewery.BreweryRepository;
 import com.jeontongjuro.backend.brewery.BrewerySigunguParser;
+import com.jeontongjuro.backend.brewery.BreweryVisibilityPolicy;
 import com.jeontongjuro.backend.experience.BreweryExperience;
 import com.jeontongjuro.backend.experience.BreweryExperienceRepository;
 import com.jeontongjuro.backend.feature.BreweryFeatureTag;
@@ -21,8 +22,10 @@ import com.jeontongjuro.backend.tour.TourContent;
 import com.jeontongjuro.backend.tour.TourContentRepository;
 import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -33,6 +36,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 /**
  * 양조장 조회 서비스. 리스트(필터·페이징)와 상세(단건) 두 진입점을 제공한다.
@@ -97,8 +101,10 @@ public class BreweryQueryService {
 
     /** 추천·홈에서 공유하는 전체 카드 조회. 같은 요청 안에서 반복되는 배치 매핑을 줄인다. */
     public List<BreweryListItemResponse> searchAllCards() {
-        return search(BrewerySearchCondition.of(null, null, null, null, null, null, null),
-                0, MAX_SIZE).content();
+        Specification<Brewery> spec = BreweryQuerySpecifications.build(
+                BrewerySearchCondition.of(null, null, null, null, null, null, null));
+        // 홈/추천은 전체 목록이 필요하지만 페이지 total은 사용하지 않으므로 count 쿼리를 실행하지 않는다.
+        return toListItems(breweryRepository.findAll(spec, FIXED_SORT));
     }
 
     /**
@@ -128,7 +134,8 @@ public class BreweryQueryService {
                 productQueryService.displayedProductNamesByBreweryId();
 
         List<RankedBrewery> matched = new ArrayList<>();
-        for (Brewery brewery : breweryRepository.findAll()) {
+        for (Brewery brewery : breweryRepository.findAll().stream()
+                .filter(b -> BreweryVisibilityPolicy.isVisible(b.getBreweryId())).toList()) {
             int tier = tierOf(brewery, needle,
                     productNamesByBrewery.getOrDefault(brewery.getBreweryId(), List.of()));
             if (tier > 0) {
@@ -148,6 +155,39 @@ public class BreweryQueryService {
                 .toList();
 
         return PageResponse.of(toListItems(pageBreweries), clampedPage, clampedSize, totalElements);
+    }
+
+    /** 통합 검색과 같은 기준으로 양조장 결과 수만 계산한다(추천 검색어 동적 필터용). */
+    public long countByAccuracy(String needle) {
+        if (needle == null || needle.isEmpty()) {
+            return 0L;
+        }
+        return countByAccuracy(List.of(needle)).getOrDefault(needle, 0L);
+    }
+
+    /** 여러 추천 후보를 한 번에 계산해 후보마다 상품 매칭 원천을 반복 조회하지 않는다. */
+    public Map<String, Long> countByAccuracy(Collection<String> needles) {
+        Map<String, Long> counts = new LinkedHashMap<>();
+        needles.stream()
+                .filter(needle -> needle != null && !needle.isEmpty())
+                .distinct()
+                .forEach(needle -> counts.put(needle, 0L));
+        if (counts.isEmpty()) {
+            return counts;
+        }
+
+        Map<String, List<String>> productNamesByBrewery =
+                productQueryService.displayedProductNamesByBreweryId();
+        for (Brewery brewery : breweryRepository.findAll().stream()
+                .filter(b -> BreweryVisibilityPolicy.isVisible(b.getBreweryId())).toList()) {
+            List<String> productNames = productNamesByBrewery.getOrDefault(brewery.getBreweryId(), List.of());
+            for (String needle : counts.keySet()) {
+                if (tierOf(brewery, needle, productNames) > 0) {
+                    counts.computeIfPresent(needle, (key, count) -> count + 1);
+                }
+            }
+        }
+        return counts;
     }
 
     /**
@@ -195,7 +235,7 @@ public class BreweryQueryService {
                             abv == null ? null : abv.min(),
                             abv == null ? null : abv.max(),
                             liquorsByBrewery.getOrDefault(b.getBreweryId(), List.of()),
-                            imageByBrewery.get(b.getBreweryId()),
+                            preferredMainImage(b.getBreweryId(), imageByBrewery.get(b.getBreweryId())),
                             BrewerySigunguParser.parse(b.getAddress()),
                             flavorTags,
                             introByBrewery.get(b.getBreweryId()));
@@ -211,15 +251,20 @@ public class BreweryQueryService {
         Brewery brewery = breweryRepository.findById(breweryId)
                 .orElseThrow(() -> new BreweryNotFoundException(
                         "양조장을 찾을 수 없습니다: " + breweryId));
+        if (!BreweryVisibilityPolicy.isVisible(breweryId)) {
+            throw new BreweryNotFoundException("양조장을 찾을 수 없습니다: " + breweryId);
+        }
 
         List<Brewery> one = List.of(brewery);
         List<FeatureType> tags = featureTagsFor(one).getOrDefault(breweryId, List.of());
         List<LiquorType> liquors = liquorTypesFor(one).getOrDefault(breweryId, List.of());
         AbvRange abv = abvFor(one).get(breweryId);
-        MainImageResponse image = mainImagesFor(one).get(breweryId);
+        // 관광공사 원본을 우선 사용하고, 원본이 없는 경우에만 백엔드 정적 이미지를 fallback으로 사용한다.
+        MainImageResponse image = preferredMainImage(
+                breweryId, mainImagesFor(one).get(breweryId));
         String overview = overviewFor(brewery);
         List<ExperienceResponse> experiences = experiencesFor(breweryId);
-        List<ProductCardResponse> products = productQueryService.listProducts(breweryId, 0, 100).content();
+        List<ProductCardResponse> products = productQueryService.cardsForVerifiedBrewery(breweryId);
         RepresentativeLiquorTypesResponse representativeLiquorTypes =
                 RepresentativeLiquorTypeSelector.select(liquors, products);
 
@@ -383,7 +428,7 @@ public class BreweryQueryService {
         return byBrewery;
     }
 
-    /** {@link #tourContentByBreweryId} 결과에서 대표 이미지만 파생(추가 쿼리 없음). */
+    /** {@link #tourContentByBreweryId} 결과에서 관광공사 대표 이미지만 파생(추가 쿼리 없음). */
     private Map<String, MainImageResponse> mainImagesFrom(Map<String, TourContent> tourContentByBrewery) {
         Map<String, MainImageResponse> byBrewery = new HashMap<>();
         tourContentByBrewery.forEach((breweryId, tc) -> {
@@ -393,6 +438,31 @@ public class BreweryQueryService {
             }
         });
         return byBrewery;
+    }
+
+    /** 관광공사 원본을 우선하고, 원본이 없을 때만 로컬 정적 이미지를 fallback으로 사용한다. */
+    private MainImageResponse preferredMainImage(String breweryId, MainImageResponse tourImage) {
+        if (tourImage != null) {
+            return tourImage;
+        }
+        return localMainImage(breweryId);
+    }
+
+    /**
+     * 관광공사 대표 이미지가 없는 경우, breweryId에 대응하는 기존 정적 양조장 사진을 fallback으로 사용한다.
+     *
+     * 프론트 배포지는 알 수 없는 상대경로를 index.html로 rewrite할 수 있으므로,
+     * 상세 응답에는 현재 백엔드 origin을 포함한 절대 URL을 내려준다.
+     */
+    private MainImageResponse localMainImage(String breweryId) {
+        String assetPath = "/recommended-courses/" + breweryId + ".png";
+        if (getClass().getResource("/static" + assetPath) == null) {
+            return null;
+        }
+        String absoluteAssetUrl = ServletUriComponentsBuilder.fromCurrentContextPath()
+                .path(assetPath)
+                .toUriString();
+        return MainImageResponse.from(absoluteAssetUrl, null);
     }
 
     /**

@@ -1,0 +1,54 @@
+name: Backend CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Gradle test
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: jeontongjuro
+          POSTGRES_USER: jeontongjuro
+          POSTGRES_PASSWORD: jeontongjuro
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U jeontongjuro -d jeontongjuro"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+
+      - name: Create integration-test database
+        run: |
+          PGPASSWORD=jeontongjuro psql \
+            --host=127.0.0.1 \
+            --username=jeontongjuro \
+            --dbname=jeontongjuro \
+            --command='CREATE DATABASE jeontongjuro_test OWNER jeontongjuro;'
+
+      - name: Run tests
+        env:
+          ONBOARDING_AUDIT_ENABLED: 'true'
+        run: ./gradlew test --no-daemon --stacktrace

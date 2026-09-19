@@ -39,7 +39,7 @@ class RecommendedCourseListServiceTest {
 
         assertThat(response.totalElements()).isEqualTo(1);
         assertThat(response.content()).containsExactly(new RecommendedCourseCardResponse(
-                "BRW-001", "/recommended-courses/BRW-001.png", "충북 영동", "3대째 이어온 포도 농사와 와인"));
+                "BRW-001", "https://example.com/image.jpg", "충북 영동", "3대째 이어온 포도 농사와 와인"));
     }
 
     @Test

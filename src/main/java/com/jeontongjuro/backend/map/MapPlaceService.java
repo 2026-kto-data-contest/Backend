@@ -2,6 +2,8 @@ package com.jeontongjuro.backend.map;
 
 import com.jeontongjuro.backend.brewery.Brewery;
 import com.jeontongjuro.backend.brewery.BreweryRepository;
+import com.jeontongjuro.backend.brewery.BreweryVisibilityPolicy;
+import com.jeontongjuro.backend.brewery.ContactSupplementPolicy;
 import com.jeontongjuro.backend.course.CourseStopType;
 import com.jeontongjuro.backend.global.error.InvalidQueryParameterException;
 import com.jeontongjuro.backend.global.web.PageResponse;
@@ -50,7 +52,8 @@ public class MapPlaceService {
         List<MapPlaceResponse> places = new ArrayList<>();
         if (category == MapPlaceCategory.BREWERY) {
             breweryRepository.findWithinBounds(bounds.south(), bounds.north(), bounds.west(), bounds.east())
-                    .stream().map(b -> fromBrewery(b, userLatitude, userLongitude)).forEach(places::add);
+                    .stream().filter(b -> BreweryVisibilityPolicy.isVisible(b.getBreweryId()))
+                    .map(b -> fromBrewery(b, userLatitude, userLongitude)).forEach(places::add);
         } else {
             Set<String> breweryContentIds = breweryRepository.findWithinBounds(
                             bounds.south(), bounds.north(), bounds.west(), bounds.east()).stream()
@@ -84,6 +87,7 @@ public class MapPlaceService {
         List<MapPlaceResponse> places = new ArrayList<>();
         if (category == null || category == MapPlaceCategory.BREWERY) {
             breweryRepository.searchMapPlaces(keyword).stream()
+                    .filter(b -> BreweryVisibilityPolicy.isVisible(b.getBreweryId()))
                     .map(b -> fromBrewery(b, userLatitude, userLongitude))
                     .forEach(places::add);
         }
@@ -153,7 +157,8 @@ public class MapPlaceService {
     private MapPlaceResponse fromBrewery(Brewery b, BigDecimal userLat, BigDecimal userLng) {
         return new MapPlaceResponse(b.getBreweryId(), b.getBusinessName(), MapPlaceCategory.BREWERY,
                 MapPlaceCategory.BREWERY.displayName(), distance(userLat, userLng, b.getLatitude(), b.getLongitude()),
-                b.getAddress(), b.getPhone(), b.getLatitude(), b.getLongitude(), null);
+                b.getAddress(), ContactSupplementPolicy.phone(b.getBreweryId(), b.getPhone()),
+                b.getLatitude(), b.getLongitude(), null);
     }
 
     private MapPlaceResponse fromTour(TourContent t, MapPlaceCategory category,

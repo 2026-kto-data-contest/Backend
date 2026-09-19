@@ -3,6 +3,8 @@ package com.jeontongjuro.backend.course;
 import com.jeontongjuro.backend.brewery.Brewery;
 import com.jeontongjuro.backend.brewery.BreweryRepository;
 import com.jeontongjuro.backend.brewery.BrewerySigunguParser;
+import com.jeontongjuro.backend.brewery.BreweryVisibilityPolicy;
+import com.jeontongjuro.backend.brewery.ContactSupplementPolicy;
 import com.jeontongjuro.backend.brewery.query.BreweryNotFoundException;
 import com.jeontongjuro.backend.feature.BreweryFeatureTagRepository;
 import com.jeontongjuro.backend.liquortype.ProductLiquorTypeRepository;
@@ -68,6 +70,9 @@ public class RecommendedCourseService {
 
     @Transactional(readOnly = true)
     public RecommendedCourseResponse findByBreweryId(String breweryId) {
+        if (!BreweryVisibilityPolicy.isVisible(breweryId)) {
+            throw new BreweryNotFoundException("양조장을 찾을 수 없습니다: " + breweryId);
+        }
         Brewery brewery = breweryRepository.findById(breweryId)
                 .orElseThrow(() -> new BreweryNotFoundException("양조장을 찾을 수 없습니다: " + breweryId));
         ProductQueryService.CourseProductData courseProducts = productQueryService.loadCourseData(breweryId);
@@ -78,15 +83,15 @@ public class RecommendedCourseService {
         List<String> descriptions = courseProducts == null
                 ? productQueryService.pairingTexts(breweryId)
                 : courseProducts.pairingTexts();
-        String liquorTypes = pairingLiquorTypes(breweryId, products);
+        String liquorTypeLabel = liquorTypeLabel(breweryId, products);
         List<BreweryNearby> nearby = nearbyRepository.findCourseCandidates(breweryId);
         Map<String, TourContent> contentById = loadContent(nearby);
         List<Candidate> candidates = refineNearbyFoodTypes(
-                candidates(brewery, nearby, contentById, descriptions, liquorTypes));
+                candidates(brewery, nearby, contentById, descriptions, liquorTypeLabel));
 
         List<CourseStopResponse> stops = new ArrayList<>();
         stops.add(centerStop(brewery, contentById.get(brewery.getContentId()), products));
-        append(stops, selectRestaurants(candidates, descriptions, brewery.getBusinessName(), liquorTypes));
+        append(stops, selectRestaurants(candidates, descriptions, brewery.getBusinessName(), liquorTypeLabel));
         append(stops, select(candidates, RecommendedCourseService::isTourist, false));
         append(stops, select(candidates, c -> c.type() == CourseStopType.CAFE, false));
         append(stops, select(candidates, c -> c.type() == CourseStopType.ACCOMMODATION, false));
@@ -105,7 +110,7 @@ public class RecommendedCourseService {
 
     private List<Candidate> candidates(Brewery brewery, List<BreweryNearby> nearby,
                                        Map<String, TourContent> contentById, List<String> descriptions,
-                                       String liquorTypes) {
+                                       String liquorTypeLabel) {
         Set<String> seen = new HashSet<>();
         List<Candidate> result = new ArrayList<>();
         for (BreweryNearby row : nearby) {
@@ -116,7 +121,7 @@ public class RecommendedCourseService {
             CourseStopType type = CourseStopType.from(content);
             String pairing = type == CourseStopType.RESTAURANT
                     ? FoodPairingMatcher.pairingComment(
-                            descriptions, content, brewery.getBusinessName(), liquorTypes).orElse(null) : null;
+                            descriptions, content, brewery.getBusinessName(), liquorTypeLabel, null).orElse(null) : null;
             result.add(new Candidate(distance(row), content, type, pairing, null));
         }
         // brewery_nearby는 현재 운영 수집 반경이 20km라 그 밖의 후보가 없다. 20km까지 넓혀도
@@ -132,7 +137,7 @@ public class RecommendedCourseService {
                         brewery.getLatitude(), brewery.getLongitude(), content.getLatitude(), content.getLongitude()));
                 String pairing = type == CourseStopType.RESTAURANT
                         ? FoodPairingMatcher.pairingComment(
-                                descriptions, content, brewery.getBusinessName(), liquorTypes).orElse(null) : null;
+                                descriptions, content, brewery.getBusinessName(), liquorTypeLabel, null).orElse(null) : null;
                 result.add(new Candidate(meters, content, type, pairing, null));
             }
         }
@@ -239,13 +244,13 @@ public class RecommendedCourseService {
     }
 
     private List<Candidate> selectRestaurants(List<Candidate> candidates, List<String> descriptions,
-                                              String breweryName, String liquorTypes) {
+                                              String breweryName, String liquorTypeLabel) {
         List<Candidate> restaurants = candidates.stream()
                 .filter(c -> c.type() == CourseStopType.RESTAURANT).toList();
         if (restaurants.isEmpty()) return List.of();
         int finalRadius = selectionRadius(restaurants);
         return restaurants.stream().filter(c -> distance(c) <= finalRadius)
-                .map(candidate -> enrichRestaurant(candidate, descriptions, breweryName, liquorTypes))
+                .map(candidate -> enrichRestaurant(candidate, descriptions, breweryName, liquorTypeLabel))
                 .sorted(Comparator.comparing((Candidate c) -> c.pairingComment() != null).reversed()
                         .thenComparingInt(RecommendedCourseService::distance)
                         .thenComparing(c -> c.content().getContentId()))
@@ -253,29 +258,29 @@ public class RecommendedCourseService {
     }
 
     private Candidate enrichRestaurant(Candidate candidate, List<String> descriptions, String breweryName,
-                                       String liquorTypes) {
+                                       String liquorTypeLabel) {
         KakaoPlaceMatch kakao = candidate.kakaoPlaceMatch() != null ? candidate.kakaoPlaceMatch()
                 : kakaoPlaceSearchClient.findPlace(candidate.content().getTitle(),
                         candidate.content().getLatitude(), candidate.content().getLongitude()).orElse(null);
         String externalCategory = kakao == null ? null : kakao.categoryName();
         String pairing = FoodPairingMatcher.pairingComment(
-                descriptions, candidate.content(), breweryName, liquorTypes, externalCategory).orElse(null);
+                descriptions, candidate.content(), breweryName, liquorTypeLabel, externalCategory).orElse(null);
         return new Candidate(candidate.distanceMeters(), candidate.content(), candidate.type(), pairing, kakao);
     }
 
-    private String pairingLiquorTypes(String breweryId, List<ProductCardResponse> products) {
-        List<String> types = liquorTypeRepository.findDistinctTypesByBreweryIdIn(List.of(breweryId)).stream()
+    private String liquorTypeLabel(String breweryId, List<ProductCardResponse> products) {
+        List<String> fromProducts = products.stream()
+                .flatMap(product -> product.liquorTypes().stream())
+                .map(Enum::name)
+                .distinct()
+                .toList();
+        if (!fromProducts.isEmpty()) return String.join("·", fromProducts);
+
+        List<String> fromBrewery = liquorTypeRepository.findDistinctTypesByBreweryIdIn(List.of(breweryId)).stream()
                 .map(row -> ((Enum<?>) row[1]).name())
                 .distinct()
                 .toList();
-        if (types.isEmpty()) {
-            types = products.stream()
-                    .flatMap(product -> product.liquorTypes().stream())
-                    .map(Enum::name)
-                    .distinct()
-                    .toList();
-        }
-        return String.join("·", types);
+        return fromBrewery.isEmpty() ? "주종" : String.join("·", fromBrewery);
     }
 
     private int selectionRadius(List<Candidate> categoryCandidates) {
@@ -307,7 +312,8 @@ public class RecommendedCourseService {
                 : firstNonBlank(matchedContent.getFirstImage(), matchedContent.getFirstImage2());
         return new CourseStopResponse(1, CourseStopType.BREWERY, brewery.getBreweryId(), brewery.getBusinessName(),
                 brewery.getAddress(), brewery.getLatitude(), brewery.getLongitude(), 0, image, "여행의 시작",
-                "양조장", null, brewery.getKakaoPlaceUrl(), null, featureTags, liquorTypes);
+                "양조장", null, ContactSupplementPolicy.kakaoPlaceUrl(
+                        brewery.getBreweryId(), brewery.getKakaoPlaceUrl()), null, featureTags, liquorTypes);
     }
 
     private CourseStopResponse toStop(int order, Candidate candidate) {

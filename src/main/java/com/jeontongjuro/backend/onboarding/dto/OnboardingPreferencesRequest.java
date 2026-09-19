@@ -11,6 +11,12 @@ public record OnboardingPreferencesRequest(
         List<String> regions,
         @Schema(description = "선호 도수 구간: LIGHT(7도 미만), MEDIUM(7~20도 미만), STRONG(20도 이상)",
                 example = "MEDIUM")
-        String alcoholLevel
+        String alcoholLevel,
+        @Schema(description = "선호 맛 태그. 상큼함·달콤함·드라이·산미·부드러움·묵직함·깔끔함·향긋함",
+                example = "[\"상큼함\", \"깔끔함\"]")
+        List<String> flavors
 ) {
+    public OnboardingPreferencesRequest(List<String> liquorTypes, List<String> regions, String alcoholLevel) {
+        this(liquorTypes, regions, alcoholLevel, List.of());
+    }
 }

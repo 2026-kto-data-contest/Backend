@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.verify;
+import static org.mockito.ArgumentMatchers.any;
 
 import com.jeontongjuro.backend.auth.kakao.KakaoClient;
 import com.jeontongjuro.backend.auth.config.AppProperties;
@@ -33,7 +34,7 @@ class AuthServiceTest {
         sessionService = mock(SessionService.class);
         termsService = mock(TermsService.class);
         authService = new AuthService(kakaoClient,
-                new KakaoProperties("rest-key", "client-secret", "http://localhost:8080/callback"),
+                new KakaoProperties("rest-key", "client-secret", "http://localhost:8080/callback", "admin-key"),
                 new AppProperties("http://localhost:5173", List.of("http://localhost:5173")),
                 memberRepository, sessionService, termsService);
     }
@@ -99,5 +100,39 @@ class AuthServiceTest {
         when(member.consumePostLoginReturnTo()).thenReturn("/breweries/BRW-001");
 
         assertThat(authService.continueLogin(10L)).isEqualTo("/breweries/BRW-001");
+    }
+
+    @Test
+    void withdrawDeletesMemberAccount() {
+        Member member = mock(Member.class);
+        when(member.getKakaoUserId()).thenReturn(123L);
+        when(memberRepository.findById(10L)).thenReturn(Optional.of(member));
+
+        authService.withdraw(10L);
+
+        verify(memberRepository).delete(member);
+        verify(kakaoClient).unlink(123L);
+    }
+
+    @Test
+    void withdrawnKakaoAccountCanRegisterAgainWithTheSameKakaoUserId() {
+        KakaoUserResponse user = new KakaoUserResponse(123L,
+                new KakaoUserResponse.KakaoAccount(
+                        new KakaoUserResponse.Profile("재가입 사용자"), "rejoin@example.com"));
+        Member recreatedMember = mock(Member.class);
+        when(recreatedMember.getId()).thenReturn(11L);
+        when(kakaoClient.getUser("code")).thenReturn(user);
+        when(memberRepository.findByKakaoUserId(123L)).thenReturn(Optional.empty());
+        when(memberRepository.save(any(Member.class))).thenReturn(recreatedMember);
+        when(termsService.hasRequiredAgreements(11L)).thenReturn(false);
+        when(sessionService.create(recreatedMember)).thenReturn("rejoin-session");
+
+        var result = authService.completeLogin("code", "/");
+
+        assertThat(result.sessionToken()).isEqualTo("rejoin-session");
+        assertThat(result.nextPath()).isEqualTo("/terms");
+        var recreated = org.mockito.ArgumentCaptor.forClass(Member.class);
+        verify(memberRepository, org.mockito.Mockito.atLeastOnce()).save(recreated.capture());
+        assertThat(recreated.getAllValues().get(0).getKakaoUserId()).isEqualTo(123L);
     }
 }

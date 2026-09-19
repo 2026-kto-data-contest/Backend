@@ -14,6 +14,7 @@ import com.jeontongjuro.backend.brewery.VisitState;
 import com.jeontongjuro.backend.brewery.query.BreweryListItemResponse;
 import com.jeontongjuro.backend.brewery.query.BreweryQueryService;
 import com.jeontongjuro.backend.brewery.query.BrewerySearchCondition;
+import com.jeontongjuro.backend.brewery.query.MainImageResponse;
 import com.jeontongjuro.backend.global.web.PageResponse;
 import com.jeontongjuro.backend.liquortype.LiquorType;
 import com.jeontongjuro.backend.member.Member;
@@ -21,6 +22,7 @@ import com.jeontongjuro.backend.member.MemberRepository;
 import com.jeontongjuro.backend.onboarding.OnboardingPreference;
 import com.jeontongjuro.backend.onboarding.OnboardingPreferenceRepository;
 import com.jeontongjuro.backend.onboarding.PreferenceCategory;
+import com.jeontongjuro.backend.product.query.SensoryTag;
 import com.jeontongjuro.backend.security.session.AuthenticatedMember;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -110,6 +112,23 @@ class RecommendedBreweryApiTest {
     }
 
     @Test
+    void excludesBreweriesWithoutIntroductionAndPrioritizesCompleteCards() throws Exception {
+        stubAllBreweries(List.of(
+                brewery("BRW-A", "가양조", "수도권", LiquorType.탁주),
+                breweryWithoutImage("BRW-B", "나양조", "충청", LiquorType.약주),
+                breweryWithoutIntroduction("BRW-C", "다양조", "전라", LiquorType.청주),
+                brewery("BRW-D", "라양조", "경상", LiquorType.증류주)));
+
+        mockMvc.perform(get("/api/v1/recommendations/breweries").param("size", "10"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(3))
+                .andExpect(jsonPath("$.content.length()").value(3))
+                .andExpect(jsonPath("$.content[0].breweryId").value("BRW-A"))
+                .andExpect(jsonPath("$.content[1].breweryId").value("BRW-D"))
+                .andExpect(jsonPath("$.content[2].breweryId").value("BRW-B"));
+    }
+
+    @Test
     void memberWithoutOnboardingGetsSameFixedOrderAsAnonymous() throws Exception {
         stubAllBreweries(List.of(
                 brewery("BRW-A", "가양조", "수도권", LiquorType.탁주),
@@ -128,50 +147,84 @@ class RecommendedBreweryApiTest {
     }
 
     @Test
-    void liquorMatchRanksAboveRegionMatch() throws Exception {
+    void selectedRegionComesFirstAndNationwideFillsShortage() throws Exception {
         stubAllBreweries(List.of(
-                brewery("BRW-A", "가양조", "충청", LiquorType.탁주),   // 주종만 일치 → 2점
-                brewery("BRW-B", "나양조", "제주")));                  // 지역만 일치 → 1점
+                brewery("BRW-A", "가양조", "충청", LiquorType.탁주),   // 선택 지역 밖
+                brewery("BRW-B", "나양조", "제주")));                  // 선택 지역
         Member member = createOnboardedMember(910000002L, "취향 회원");
         savePreference(member, PreferenceCategory.LIQUOR_TYPE, "탁주");
         savePreference(member, PreferenceCategory.REGION, "제주");
 
         mockMvc.perform(get("/api/v1/recommendations/breweries").with(auth(member)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.content[0].breweryId").value("BRW-A"))
-                .andExpect(jsonPath("$.content[1].breweryId").value("BRW-B"));
+                .andExpect(jsonPath("$.totalElements").value(2))
+                .andExpect(jsonPath("$.content[0].breweryId").value("BRW-B"));
+    }
+
+    @Test
+    void selectedRegionFillsHomeSixCardsWhenRegionalResultIsOne() throws Exception {
+        stubAllBreweries(List.of(
+                brewery("BRW-A", "가양조", "제주"),
+                brewery("BRW-B", "나양조", "충청"),
+                brewery("BRW-C", "다양조", "전라"),
+                brewery("BRW-D", "라양조", "경상"),
+                brewery("BRW-E", "마양조", "강원"),
+                brewery("BRW-F", "바양조", "부산"),
+                brewery("BRW-G", "사양조", "울산")));
+        Member member = createOnboardedMember(910000010L, "홈 추천 보완 회원");
+        savePreference(member, PreferenceCategory.REGION, "제주");
+
+        mockMvc.perform(get("/api/v1/recommendations/breweries").with(auth(member)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(6))
+                .andExpect(jsonPath("$.content.length()").value(6))
+                .andExpect(jsonPath("$.content[0].breweryId").value("BRW-A"));
     }
 
     @Test
     void bothAxesMatchRanksHighest() throws Exception {
         stubAllBreweries(List.of(
-                brewery("BRW-A", "가양조", "충청", LiquorType.탁주),               // 주종만 → 2점
-                brewery("BRW-B", "나양조", "제주"),                                // 지역만 → 1점
-                brewery("BRW-C", "다양조", "제주", LiquorType.탁주)));             // 둘 다 → 3점
+                brewery("BRW-A", "가양조", "충청", LiquorType.탁주),               // 선택 지역 밖
+                brewery("BRW-B", "나양조", "제주"),                                // 지역 일치
+                brewery("BRW-C", "다양조", "제주", LiquorType.탁주)));             // 지역·주종 일치
         Member member = createOnboardedMember(910000003L, "완전일치 회원");
         savePreference(member, PreferenceCategory.LIQUOR_TYPE, "탁주");
         savePreference(member, PreferenceCategory.REGION, "제주");
 
         mockMvc.perform(get("/api/v1/recommendations/breweries").with(auth(member)))
                 .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(3))
                 .andExpect(jsonPath("$.content[0].breweryId").value("BRW-C"));
     }
 
     @Test
-    void zeroScoreBreweriesAreStillIncludedNotFiltered() throws Exception {
+    void selectedRegionKeepsRegionalResultsAheadOfNationwideFallback() throws Exception {
         stubAllBreweries(List.of(
-                brewery("BRW-A", "가양조", "제주", LiquorType.탁주),  // 3점
-                brewery("BRW-B", "나양조", "충청")));                 // 0점(주종·지역 둘 다 불일치)
+                brewery("BRW-A", "가양조", "제주", LiquorType.탁주),  // 선택 지역
+                brewery("BRW-B", "나양조", "충청")));                 // 선택 지역 밖
         Member member = createOnboardedMember(910000004L, "필터아님 회원");
         savePreference(member, PreferenceCategory.LIQUOR_TYPE, "탁주");
         savePreference(member, PreferenceCategory.REGION, "제주");
 
         mockMvc.perform(get("/api/v1/recommendations/breweries").with(auth(member)))
                 .andExpect(status().isOk())
-                // 필터가 아니라 정렬 — 0점인 BRW-B도 결과에 포함되고 totalElements도 전체 2건.
                 .andExpect(jsonPath("$.totalElements").value(2))
                 .andExpect(jsonPath("$.content.length()").value(2))
-                .andExpect(jsonPath("$.content[1].breweryId").value("BRW-B"));
+                .andExpect(jsonPath("$.content[0].breweryId").value("BRW-A"));
+    }
+
+    @Test
+    void flavorPreferenceRanksMatchingBreweryFirst() throws Exception {
+        stubAllBreweries(List.of(
+                breweryWithFlavors("BRW-A", "가양조", "충청", List.of(SensoryTag.달콤함), LiquorType.탁주),
+                breweryWithFlavors("BRW-B", "나양조", "충청", List.of(SensoryTag.상큼함), LiquorType.탁주)));
+        Member member = createOnboardedMember(910000009L, "맛 취향 회원");
+        savePreference(member, PreferenceCategory.LIQUOR_TYPE, "탁주");
+        savePreference(member, PreferenceCategory.FLAVOR, "상큼함");
+
+        mockMvc.perform(get("/api/v1/recommendations/breweries").with(auth(member)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[0].breweryId").value("BRW-B"));
     }
 
     @Test
@@ -316,11 +369,38 @@ class RecommendedBreweryApiTest {
 
     private BreweryListItemResponse brewery(String breweryId, String businessName, String region,
                                             LiquorType... liquorTypes) {
+        return breweryWithFlavors(breweryId, businessName, region, List.of(), liquorTypes);
+    }
+
+    private BreweryListItemResponse breweryWithFlavors(String breweryId, String businessName, String region,
+                                                        List<SensoryTag> flavorTags, LiquorType... liquorTypes) {
         return new BreweryListItemResponse(
-                breweryId, businessName, null, region,
+                breweryId, businessName, "충북", region,
                 VisitState.UNKNOWN, VisitState.UNKNOWN,
                 List.of(), null, null,
-                List.of(liquorTypes), null, null, List.of(), null);
+                List.of(liquorTypes),
+                new MainImageResponse("https://example.com/test.jpg", null, false),
+                "청주시", flavorTags, "테스트 양조장 소개");
+    }
+
+    private BreweryListItemResponse breweryWithoutImage(String breweryId, String businessName, String region,
+                                                         LiquorType... liquorTypes) {
+        BreweryListItemResponse complete = brewery(breweryId, businessName, region, liquorTypes);
+        return new BreweryListItemResponse(
+                complete.breweryId(), complete.businessName(), complete.sido(), complete.region(),
+                complete.reservationVisitState(), complete.alwaysVisitState(), complete.featureTags(),
+                complete.alcoholMin(), complete.alcoholMax(), complete.liquorTypes(), null,
+                complete.sigungu(), complete.flavorTags(), complete.introduction());
+    }
+
+    private BreweryListItemResponse breweryWithoutIntroduction(String breweryId, String businessName,
+                                                                String region, LiquorType... liquorTypes) {
+        BreweryListItemResponse complete = brewery(breweryId, businessName, region, liquorTypes);
+        return new BreweryListItemResponse(
+                complete.breweryId(), complete.businessName(), complete.sido(), complete.region(),
+                complete.reservationVisitState(), complete.alwaysVisitState(), complete.featureTags(),
+                complete.alcoholMin(), complete.alcoholMax(), complete.liquorTypes(), complete.mainImage(),
+                complete.sigungu(), complete.flavorTags(), null);
     }
 
     private Member createMember(Long kakaoUserId, String nickname) {

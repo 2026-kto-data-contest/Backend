@@ -9,7 +9,7 @@ import java.time.ZoneOffset;
 public record RecentSearchResponse(
         @Schema(description = "최근 검색 기록 ID", example = "1") Long recentSearchId,
         @Schema(description = "검색 대상 유형", example = "BREWERY") RecentSearchType type,
-        @Schema(description = "검색 대상 식별자", example = "BRW-001") String id,
+        @Schema(description = "검색 대상 식별자. KEYWORD는 저장된 검색어와 동일", example = "BRW-001") String id,
         @Schema(description = "사용자가 입력한 검색어", example = "갈기산") String keyword,
         @Schema(description = "화면 표시명", example = "갈기산") String displayName,
         @Schema(description = "마지막 검색 시각(UTC, Z 오프셋 포함)", example = "2026-08-23T08:00:00Z")

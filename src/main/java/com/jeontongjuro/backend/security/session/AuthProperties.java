@@ -4,11 +4,15 @@ import java.time.Duration;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 @ConfigurationProperties(prefix = "app.auth")
-public record AuthProperties(Duration sessionDuration, boolean cookieSecure, String cookieSameSite) {
+public record AuthProperties(Duration sessionDuration, Duration oauthStateDuration,
+                             boolean cookieSecure, String cookieSameSite) {
 
     public AuthProperties {
         if (sessionDuration == null || sessionDuration.isZero() || sessionDuration.isNegative()) {
             throw new IllegalArgumentException("app.auth.session-duration은 0보다 커야 합니다.");
+        }
+        if (oauthStateDuration == null || oauthStateDuration.isZero() || oauthStateDuration.isNegative()) {
+            throw new IllegalArgumentException("app.auth.oauth-state-duration은 0보다 커야 합니다.");
         }
         if (cookieSameSite == null || cookieSameSite.isBlank()) {
             throw new IllegalArgumentException("app.auth.cookie-same-site는 비어 있을 수 없습니다.");

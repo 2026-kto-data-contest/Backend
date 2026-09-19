@@ -7,6 +7,7 @@
 ```dotenv
 KAKAO_REST_API_KEY=<카카오 앱 REST API 키>
 KAKAO_CLIENT_SECRET=<카카오 앱 Client Secret>
+KAKAO_ADMIN_KEY=<카카오 앱 Admin Key>
 ```
 
 `.env`에는 실제 비밀값이 들어가므로 Git에 커밋하지 않는다.
@@ -26,6 +27,10 @@ DB·Redirect URI·프론트 주소·세션 기간·쿠키 보안은 `application
 `AUTH_COOKIE_SECURE=true`, `AUTH_COOKIE_SAME_SITE=None`을 함께 사용한다.
 운영·개발 서버에서는 `.env` 파일을 배포하지 않고 배포 플랫폼의 Secret/Environment Variables에 등록한다.
 운영 환경에서는 HTTPS를 사용하고 `AUTH_COOKIE_SECURE=true`로 설정한다.
+
+회원 탈퇴 시 `KAKAO_ADMIN_KEY`가 설정되어 있으면 카카오의 `/v1/user/unlink`를 호출해
+카카오 계정 연결도 해제한다. Admin Key가 없는 환경에서는 로컬 회원 정보만 삭제되므로,
+운영 Render 환경변수에 Admin Key를 등록해야 카카오 연결 해제까지 수행된다.
 
 ## 카카오 디벨로퍼스 설정
 
@@ -54,7 +59,7 @@ DB·Redirect URI·프론트 주소·세션 기간·쿠키 보안은 `application
 
 ```properties
 FRONTEND_BASE_URL=http://localhost:5173
-FRONTEND_ALLOWED_ORIGINS=http://localhost:5173,https://jeontongjuro.vercel.app
+FRONTEND_ALLOWED_ORIGINS=http://localhost:5173,https://jeontongjuro.com
 KAKAO_REDIRECT_URI=http://localhost:8080/api/v1/auth/kakao/callback
 ```
 
@@ -63,10 +68,21 @@ KAKAO_REDIRECT_URI=http://localhost:8080/api/v1/auth/kakao/callback
 전체 URL을 전달하는 경우에도 `FRONTEND_ALLOWED_ORIGINS`에 등록된 origin만 허용되며,
 그 외 주소는 `/`로 대체된다.
 
-현재 프론트와 백엔드가 서로 다른 최상위 도메인(`vercel.app`와 `onrender.com`)에
-있으므로, 위 설정만으로 iPhone Safari의 세션 쿠키 차단 문제는 해결되지 않는다.
-세션 문제의 근본 해결에는 동일 상위 도메인/프록시 구성 또는 쿠키 없는 토큰 인증
-전환이 필요하다.
+현재 운영 배포의 Redirect URI는 아래 값을 사용한다. Render의 환경변수와 카카오
+디벨로퍼스 콘솔에 등록한 값이 한 글자까지 동일해야 하며, 백엔드는 인가 요청과
+토큰 교환 모두 이 환경변수 값을 사용한다.
+
+```properties
+FRONTEND_BASE_URL=https://jeontongjuro.com
+FRONTEND_ALLOWED_ORIGINS=https://jeontongjuro.com
+KAKAO_REDIRECT_URI=https://jeontongjuro.com/api/v1/auth/kakao/callback
+AUTH_COOKIE_SECURE=true
+AUTH_COOKIE_SAME_SITE=None
+```
+
+운영 프론트는 `jeontongjuro.com`에서 제공하며 `/api` 요청은 Vercel 프록시를 통해
+Render 백엔드로 전달된다. 따라서 브라우저의 프론트 origin과 카카오 Redirect URI는
+커스텀 도메인을 사용하고, Render 서비스 주소는 프록시 목적지로만 유지한다.
 
 카카오 로그인 취소 또는 오류가 발생하면 프론트의 `/login`으로 돌아간다.
 

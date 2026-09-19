@@ -107,6 +107,17 @@ class SearchSuggestionApiTest {
     }
 
     @Test
+    @DisplayName("노출 제외 양조장: 양조장명도 그 제품명도 자동완성에 없다(이슈 #141)")
+    void excludedBreweryAndItsProductsAreNotSuggested() throws Exception {
+        assertThat(breweryRepository.existsById("BRW-040"))
+                .as("제외 대상 행이 실제로 적재돼 있어야 이 단정이 공허하지 않다").isTrue();
+        product("BRW-040", 90777, "제외양조장전용막걸리", "완결된 소개 문장이다.", null, "500ml", "Y");
+
+        assertThat(suggestionDisplayNames("울진술도가")).isEmpty();
+        assertThat(suggestionDisplayNames("제외양조장전용막걸리")).isEmpty();
+    }
+
+    @Test
     @DisplayName("글자 수 제한: 트림 후 21자 → 400 INVALID_QUERY_PARAMETER")
     void keywordOverTwentyCharsAfterTrimReturns400() throws Exception {
         String twentyOneChars = "가".repeat(21);
@@ -242,6 +253,12 @@ class SearchSuggestionApiTest {
 
     /** ProductQueryApiTest.product()와 동일 패턴 — product_raw(한글 키) + product_brewery_link를 함께 심는다. */
     private void product(int ref, String name, String description, String awards, String volume, String saleYn) {
+        product(BREWERY, ref, name, description, awards, volume, saleYn);
+    }
+
+    /** 소속 양조장을 지정하는 오버로드 — 노출 제외 양조장의 제품을 심을 때만 쓴다. */
+    private void product(String breweryId, int ref, String name, String description, String awards,
+                         String volume, String saleYn) {
         ObjectNode node = objectMapper.createObjectNode();
         node.put("제품명", name);
         if (description != null) {
@@ -261,7 +278,7 @@ class SearchSuggestionApiTest {
         } catch (IOException e) {
             throw new IllegalStateException("합성 product_raw 역직렬화 실패", e);
         }
-        linkRepository.save(ProductBreweryLink.of(ref, name, "원문양조장", "원문양조장", BREWERY, JoinSource.AUTO,
+        linkRepository.save(ProductBreweryLink.of(ref, name, "원문양조장", "원문양조장", breweryId, JoinSource.AUTO,
                 null, null));
     }
 

@@ -3,7 +3,7 @@
 저장소 밖(개인 지침)에만 있던 부채 목록을 코드·DB로 검증해 저장소에 고정한다.
 세션이 "부채 #23" 식으로 언급하면 이 파일에서 근거·상태·위험도를 찾을 수 있어야 한다.
 
-- **최종 검증**: 2026-09-13 / HEAD `830a6f4`
+- **최종 검증**: 2026-09-16 / HEAD `72e88a1`
 - **직전 전수 검증 결과**: 실재 20 · 해소 6 · 오등록 1 (합 27) — 이번 검증도 번호부채 상태는 동일, 앵커 라인·근거만 갱신
 - ★위 집계는 표 행 수 기준이다. `5–7` 1행이 부채 3개를 묶은 표기라 부채 번호 기준 개수와는 다르다(다음 세션이 다시 셀 것에 대비해 명기)
 - **2026-08-31 추가**: 문서·Swagger 대조 세션에서 #f 신규 등록(mainImage OpenAPI 스키마 자기모순, 문서 전용·앵커 없음).
@@ -34,9 +34,9 @@
 - 상태: `실재`=코드/DB에 그대로 있음 · `해소`=해결됨 · `오등록`=애초에 부채 아님
 - 위험도: `[지금]` 현재 동작에 영향 · `[트리거]` 특정 행동을 하면 터짐 · `[심사까지X]` 10월 심사까지 무영향
 
-## 열린 부채 (실재 22건)
+## 열린 부채 (실재 21건)
 
-### [트리거] 10건 — 무엇을 하면 무엇이 터지는가
+### [트리거] 9건 — 무엇을 하면 무엇이 터지는가
 
 | # | 제목 | 근거 위치 | 트리거 → 결과 |
 |---|---|---|---|
@@ -48,8 +48,8 @@
 | 24 | 외부 API 타임아웃·재시도 전무 | `CollectHttpConfig`:22 | 외부 API 호출(collect/process) → 무한 대기 또는 1회 실패로 단계 사망 |
 | 25 | 구조 봉인 12/13 시드 — 잔여 1종은 Postgres 게이트 테스트에서만 검증 | `*SeedFileStructureTest`류 10파일(11시드) + `LiquorKeywordDictionaryTest`(1시드, DB-free 단위) | `recommended_brewery_seed` 구조 오류 → `FixedBrewerySeed`는 fail-fast하지만 유일 소비 테스트 `RecommendedBreweryApiTest`가 `@EnabledIf(LocalPostgres)`라 Postgres 미기동 CI를 무검증 통과 |
 | a | prod 프로파일 활성화 미고정 | `application-prod.yml` / main resources grep 0 | env(`SPRING_PROFILES_ACTIVE`) 누락 배포 → prod 하드닝 조용히 미적용 |
-| c | `RecommendedBreweryService` 무필터 조회가 100곳 상한을 무경계 전제(100 상한 실경유는 `BreweryQueryService.MAX_SIZE`) | `RecommendedBreweryService`:56(죽은 상수, Javadoc `{@value}`만 참조), :86(호출부) / `BreweryQueryService`:99-101(`searchAllCards`) / `RecommendedCourseListService`:26 / `HomeService`:41 | 양조장이 100곳 초과 → 상위 100곳만 정렬되고 `slice`의 `totalElements`도 100으로 거짓 보고. 현재 59곳이라 무해, 경계 방어(assert/log) 없음 |
-| g | 양조장 상세 조회가 `listProducts(breweryId, 0, 100)` 고정 인자로 전체 제품 파이프라인을 매번 재실행(무경계 전제, #c와 동일 패턴) | `BreweryQueryService.java`:222 | 양조장당 노출 제품이 100건 초과 → 뒤 제품 누락(현재 최대 19건 BRW-020, 평균 5.92건, 전체 349건/59곳이라 무해). #c와 마찬가지로 경계 방어(assert/log) 없음 |
+| c | `RecommendedBreweryService` 무필터 조회가 100곳 상한을 무경계 전제(100 상한 실경유는 `BreweryQueryService.MAX_SIZE`) | `RecommendedBreweryService`:53(죽은 상수, Javadoc `{@value}`만 참조), :108(호출부) / `BreweryQueryService`:102(`searchAllCards`) / `RecommendedCourseListService`:26 / `HomeService`:41 | 양조장이 100곳 초과 → 상위 100곳만 정렬되고 `slice`의 `totalElements`도 100으로 거짓 보고. 현재 59곳이라 무해, 경계 방어(assert/log) 없음 |
+| g | ~~양조장 상세 조회가 `listProducts(breweryId, 0, 100)` 고정 인자로 전체 제품 파이프라인을 매번 재실행(무경계 전제, #c와 동일 패턴)~~ **해소**(PR #184) | `BreweryQueryService.java`:270 → `ProductQueryService.cardsForVerifiedBrewery`:91 | 상세 경로가 페이지네이션 없이 전량 반환으로 바뀌어 100 상한 자체가 사라졌다(누락 불가). 동일 패턴은 `RecommendedCourseService`:80에 남아 있으나 그쪽은 #c 범위다 |
 
 > #25 잔여 미봉인 1종: `recommended_brewery_seed`. `liquor_keyword`는 2026-08-28 재검증에서 `LiquorKeywordDictionaryTest`(`new LiquorKeywordDictionary(new ObjectMapper())`, Spring 컨텍스트 불필요)가 DB 없이 사전 파싱 자체를 검증한다는 사실을 확인해 실질 봉인으로 재분류했다. `recommended_brewery_seed`도 `FixedBrewerySeed` 생성자가 동일하게 fail-fast하지만, 저장소의 `@SpringBootTest` 29개 전부가 `@EnabledIf(LocalPostgres#isUp)`로 게이트돼 있어 그 생성자가 Postgres 없이는 아예 실행되지 않는다 — 그래서 이 한 종만 [트리거]에 남긴다.
 
@@ -69,10 +69,10 @@
 | 20 | manual_override recheck 7건(검수 대기) | `manual_override WHERE recheck_flag` |
 | 26 | _meta 드리프트(서사 vs entries 불일치) | `liquor_manual_seed`(74 vs 221) · `manual_override_seed`(9 vs 14) |
 | b | 시드 값 회귀 방어 부분(봉인은 구조만, count 불변 값오류 미방어) | 골든 테스트는 출력 count만 핀 |
-| d | 검색 정규화 2벌(목록 API keyword 필터는 특수문자 미제거) | `SearchKeyword.normalizeTarget`:53-54(제거+NFC+lower) vs `BrewerySearchCondition.normalizeKeyword`:152(NFC만) + `BreweryQuerySpecifications.keywordContains`:121(lower만, 제거 없음) |
-| e | `OpenApiDocumentationTest`가 신규 7개 엔드포인트 중 1개(`/api/v1/breweries`)만 핀 | `OpenApiDocumentationTest.java`:42 — 나머지 6개(상세·제품·metadata·search·suggestions·recommendations)는 그룹 소속을 회귀 방어하는 테스트가 없다 |
+| d | 검색 정규화 2벌(목록 API keyword 필터는 특수문자 미제거) | `SearchKeyword.normalizeTarget`:53-54(제거+NFC+lower) vs `BrewerySearchCondition.normalizeKeyword`:152(NFC만) + `BreweryQuerySpecifications.keywordContains`:129(lower만, 제거 없음) |
+| e | `OpenApiDocumentationTest`가 조회 계열 공개 엔드포인트 19개 중 1개(`/api/v1/breweries`)만 핀 | `OpenApiDocumentationTest.java`:42 — 나머지 18개(상세·제품·추천코스·metadata·search·suggestions·recommendations 2종·home·지도 8종)는 그룹 소속을 회귀 방어하는 테스트가 없다. 2026-08-31 등록 시 7개 중 6개 미방어였고 지도·home·추천코스 등이 늘어 현재 19개 중 18개다 |
 | f | `mainImage` 필드 OpenAPI 3.1 스키마 자기모순(`type:"null"` + `$ref` 형제, 실제 응답은 정상) | springdoc-openapi 3.0.3 출력(`/v3/api-docs`) · `BreweryListItemResponse.java`:60 · `BreweryDetailResponse.java`:59 (둘 다 object 타입 `$ref` 필드에 `@Schema(nullable=true)`) |
-| h | 지도 카테고리 축약 매핑이 2벌(CourseStopType 8종→노출 5종) | `MapPlaceService.java`:143(categoryOf, private, 목록:62에서 사용) / `MapPlaceDetailService.java`:93(categoryOf, 상세 신규 중복:73, 규칙은 현재 동일) — 트리거: 한쪽만 수정 시 같은 장소가 목록·상세에서 다른 category로 나오나 두 클래스가 서로 참조하지 않아 컴파일·테스트 모두 안 잡음(관련 #d와 동형, MapPlaceService는 타인 소유·categoryOf private이라 재사용 불가) |
+| h | 지도 카테고리 축약 매핑이 2벌(CourseStopType 8종→노출 5종) | `MapPlaceService.java`:146(categoryOf, private, 목록:64에서 사용) / `MapPlaceDetailService.java`:97(categoryOf, 상세 신규 중복:77, 규칙은 현재 동일) — 트리거: 한쪽만 수정 시 같은 장소가 목록·상세에서 다른 category로 나오나 두 클래스가 서로 참조하지 않아 컴파일·테스트 모두 안 잡음(관련 #d와 동형, MapPlaceService는 타인 소유·categoryOf private이라 재사용 불가) |
 
 > #f `mainImage`: OpenAPI 3.1(JSON Schema 2020-12)에서 `$ref`는 형제 키워드와 AND로 합성된다. object 타입 `$ref` 필드에
 > `@Schema(nullable=true)`를 붙이면 springdoc 3.0.3이 3.1 출력 모드에서 `anyOf:[{$ref},{type:"null"}]` 대신

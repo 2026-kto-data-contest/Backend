@@ -230,8 +230,12 @@ CREATE TABLE IF NOT EXISTS recent_search (
     searched_at  TIMESTAMP NOT NULL,
     CONSTRAINT fk_recent_search_member FOREIGN KEY (member_id) REFERENCES member_account (id) ON DELETE CASCADE,
     CONSTRAINT uq_recent_search_member_target UNIQUE (member_id, search_type, target_id),
-    CONSTRAINT ck_recent_search_type CHECK (search_type IN ('BREWERY', 'PRODUCT', 'REGION'))
+    CONSTRAINT ck_recent_search_type CHECK (search_type IN ('BREWERY', 'PRODUCT', 'REGION', 'KEYWORD'))
 );
+-- 기존 DB에도 KEYWORD를 반영한다(schema.sql은 재기동마다 실행되므로 멱등).
+ALTER TABLE recent_search DROP CONSTRAINT IF EXISTS ck_recent_search_type;
+ALTER TABLE recent_search ADD CONSTRAINT ck_recent_search_type
+    CHECK (search_type IN ('BREWERY', 'PRODUCT', 'REGION', 'KEYWORD'));
 CREATE INDEX IF NOT EXISTS ix_recent_search_member_latest
     ON recent_search (member_id, searched_at DESC, id DESC);
 
@@ -246,12 +250,12 @@ CREATE TABLE IF NOT EXISTS member_preference (
     CONSTRAINT fk_member_preference_member FOREIGN KEY (member_id)
         REFERENCES member_account (id) ON DELETE CASCADE,
     CONSTRAINT uq_member_preference_member_value UNIQUE (member_id, category, value),
-    CONSTRAINT ck_member_preference_category CHECK (category IN ('LIQUOR_TYPE', 'REGION', 'ALCOHOL_LEVEL'))
+    CONSTRAINT ck_member_preference_category CHECK (category IN ('LIQUOR_TYPE', 'REGION', 'ALCOHOL_LEVEL', 'FLAVOR'))
 );
 CREATE INDEX IF NOT EXISTS ix_member_preference_member ON member_preference (member_id);
 ALTER TABLE member_preference DROP CONSTRAINT IF EXISTS ck_member_preference_category;
 ALTER TABLE member_preference ADD CONSTRAINT ck_member_preference_category
-    CHECK (category IN ('LIQUOR_TYPE', 'REGION', 'ALCOHOL_LEVEL'));
+    CHECK (category IN ('LIQUOR_TYPE', 'REGION', 'ALCOHOL_LEVEL', 'FLAVOR'));
 
 CREATE TABLE IF NOT EXISTS auth_session (
     id            BIGSERIAL PRIMARY KEY,

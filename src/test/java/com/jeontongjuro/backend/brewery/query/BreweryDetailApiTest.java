@@ -115,7 +115,7 @@ class BreweryDetailApiTest {
     }
 
     @Test
-    @DisplayName("존재하는 양조장 → 200 + 상세 필드(주소·좌표·홈페이지) 노출, 기본 계약")
+    @DisplayName("존재하는 양조장 → 200 + 상세 필드와 정적 이미지 절대 URL 노출")
     void existingBreweryReturnsDetail() throws Exception {
         mockMvc.perform(get("/api/v1/breweries/{id}", BREWERY_D))
                 .andExpect(status().isOk())
@@ -126,7 +126,20 @@ class BreweryDetailApiTest {
                 // 이 픽스처는 지오코딩을 돌리지 않아 값이 null일 수 있어 exists()로는 검증하지 않는다)
                 .andExpect(jsonPath("$.featureTags").isArray())
                 .andExpect(jsonPath("$.liquorTypes").isArray())
-                .andExpect(jsonPath("$.mainImage").doesNotExist());
+                .andExpect(jsonPath("$.mainImage.url").value("http://localhost/recommended-courses/BRW-001.png"))
+                .andExpect(jsonPath("$.mainImage.copyright").doesNotExist())
+                .andExpect(jsonPath("$.mainImage.modifiable").value(false));
+    }
+
+    @Test
+    @DisplayName("관광공사 원본 이미지가 있으면 로컬 정적 이미지보다 우선한다")
+    void tourApiImagePrecedesLocalStaticImage() throws Exception {
+        attachImage(BREWERY_D, "CONTENT-D", "http://img/tour-api.jpg", "Type1");
+
+        mockMvc.perform(get("/api/v1/breweries/{id}", BREWERY_D))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.mainImage.url").value("http://img/tour-api.jpg"))
+                .andExpect(jsonPath("$.mainImage.copyright").value("Type1"));
     }
 
     @Test
@@ -143,6 +156,18 @@ class BreweryDetailApiTest {
     @DisplayName("없는 breweryId → 404 + 에러 바디 {code=BREWERY_NOT_FOUND, message}")
     void unknownBreweryReturns404() throws Exception {
         mockMvc.perform(get("/api/v1/breweries/{id}", "BRW-999"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("BREWERY_NOT_FOUND"))
+                .andExpect(jsonPath("$.message").isNotEmpty());
+    }
+
+    @Test
+    @DisplayName("노출 제외 양조장 상세 → 행은 있어도 404 BREWERY_NOT_FOUND(이슈 #141)")
+    void excludedBreweryReturns404() throws Exception {
+        assertThat(breweryRepository.existsById("BRW-040"))
+                .as("제외 대상 행이 실제로 적재돼 있어야 이 단정이 공허하지 않다").isTrue();
+
+        mockMvc.perform(get("/api/v1/breweries/{id}", "BRW-040"))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value("BREWERY_NOT_FOUND"))
                 .andExpect(jsonPath("$.message").isNotEmpty());
@@ -244,8 +269,8 @@ class BreweryDetailApiTest {
     @Test
     @DisplayName("대표 이미지 Type3 → modifiable=false(변경금지)")
     void mainImageType3NotModifiable() throws Exception {
-        attachImage(BREWERY_B, "CONTENT-B", "http://img/type3.jpg", "Type3");
-        mockMvc.perform(get("/api/v1/breweries/{id}", BREWERY_B))
+        attachImage(BREWERY_A, "CONTENT-B", "http://img/type3.jpg", "Type3");
+        mockMvc.perform(get("/api/v1/breweries/{id}", BREWERY_A))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.mainImage.copyright").value("Type3"))
                 .andExpect(jsonPath("$.mainImage.modifiable").value(false));
@@ -254,8 +279,8 @@ class BreweryDetailApiTest {
     @Test
     @DisplayName("content_id는 있으나 first_image 공백 → mainImage=null(빈 URL 미노출)")
     void mainImageNullWhenBlankImage() throws Exception {
-        attachImage(BREWERY_C, "CONTENT-C", "   ", "Type1");
-        mockMvc.perform(get("/api/v1/breweries/{id}", BREWERY_C))
+        attachImage(BREWERY_A, "CONTENT-C", "   ", "Type1");
+        mockMvc.perform(get("/api/v1/breweries/{id}", BREWERY_A))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.mainImage").doesNotExist());
     }
@@ -263,7 +288,7 @@ class BreweryDetailApiTest {
     @Test
     @DisplayName("content_id 미매칭 → mainImage=null")
     void mainImageNullWhenNoContent() throws Exception {
-        mockMvc.perform(get("/api/v1/breweries/{id}", BREWERY_D))
+        mockMvc.perform(get("/api/v1/breweries/{id}", BREWERY_A))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.mainImage").doesNotExist());
     }
@@ -335,6 +360,71 @@ class BreweryDetailApiTest {
 
         JsonNode body = readBody(get("/api/v1/breweries/{id}", BREWERY_A));
         assertThat(body.get("kakaoPlaceUrl").asText()).isEqualTo("http://place.map.kakao.com/17112140");
+    }
+
+    // ── 연락처 보충(ContactSupplementPolicy) ─────────────────────────────────────
+    @Test
+    @DisplayName("보충 대상(BRW-051) → 실측 전화·출처 KAKAO·place URL 노출. DB 원문은 null 그대로")
+    void contactSupplementAppliedToTargetBrewery() throws Exception {
+        Brewery before = breweryRepository.findById("BRW-051").orElseThrow();
+        assertThat(before.getPhone()).as("DB가 비어 있어야 보충 단정이 공허하지 않다").isNull();
+        assertThat(before.getKakaoPlaceUrl()).isNull();
+
+        JsonNode body = readBody(get("/api/v1/breweries/{id}", "BRW-051"));
+        assertThat(body.get("phone").asText()).isEqualTo("061-393-4141");
+        assertThat(body.get("phoneSource").asText()).isEqualTo("KAKAO");
+        assertThat(body.get("kakaoPlaceUrl").asText()).isEqualTo("http://place.map.kakao.com/17505055");
+
+        // 이 정책의 계약: 응답만 바뀌고 DB는 그대로다(UnreachableHomepagePolicy의 원문 보존과 같은 사상).
+        Brewery after = breweryRepository.findById("BRW-051").orElseThrow();
+        assertThat(after.getPhone()).isNull();
+        assertThat(after.getPhoneSource()).isNull();
+        assertThat(after.getKakaoPlaceUrl()).isNull();
+    }
+
+    @Test
+    @DisplayName("재수집으로 실제 값이 들어오면 보충은 비켜난다. 대상 밖 양조장은 영향 없음")
+    void contactSupplementYieldsToRealDataAndSkipsOthers() throws Exception {
+        Brewery b = breweryRepository.findById("BRW-051").orElseThrow();
+        b.applyPhone("061-999-9999", com.jeontongjuro.backend.brewery.PhoneSource.TOUR);
+        b.applyKakaoPlaceUrl("http://place.map.kakao.com/99999999");
+        breweryRepository.save(b);
+
+        JsonNode body = readBody(get("/api/v1/breweries/{id}", "BRW-051"));
+        assertThat(body.get("phone").asText()).isEqualTo("061-999-9999");
+        assertThat(body.get("phoneSource").asText()).isEqualTo("TOUR");
+        assertThat(body.get("kakaoPlaceUrl").asText()).isEqualTo("http://place.map.kakao.com/99999999");
+
+        JsonNode other = readBody(get("/api/v1/breweries/{id}", BREWERY_D));
+        assertThat(other.get("phone").isNull()).as("대상 밖은 비어 있는 그대로다").isTrue();
+        assertThat(other.get("phoneSource").isNull()).isTrue();
+        assertThat(other.get("kakaoPlaceUrl").isNull()).isTrue();
+    }
+
+    // ── 홈페이지 미노출 게이팅(UnreachableHomepagePolicy) ─────────────────────────
+    @Test
+    @DisplayName("접속 불가 확인된 양조장 → homepageUrl=null(키는 존재). DB 원문은 보존한다")
+    void unreachableHomepageIsNulledButKeyRemains() throws Exception {
+        for (String id : new String[] {"BRW-001", "BRW-021", "BRW-051", "BRW-053", "BRW-054"}) {
+            assertThat(breweryRepository.findById(id).orElseThrow().getHomepageUrl())
+                    .as("%s은 DB에 홈페이지 원문을 그대로 갖고 있어야 이 단정이 공허하지 않다", id)
+                    .isNotBlank();
+
+            JsonNode body = readBody(get("/api/v1/breweries/{id}", id));
+            assertThat(body.has("homepageUrl")).as("%s: 키는 응답에 남는다", id).isTrue();
+            assertThat(body.get("homepageUrl").isNull()).as("%s: 값만 null", id).isTrue();
+        }
+    }
+
+    @Test
+    @DisplayName("목록 밖 양조장 → homepageUrl 그대로 노출 + 스킴 없는 원문에 http:// 보정 유지")
+    void reachableHomepageKeepsSchemeCorrection() throws Exception {
+        // BRW-003(안동소주)의 골든 원문은 스킴 없는 www.… — 게이팅이 스킴 보정을 삼키지 않는지 같이 본다.
+        String raw = breweryRepository.findById("BRW-003").orElseThrow().getHomepageUrl();
+        assertThat(raw).as("스킴 없는 원문이어야 보정 검증이 성립한다").doesNotStartWith("http");
+
+        JsonNode body = readBody(get("/api/v1/breweries/{id}", "BRW-003"));
+        assertThat(body.get("homepageUrl").asText()).isEqualTo("http://" + raw);
     }
 
     // ── 체험 프로그램 편입(#52, additive) ─────────────────────────────────────────

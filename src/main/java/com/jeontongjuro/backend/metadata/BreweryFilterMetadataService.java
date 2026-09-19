@@ -1,6 +1,7 @@
 package com.jeontongjuro.backend.metadata;
 
 import com.jeontongjuro.backend.brewery.BreweryRepository;
+import com.jeontongjuro.backend.brewery.BreweryVisibilityPolicy;
 import com.jeontongjuro.backend.brewery.query.Region;
 import com.jeontongjuro.backend.liquortype.LiquorType;
 import com.jeontongjuro.backend.liquortype.ProductLiquorTypeRepository;
@@ -13,7 +14,8 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * 홈 화면 양조장 필터 칩(주종·지역) 메타데이터 조회. 무인자 — 필터 파라미터를 받지 않는다.
  * <p>
- * 각 축의 개수는 전체 59 기준 독립 집계다(지역 선택 상태에서 주종 개수를 재계산하는 동적 필터가 아니다).
+ * 각 축의 개수는 노출 대상 양조장 기준 독립 집계다(지역 선택 상태에서 주종 개수를 재계산하는 동적 필터가
+ * 아니다). 노출 제외 양조장({@link BreweryVisibilityPolicy})은 두 축 모두 집계 원천에서 빠진다.
  * GROUP BY 집계 2쿼리(지역 1 + 주종 1)로 6+8=14개 칩을 전부 구한다.
  */
 @Service
@@ -57,7 +59,8 @@ public class BreweryFilterMetadataService {
     /** GROUP BY 결과에 없는 주종(취급 브루어리 0, 예: 기타)은 맵에도 없다 — 호출자가 0으로 채운다. */
     private Map<LiquorType, Long> liquorTypeCounts() {
         Map<LiquorType, Long> counts = new EnumMap<>(LiquorType.class);
-        for (Object[] row : liquorTypeRepository.countDistinctBreweriesByLiquorType()) {
+        for (Object[] row : liquorTypeRepository.countDistinctBreweriesByLiquorType(
+                BreweryVisibilityPolicy.excludedBreweryIds())) {
             counts.put((LiquorType) row[0], (Long) row[1]);
         }
         return counts;
@@ -69,7 +72,7 @@ public class BreweryFilterMetadataService {
      */
     private Map<Region, Long> regionCounts() {
         Map<Region, Long> counts = new EnumMap<>(Region.class);
-        for (Object[] row : breweryRepository.countGroupByRegion()) {
+        for (Object[] row : breweryRepository.countGroupByRegion(BreweryVisibilityPolicy.excludedBreweryIds())) {
             String raw = (String) row[0];
             if (raw == null) {
                 continue;
