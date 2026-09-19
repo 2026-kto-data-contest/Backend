@@ -59,7 +59,7 @@ DB·Redirect URI·프론트 주소·세션 기간·쿠키 보안은 `application
 
 ```properties
 FRONTEND_BASE_URL=http://localhost:5173
-FRONTEND_ALLOWED_ORIGINS=http://localhost:5173,https://jeontongjuro.vercel.app
+FRONTEND_ALLOWED_ORIGINS=http://localhost:5173,https://jeontongjuro.com
 KAKAO_REDIRECT_URI=http://localhost:8080/api/v1/auth/kakao/callback
 ```
 
@@ -73,17 +73,16 @@ KAKAO_REDIRECT_URI=http://localhost:8080/api/v1/auth/kakao/callback
 토큰 교환 모두 이 환경변수 값을 사용한다.
 
 ```properties
-FRONTEND_BASE_URL=https://jeontongjuro.vercel.app
-FRONTEND_ALLOWED_ORIGINS=https://jeontongjuro.vercel.app
-KAKAO_REDIRECT_URI=https://jeontongjuro.vercel.app/api/v1/auth/kakao/callback
+FRONTEND_BASE_URL=https://jeontongjuro.com
+FRONTEND_ALLOWED_ORIGINS=https://jeontongjuro.com
+KAKAO_REDIRECT_URI=https://jeontongjuro.com/api/v1/auth/kakao/callback
 AUTH_COOKIE_SECURE=true
 AUTH_COOKIE_SAME_SITE=None
 ```
 
-현재 프론트와 백엔드가 서로 다른 최상위 도메인(`vercel.app`와 `onrender.com`)에
-있으므로, 위 설정만으로 iPhone Safari의 세션 쿠키 차단 문제는 해결되지 않는다.
-세션 문제의 근본 해결에는 동일 상위 도메인/프록시 구성 또는 쿠키 없는 토큰 인증
-전환이 필요하다.
+운영 프론트는 `jeontongjuro.com`에서 제공하며 `/api` 요청은 Vercel 프록시를 통해
+Render 백엔드로 전달된다. 따라서 브라우저의 프론트 origin과 카카오 Redirect URI는
+커스텀 도메인을 사용하고, Render 서비스 주소는 프록시 목적지로만 유지한다.
 
 카카오 로그인 취소 또는 오류가 발생하면 프론트의 `/login`으로 돌아간다.
 

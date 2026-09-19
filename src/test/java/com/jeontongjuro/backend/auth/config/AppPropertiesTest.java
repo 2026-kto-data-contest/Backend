@@ -10,8 +10,8 @@ class AppPropertiesTest {
     @Test
     void allowsAbsoluteReturnToOnlyForConfiguredFrontendOrigin() {
         AppProperties properties = new AppProperties(
-                "https://jeontongjuro.vercel.app",
-                List.of("https://jeontongjuro.vercel.app", "http://localhost:5173"));
+                "https://jeontongjuro.com",
+                List.of("https://jeontongjuro.com", "http://localhost:5173"));
 
         assertThat(properties.safeReturnTo("http://localhost:5173/breweries?region=충청"))
                 .isEqualTo("http://localhost:5173/breweries?region=충청");
@@ -22,8 +22,8 @@ class AppPropertiesTest {
     @Test
     void rejectsUnconfiguredAbsoluteReturnTo() {
         AppProperties properties = new AppProperties(
-                "https://jeontongjuro.vercel.app",
-                List.of("https://jeontongjuro.vercel.app"));
+                "https://jeontongjuro.com",
+                List.of("https://jeontongjuro.com"));
 
         assertThat(properties.safeReturnTo("https://evil.example/phishing")).isEqualTo("/");
         assertThat(properties.safeReturnTo("//evil.example/phishing")).isEqualTo("/");
