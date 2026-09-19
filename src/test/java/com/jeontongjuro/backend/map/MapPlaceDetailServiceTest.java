@@ -78,6 +78,32 @@ class MapPlaceDetailServiceTest {
     }
 
     @Test
+    @DisplayName("양조장 BRW-051: 값이 없어도 보충 전화와 place 딥링크를 내린다(좌표 링크 폴백이 아니다)")
+    void breweryContactSupplementAppliedToTarget() {
+        Brewery brewery = brewery("BRW-051", "청산녹수", "35.301", "126.786");
+        when(breweryRepository.findById("BRW-051")).thenReturn(Optional.of(brewery));
+
+        MapPlaceDetailResponse response = service.findDetail("BRW-051", "BREWERY");
+
+        assertThat(response.phone()).isEqualTo("061-393-4141");
+        assertThat(response.kakaoMapUrl()).isEqualTo("http://place.map.kakao.com/17505055");
+    }
+
+    @Test
+    @DisplayName("양조장 BRW-051: 실제 값이 들어오면 보충은 비켜난다")
+    void breweryContactSupplementYieldsToRealData() {
+        Brewery brewery = brewery("BRW-051", "청산녹수", "35.301", "126.786");
+        brewery.applyPhone("061-999-9999", PhoneSource.KAKAO);
+        brewery.applyKakaoPlaceUrl("http://place.map.kakao.com/99999999");
+        when(breweryRepository.findById("BRW-051")).thenReturn(Optional.of(brewery));
+
+        MapPlaceDetailResponse response = service.findDetail("BRW-051", "BREWERY");
+
+        assertThat(response.phone()).isEqualTo("061-999-9999");
+        assertThat(response.kakaoMapUrl()).isEqualTo("http://place.map.kakao.com/99999999");
+    }
+
+    @Test
     @DisplayName("양조장: content_id로 매칭된 tour_content의 first_image를 대표 이미지로 쓴다")
     void breweryImageComesFromMatchedTourContent() {
         Brewery brewery = brewery("BRW-103", "이미지 양조장", "36.5", "127.5");

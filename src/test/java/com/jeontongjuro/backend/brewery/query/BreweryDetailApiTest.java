@@ -351,6 +351,45 @@ class BreweryDetailApiTest {
         assertThat(body.get("kakaoPlaceUrl").asText()).isEqualTo("http://place.map.kakao.com/17112140");
     }
 
+    // ── 연락처 보충(ContactSupplementPolicy) ─────────────────────────────────────
+    @Test
+    @DisplayName("보충 대상(BRW-051) → 실측 전화·출처 KAKAO·place URL 노출. DB 원문은 null 그대로")
+    void contactSupplementAppliedToTargetBrewery() throws Exception {
+        Brewery before = breweryRepository.findById("BRW-051").orElseThrow();
+        assertThat(before.getPhone()).as("DB가 비어 있어야 보충 단정이 공허하지 않다").isNull();
+        assertThat(before.getKakaoPlaceUrl()).isNull();
+
+        JsonNode body = readBody(get("/api/v1/breweries/{id}", "BRW-051"));
+        assertThat(body.get("phone").asText()).isEqualTo("061-393-4141");
+        assertThat(body.get("phoneSource").asText()).isEqualTo("KAKAO");
+        assertThat(body.get("kakaoPlaceUrl").asText()).isEqualTo("http://place.map.kakao.com/17505055");
+
+        // 이 정책의 계약: 응답만 바뀌고 DB는 그대로다(UnreachableHomepagePolicy의 원문 보존과 같은 사상).
+        Brewery after = breweryRepository.findById("BRW-051").orElseThrow();
+        assertThat(after.getPhone()).isNull();
+        assertThat(after.getPhoneSource()).isNull();
+        assertThat(after.getKakaoPlaceUrl()).isNull();
+    }
+
+    @Test
+    @DisplayName("재수집으로 실제 값이 들어오면 보충은 비켜난다. 대상 밖 양조장은 영향 없음")
+    void contactSupplementYieldsToRealDataAndSkipsOthers() throws Exception {
+        Brewery b = breweryRepository.findById("BRW-051").orElseThrow();
+        b.applyPhone("061-999-9999", com.jeontongjuro.backend.brewery.PhoneSource.TOUR);
+        b.applyKakaoPlaceUrl("http://place.map.kakao.com/99999999");
+        breweryRepository.save(b);
+
+        JsonNode body = readBody(get("/api/v1/breweries/{id}", "BRW-051"));
+        assertThat(body.get("phone").asText()).isEqualTo("061-999-9999");
+        assertThat(body.get("phoneSource").asText()).isEqualTo("TOUR");
+        assertThat(body.get("kakaoPlaceUrl").asText()).isEqualTo("http://place.map.kakao.com/99999999");
+
+        JsonNode other = readBody(get("/api/v1/breweries/{id}", BREWERY_D));
+        assertThat(other.get("phone").isNull()).as("대상 밖은 비어 있는 그대로다").isTrue();
+        assertThat(other.get("phoneSource").isNull()).isTrue();
+        assertThat(other.get("kakaoPlaceUrl").isNull()).isTrue();
+    }
+
     // ── 홈페이지 미노출 게이팅(UnreachableHomepagePolicy) ─────────────────────────
     @Test
     @DisplayName("접속 불가 확인된 양조장 → homepageUrl=null(키는 존재). DB 원문은 보존한다")
