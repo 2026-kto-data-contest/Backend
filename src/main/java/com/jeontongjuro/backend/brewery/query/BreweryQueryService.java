@@ -259,13 +259,9 @@ public class BreweryQueryService {
         List<FeatureType> tags = featureTagsFor(one).getOrDefault(breweryId, List.of());
         List<LiquorType> liquors = liquorTypesFor(one).getOrDefault(breweryId, List.of());
         AbvRange abv = abvFor(one).get(breweryId);
-        // 상세 화면도 백엔드가 보유한 정적 이미지를 우선 사용한다.
-        // 정적 이미지가 없는 양조장만 기존 TourAPI 이미지를 fallback으로 유지해
-        // 상세 응답의 외부 이미지 의존성과 첫 로딩 지연을 줄인다.
-        MainImageResponse image = localMainImage(breweryId);
-        if (image == null) {
-            image = mainImagesFor(one).get(breweryId);
-        }
+        // 관광공사 원본을 우선 사용하고, 원본이 없는 경우에만 백엔드 정적 이미지를 fallback으로 사용한다.
+        MainImageResponse image = preferredMainImage(
+                breweryId, mainImagesFor(one).get(breweryId));
         String overview = overviewFor(brewery);
         List<ExperienceResponse> experiences = experiencesFor(breweryId);
         List<ProductCardResponse> products = productQueryService.cardsForVerifiedBrewery(breweryId);
@@ -444,13 +440,12 @@ public class BreweryQueryService {
         return byBrewery;
     }
 
-    /**
-     * 목록과 상세가 같은 대표 이미지를 사용하도록 로컬 정적 이미지를 우선하고,
-     * 로컬 이미지가 없는 양조장만 관광공사 이미지를 fallback으로 사용한다.
-     */
+    /** 관광공사 원본을 우선하고, 원본이 없을 때만 로컬 정적 이미지를 fallback으로 사용한다. */
     private MainImageResponse preferredMainImage(String breweryId, MainImageResponse tourImage) {
-        MainImageResponse localImage = localMainImage(breweryId);
-        return localImage == null ? tourImage : localImage;
+        if (tourImage != null) {
+            return tourImage;
+        }
+        return localMainImage(breweryId);
     }
 
     /**

@@ -132,6 +132,17 @@ class BreweryDetailApiTest {
     }
 
     @Test
+    @DisplayName("관광공사 원본 이미지가 있으면 로컬 정적 이미지보다 우선한다")
+    void tourApiImagePrecedesLocalStaticImage() throws Exception {
+        attachImage(BREWERY_D, "CONTENT-D", "http://img/tour-api.jpg", "Type1");
+
+        mockMvc.perform(get("/api/v1/breweries/{id}", BREWERY_D))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.mainImage.url").value("http://img/tour-api.jpg"))
+                .andExpect(jsonPath("$.mainImage.copyright").value("Type1"));
+    }
+
+    @Test
     @DisplayName("리스트에 없는 상세 필드: 주소·좌표·홈페이지 키가 실제로 존재한다")
     void detailExposesFieldsAbsentFromList() throws Exception {
         JsonNode body = readBody(get("/api/v1/breweries/{id}", BREWERY_D));
