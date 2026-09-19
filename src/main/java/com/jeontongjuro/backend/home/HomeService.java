@@ -13,12 +13,16 @@ import com.jeontongjuro.backend.member.MemberRepository;
 import com.jeontongjuro.backend.recommendation.RecommendedBreweryService;
 import com.jeontongjuro.backend.recommendation.RecommendedCourseListService;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 @Transactional(readOnly = true)
 public class HomeService {
 
@@ -27,15 +31,36 @@ public class HomeService {
     static final int LIQUOR_SECTION_SIZE = 3;
     static final int REGION_SECTION_SIZE = 3;
     static final int RECOMMENDED_SECTION_SIZE = 6;
+    static final long PUBLIC_HOME_CACHE_TTL_MILLIS = 2 * 60 * 1000L;
 
     private final BreweryQueryService breweryQueryService;
     private final MemberRepository memberRepository;
     private final RecommendedCourseListService recommendedCourseListService;
     private final RecommendedBreweryService recommendedBreweryService;
+    private final Map<PublicHomeCacheKey, CachedHomeResponse> publicHomeCache = new ConcurrentHashMap<>();
 
     public HomeResponse getHome(Long memberId, String region, String liquorType) {
         String selectedRegion = defaultIfBlank(region, DEFAULT_REGION);
         String selectedLiquorType = defaultIfBlank(liquorType, DEFAULT_LIQUOR_TYPE);
+
+        if (memberId == null) {
+            PublicHomeCacheKey cacheKey = new PublicHomeCacheKey(selectedRegion, selectedLiquorType);
+            CachedHomeResponse cached = publicHomeCache.get(cacheKey);
+            if (cached != null && !cached.isExpired()) {
+                log.debug("Home cache hit: region={}, liquorType={}", selectedRegion, selectedLiquorType);
+                return cached.response();
+            }
+
+            HomeResponse response = loadHome(memberId, selectedRegion, selectedLiquorType);
+            publicHomeCache.put(cacheKey, CachedHomeResponse.of(response));
+            log.debug("Home cache miss: region={}, liquorType={}", selectedRegion, selectedLiquorType);
+            return response;
+        }
+
+        return loadHome(memberId, selectedRegion, selectedLiquorType);
+    }
+
+    private HomeResponse loadHome(Long memberId, String selectedRegion, String selectedLiquorType) {
         Member member = findMember(memberId);
 
         List<BreweryListItemResponse> allBreweries = breweryQueryService.searchAllCards();
@@ -57,6 +82,20 @@ public class HomeService {
                 new HomeBrewerySectionResponse(selectedLiquorType, liquorBreweries),
                 new HomeBrewerySectionResponse(selectedRegion, regionBreweries),
                 recommendedBreweries);
+    }
+
+    private record PublicHomeCacheKey(String region, String liquorType) {
+    }
+
+    private record CachedHomeResponse(HomeResponse response, long expiresAtMillis) {
+
+        static CachedHomeResponse of(HomeResponse response) {
+            return new CachedHomeResponse(response, System.currentTimeMillis() + PUBLIC_HOME_CACHE_TTL_MILLIS);
+        }
+
+        boolean isExpired() {
+            return System.currentTimeMillis() >= expiresAtMillis;
+        }
     }
 
     private Member findMember(Long memberId) {

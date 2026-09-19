@@ -6,6 +6,7 @@ import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
+import static org.mockito.Mockito.times;
 
 import com.jeontongjuro.backend.brewery.query.BreweryQueryService;
 import com.jeontongjuro.backend.global.web.PageResponse;
@@ -67,6 +68,30 @@ class HomeServiceTest {
         verifyNoMoreInteractions(recommendedBreweryService);
         verify(recommendedCourseListService).homePreviewFrom(response.recommendedBreweries());
         verifyNoMoreInteractions(recommendedCourseListService);
+    }
+
+    @Test
+    void anonymousHomeIsReusedForTheSameFiltersWithinCacheTtl() {
+        homeService.getHome(null, "수도권", "탁주");
+        homeService.getHome(null, "수도권", "탁주");
+
+        verify(breweryQueryService, times(1)).searchAllCards();
+        verify(recommendedBreweryService, times(1))
+                .recommendFromCandidates(null, List.of(), 0, 6);
+        verify(recommendedCourseListService, times(1)).homePreviewFrom(any());
+    }
+
+    @Test
+    void authenticatedHomeDoesNotUsePublicCache() {
+        Member member = Member.createKakao(1L, "수빈", "subin@example.com");
+        given(memberRepository.findById(1L)).willReturn(Optional.of(member));
+
+        homeService.getHome(1L, "수도권", "탁주");
+        homeService.getHome(1L, "수도권", "탁주");
+
+        verify(breweryQueryService, times(2)).searchAllCards();
+        verify(recommendedBreweryService, times(2))
+                .recommendFromCandidates(1L, List.of(), 0, 6);
     }
 
     @Test
