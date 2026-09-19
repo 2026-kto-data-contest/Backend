@@ -27,7 +27,7 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 @RequiredArgsConstructor
 public class SecurityConfig {
 
-    private static final String PRODUCTION_FRONTEND_ORIGIN = "https://jeontongjuro.vercel.app";
+    private static final String PRODUCTION_FRONTEND_ORIGIN = "https://jeontongjuro.com";
 
     private static final String[] PUBLIC_ENDPOINTS = {
             "/actuator/health",
