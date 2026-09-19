@@ -26,14 +26,15 @@ import org.springframework.transaction.annotation.Transactional;
  * 추천 양조장 조회(GET /api/v1/recommendations/breweries) — 홈 「추천 양조장」 섹션, 검색
  * 「이런 양조장은 어때요?」 그리드, 두 화면의 '더보기' 전체 목록이 공유하는 단일 진입점이다.
  * <p>
- * 온보딩 완료 회원은 선택 지역을 모집단으로 제한한 뒤 주종·맛 취향을 반영해 재정렬한다.
+ * 온보딩 완료 회원은 선택 지역을 우선 모집단으로 삼아 주종·맛 취향을 반영해 재정렬하고,
+ * 결과가 요청 수보다 적으면 전국 추천으로 부족분을 보완한다.
  * <pre>
  * ① 비로그인                    → 고정 목록 순서
  * ② 로그인 + 온보딩 전(취향 없음)  → 고정 목록 순서 (①과 결과 동일)
  * ③ 로그인 + 온보딩 후(취향 있음)  → 취향 점수 내림차순(동점 시 상호명 가나다순)
  * </pre>
- * 맛 취향은 카드의 {@code flavorTags}와 직접 매칭한다. 지역을 선택한 회원에게는 선택 지역 밖의
- * 양조장을 추천하지 않아 수도권 선택 후 강원 양조장이 노출되는 문제를 막는다.
+ * 맛 취향은 카드의 {@code flavorTags}와 직접 매칭한다. 지역을 선택한 회원에게는 선택 지역 결과를
+ * 먼저 노출하고, 해당 결과가 부족한 경우에만 전국 추천을 뒤에 붙인다.
  * <p>
  * 카드 매핑은 새로 만들지 않는다 — {@link BreweryQueryService#search}가 이미 하는 태그·도수·주종·이미지·
  * 시군구·맛태그·소개 배치 조회 결과({@link BreweryListItemResponse})를 그대로 재사용해 순서만 바꾼다.
@@ -126,9 +127,8 @@ public class RecommendedBreweryService {
      * 확정한다({@link BreweryQueryService}의 FIXED_SORT와 같은 서열). 점수는 항목당 한 번만 계산해 정렬
      * 비교마다 재계산하지 않는다(비교 횟수는 O(n log n), 점수 계산은 O(n)).
      * <p>
-     * 부족분 채우기: 정렬 결과가 이미 전체 모집단이라 요청 size가 모집단 이하면 항상 충분하다 — 모집단
-     * ({@value #POPULATION_FETCH_SIZE}곳 이하)보다 큰 size를 요청받는 경우에만 아래 채우기가 실행되고,
-     * 그 경우에도 고정 목록이 같은 모집단에서 뽑히므로 중복 제거 후 실제로 추가되는 항목은 없다.
+     * 지역 결과가 요청 size보다 적으면 전국 고정 추천 순서에서 아직 노출하지 않은 양조장을 붙여
+     * 부족분을 보완한다. 지역 결과가 먼저 유지되므로 지역 선호를 우선하면서 홈 카드 수를 채운다.
      */
     private List<BreweryListItemResponse> tasteRanked(Long memberId, List<BreweryListItemResponse> all,
                                                        int requestedSize) {
@@ -152,7 +152,7 @@ public class RecommendedBreweryService {
         if (ranked.size() >= requestedSize) {
             return ranked;
         }
-        return fillWithFixedList(ranked, regional, requestedSize);
+        return fillWithFixedList(ranked, all, requestedSize);
     }
 
     private List<BreweryListItemResponse> fillWithFixedList(List<BreweryListItemResponse> ranked,
