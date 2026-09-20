@@ -2,6 +2,7 @@ package com.jeontongjuro.backend.map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -10,6 +11,8 @@ import com.jeontongjuro.backend.brewery.BreweryRepository;
 import com.jeontongjuro.backend.brewery.CoordSource;
 import com.jeontongjuro.backend.brewery.PhoneSource;
 import com.jeontongjuro.backend.brewery.VisitState;
+import com.jeontongjuro.backend.course.KakaoPlaceMatch;
+import com.jeontongjuro.backend.course.KakaoPlaceSearchClient;
 import com.jeontongjuro.backend.global.error.InvalidQueryParameterException;
 import com.jeontongjuro.backend.tour.TourContent;
 import com.jeontongjuro.backend.tour.TourContentRepository;
@@ -35,13 +38,15 @@ class MapPlaceDetailServiceTest {
 
     private BreweryRepository breweryRepository;
     private TourContentRepository tourContentRepository;
+    private KakaoPlaceSearchClient kakaoPlaceSearchClient;
     private MapPlaceDetailService service;
 
     @BeforeEach
     void setUp() {
         breweryRepository = mock(BreweryRepository.class);
         tourContentRepository = mock(TourContentRepository.class);
-        service = new MapPlaceDetailService(breweryRepository, tourContentRepository);
+        kakaoPlaceSearchClient = mock(KakaoPlaceSearchClient.class);
+        service = new MapPlaceDetailService(breweryRepository, tourContentRepository, kakaoPlaceSearchClient);
         // 정적 사진 fallback이 현재 origin을 읽으므로 요청 컨텍스트를 묶는다(프로덕션은 컨트롤러 경유).
         RequestContextHolder.setRequestAttributes(
                 new ServletRequestAttributes(new MockHttpServletRequest()));
@@ -178,6 +183,8 @@ class MapPlaceDetailServiceTest {
     void restaurantSplitsCategoryAndSubcategory() {
         stubTour(tour("2788304", "39", "테스트 한식당", "경기도 테스트시 테스트로 1", "2층",
                 "A05020100", "http://img/rest.jpg"));
+        when(kakaoPlaceSearchClient.findPlace(any(), any(), any()))
+                .thenReturn(Optional.of(new KakaoPlaceMatch("1", "https://place/1", "한식", "02-1234-5678")));
 
         MapPlaceDetailResponse response = service.findDetail("2788304", "RESTAURANT");
 
@@ -185,7 +192,7 @@ class MapPlaceDetailServiceTest {
         assertThat(response.categoryName()).isEqualTo("음식점");
         assertThat(response.subcategoryName()).isEqualTo("한식");
         assertThat(response.address()).isEqualTo("경기도 테스트시 테스트로 1 2층");
-        assertThat(response.phone()).isNull();
+        assertThat(response.phone()).isEqualTo("02-1234-5678");
         assertThat(response.distanceMeters()).isNull();
         assertThat(response.imageUrl()).isEqualTo("http://img/rest.jpg");
         assertThat(response.kakaoMapUrl())

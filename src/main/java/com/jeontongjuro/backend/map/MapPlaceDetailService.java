@@ -6,11 +6,14 @@ import com.jeontongjuro.backend.brewery.BreweryStaticImageUrls;
 import com.jeontongjuro.backend.brewery.BreweryVisibilityPolicy;
 import com.jeontongjuro.backend.brewery.ContactSupplementPolicy;
 import com.jeontongjuro.backend.course.CourseStopType;
+import com.jeontongjuro.backend.course.KakaoPlaceMatch;
+import com.jeontongjuro.backend.course.KakaoPlaceSearchClient;
 import com.jeontongjuro.backend.tour.TourContent;
 import com.jeontongjuro.backend.tour.TourContentRepository;
 import java.math.BigDecimal;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.util.Optional;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -30,11 +33,14 @@ public class MapPlaceDetailService {
 
     private final BreweryRepository breweryRepository;
     private final TourContentRepository tourContentRepository;
+    private final KakaoPlaceSearchClient kakaoPlaceSearchClient;
 
     public MapPlaceDetailService(BreweryRepository breweryRepository,
-                                 TourContentRepository tourContentRepository) {
+                                 TourContentRepository tourContentRepository,
+                                 KakaoPlaceSearchClient kakaoPlaceSearchClient) {
         this.breweryRepository = breweryRepository;
         this.tourContentRepository = tourContentRepository;
+        this.kakaoPlaceSearchClient = kakaoPlaceSearchClient;
     }
 
     public MapPlaceDetailResponse findDetail(String placeId, String categoryValue) {
@@ -96,7 +102,7 @@ public class MapPlaceDetailService {
                 content.getLongitude(),
                 null,
                 joinAddress(content.getAddr1(), content.getAddr2()),
-                null,
+                phoneOf(content),
                 blankToNull(content.getFirstImage()),
                 kakaoMapUrl(null, content.getTitle(), content.getLatitude(), content.getLongitude()));
     }
@@ -176,6 +182,12 @@ public class MapPlaceDetailService {
 
     private String blankToNull(String value) {
         return value == null || value.isBlank() ? null : value;
+    }
+
+    private String phoneOf(TourContent content) {
+        Optional<KakaoPlaceMatch> match = kakaoPlaceSearchClient.findPlace(
+                content.getTitle(), content.getLatitude(), content.getLongitude());
+        return match == null ? null : match.map(KakaoPlaceMatch::phone).orElse(null);
     }
 
     private MapPlaceNotFoundException notFound(String placeId) {

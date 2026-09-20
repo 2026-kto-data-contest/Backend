@@ -10,6 +10,8 @@ import com.jeontongjuro.backend.brewery.Brewery;
 import com.jeontongjuro.backend.brewery.BreweryRepository;
 import com.jeontongjuro.backend.brewery.CoordSource;
 import com.jeontongjuro.backend.brewery.VisitState;
+import com.jeontongjuro.backend.course.KakaoPlaceMatch;
+import com.jeontongjuro.backend.course.KakaoPlaceSearchClient;
 import com.jeontongjuro.backend.global.error.InvalidQueryParameterException;
 import com.jeontongjuro.backend.global.web.PageResponse;
 import com.jeontongjuro.backend.tour.TourContentRepository;
@@ -28,13 +30,15 @@ import org.springframework.web.context.request.ServletRequestAttributes;
 class MapPlaceServiceTest {
     private BreweryRepository breweryRepository;
     private TourContentRepository tourContentRepository;
+    private KakaoPlaceSearchClient kakaoPlaceSearchClient;
     private MapPlaceService service;
 
     @BeforeEach
     void setUp() {
         breweryRepository = mock(BreweryRepository.class);
         tourContentRepository = mock(TourContentRepository.class);
-        service = new MapPlaceService(breweryRepository, tourContentRepository);
+        kakaoPlaceSearchClient = mock(KakaoPlaceSearchClient.class);
+        service = new MapPlaceService(breweryRepository, tourContentRepository, kakaoPlaceSearchClient);
         RequestContextHolder.setRequestAttributes(
                 new ServletRequestAttributes(new MockHttpServletRequest()));
     }
@@ -114,6 +118,23 @@ class MapPlaceServiceTest {
         assertThat(result.totalElements()).isOne();
         assertThat(result.content().get(0).roadAddressName()).isEqualTo("상세주소");
         assertThat(result.content().get(0).categoryName()).isEqualTo("한식");
+    }
+
+    @Test
+    void 지도목록은현재페이지장소의카카오전화번호를보강한다() {
+        TourContent restaurant = tour("restaurant", "39", "식당", "주소", null, "A05020100");
+        when(breweryRepository.findWithinBounds(any(), any(), any(), any())).thenReturn(List.of());
+        when(tourContentRepository.findWithinBoundsAndContentTypeIn(any(), any(), any(), any(), any()))
+                .thenReturn(List.of(restaurant));
+        when(kakaoPlaceSearchClient.findPlace(any(), any(), any()))
+                .thenReturn(java.util.Optional.of(
+                        new KakaoPlaceMatch("1", "https://place/1", "한식", "02-1234-5678")));
+
+        PageResponse<MapPlaceResponse> result = service.find(
+                bd("36"), bd("126"), bd("38"), bd("128"), "RESTAURANT", 0, 20);
+
+        assertThat(result.content()).singleElement().extracting(MapPlaceResponse::phone)
+                .isEqualTo("02-1234-5678");
     }
 
     @Test
