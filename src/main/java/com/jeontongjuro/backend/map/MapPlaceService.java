@@ -5,6 +5,8 @@ import com.jeontongjuro.backend.brewery.BreweryRepository;
 import com.jeontongjuro.backend.brewery.BreweryStaticImageUrls;
 import com.jeontongjuro.backend.brewery.BreweryVisibilityPolicy;
 import com.jeontongjuro.backend.brewery.ContactSupplementPolicy;
+import com.jeontongjuro.backend.course.KakaoPlaceMatch;
+import com.jeontongjuro.backend.course.KakaoPlaceSearchClient;
 import com.jeontongjuro.backend.course.CourseStopType;
 import com.jeontongjuro.backend.global.error.InvalidQueryParameterException;
 import com.jeontongjuro.backend.global.web.PageResponse;
@@ -17,6 +19,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -36,10 +39,13 @@ public class MapPlaceService {
             MapPlaceCategory.TOURIST_ATTRACTION, List.of("12", "14", "15", "28", "38"));
     private final BreweryRepository breweryRepository;
     private final TourContentRepository tourContentRepository;
+    private final KakaoPlaceSearchClient kakaoPlaceSearchClient;
 
-    public MapPlaceService(BreweryRepository breweryRepository, TourContentRepository tourContentRepository) {
+    public MapPlaceService(BreweryRepository breweryRepository, TourContentRepository tourContentRepository,
+                           KakaoPlaceSearchClient kakaoPlaceSearchClient) {
         this.breweryRepository = breweryRepository;
         this.tourContentRepository = tourContentRepository;
+        this.kakaoPlaceSearchClient = kakaoPlaceSearchClient;
     }
 
     public PageResponse<MapPlaceResponse> find(BigDecimal south, BigDecimal west, BigDecimal north, BigDecimal east,
@@ -72,7 +78,7 @@ public class MapPlaceService {
                 .thenComparing(MapPlaceResponse::placeId, Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER)));
         int from = (int) Math.min((long) page * size, places.size());
         int to = (int) Math.min((long) from + size, places.size());
-        return PageResponse.of(places.subList(from, to), page, size, places.size());
+        return PageResponse.of(enrichPhones(places.subList(from, to)), page, size, places.size());
     }
 
     public PageResponse<MapPlaceResponse> search(String keywordValue, String categoryValue,
@@ -106,7 +112,7 @@ public class MapPlaceService {
                 .thenComparing(MapPlaceResponse::placeId, Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER)));
         int from = (int) Math.min((long) page * size, places.size());
         int to = (int) Math.min((long) from + size, places.size());
-        return PageResponse.of(places.subList(from, to), page, size, places.size());
+        return PageResponse.of(enrichPhones(places.subList(from, to)), page, size, places.size());
     }
 
     private String validateKeyword(String raw) {
@@ -168,6 +174,21 @@ public class MapPlaceService {
 
     private String blankToNull(String value) {
         return value == null || value.isBlank() ? null : value;
+    }
+
+    /** 지도에 실제로 반환하는 현재 페이지의 장소만 카카오 전화번호로 보강한다. */
+    private List<MapPlaceResponse> enrichPhones(List<MapPlaceResponse> places) {
+        return places.stream().map(place -> {
+            if (place.category() == MapPlaceCategory.BREWERY || place.phone() != null) {
+                return place;
+            }
+            Optional<KakaoPlaceMatch> match = kakaoPlaceSearchClient.findPlace(
+                    place.placeName(), place.latitude(), place.longitude());
+            String phone = match == null ? null : match.map(KakaoPlaceMatch::phone).orElse(null);
+            return new MapPlaceResponse(place.placeId(), place.placeName(), place.category(), place.categoryName(),
+                    place.distance(), place.roadAddressName(), phone, place.latitude(), place.longitude(),
+                    place.imageUrl());
+        }).toList();
     }
 
     private MapPlaceResponse fromTour(TourContent t, MapPlaceCategory category) {
