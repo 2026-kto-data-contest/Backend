@@ -52,7 +52,7 @@ class MapPlaceServiceTest {
                 .thenReturn(List.of(withImage, withoutImage));
 
         PageResponse<MapPlaceResponse> result = service.find(
-                bd("36"), bd("126"), bd("38"), bd("128"), "BREWERY", null, null, 0, 20);
+                bd("36"), bd("126"), bd("38"), bd("128"), "BREWERY", 0, 20);
 
         assertThat(result.content()).extracting(MapPlaceResponse::imageUrl)
                 .containsExactly("http://localhost/recommended-courses/BRW-001.png", null);
