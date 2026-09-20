@@ -60,6 +60,12 @@ class MapPlaceDetailApiTest {
 
     private static final String BREWERY_WITH_LINK = "BRW-MAPD-1";
     private static final String BREWERY_WITHOUT_LINK = "BRW-MAPD-2";
+    /**
+     * ★여기만 합성 ID(BRW-MAPD-*)가 아니라 실 ID를 쓴다 — 정적 사진
+     * {@code static/recommended-courses/BRW-001.png}이 실제로 있는 양조장이어야
+     * "fallback이 동작하는 상태에서의 두 API 동일성"이 검증된다. 합성 ID면 둘 다 null이라 단정이 공허해진다.
+     */
+    private static final String BREWERY_WITH_STATIC_PNG = "BRW-001";
     private static final String CONTENT_BREWERY_IMAGE = "MAPD-IMG";
     private static final String CONTENT_RESTAURANT = "MAPD-REST";
     private static final String CONTENT_MARKET = "MAPD-MARKET";
@@ -95,6 +101,23 @@ class MapPlaceDetailApiTest {
         linked.applyContentMatch(CONTENT_BREWERY_IMAGE, OffsetDateTime.now(ZoneOffset.UTC));
         breweryRepository.save(linked);
         breweryRepository.save(brewery(BREWERY_WITHOUT_LINK, "링크없는 지도상세 양조장"));
+        // 관광공사 매칭 없음 → 정적 사진 fallback 경로를 타는 양조장.
+        breweryRepository.save(brewery(BREWERY_WITH_STATIC_PNG, "갈기산"));
+    }
+
+    // ── 상세 API와의 대표 사진 동일성 ─────────────────────────────────────────
+    @Test
+    @DisplayName("★같은 breweryId면 상세 API mainImage.url과 지도 상세 imageUrl이 같은 문자열이다")
+    void mapDetailImageUrlEqualsBreweryDetailMainImageUrl() throws Exception {
+        JsonNode breweryDetail = readBody(get("/api/v1/breweries/{id}", BREWERY_WITH_STATIC_PNG));
+        JsonNode mapDetail = readBody(get("/api/v1/map/places/{id}", BREWERY_WITH_STATIC_PNG)
+                .param("category", "BREWERY"));
+
+        String detailUrl = breweryDetail.get("mainImage").get("url").asText();
+        assertThat(detailUrl)
+                .as("정적 사진 fallback이 실제로 동작해야 이 비교가 공허하지 않다")
+                .isEqualTo("http://localhost/recommended-courses/" + BREWERY_WITH_STATIC_PNG + ".png");
+        assertThat(mapDetail.get("imageUrl").asText()).isEqualTo(detailUrl);
     }
 
     // ── 200 계약 ──────────────────────────────────────────────────────────────
