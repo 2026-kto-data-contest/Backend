@@ -181,6 +181,7 @@ CREATE TABLE IF NOT EXISTS member_account (
     email         TEXT,
     role          TEXT      NOT NULL DEFAULT 'USER',
     onboarding_completed BOOLEAN NOT NULL DEFAULT FALSE,
+    initial_onboarding_pending BOOLEAN NOT NULL DEFAULT FALSE,
     post_login_return_to TEXT,
     created_at    TIMESTAMPTZ NOT NULL,
     updated_at    TIMESTAMPTZ NOT NULL,
@@ -188,6 +189,7 @@ CREATE TABLE IF NOT EXISTS member_account (
     CONSTRAINT ck_member_account_role CHECK (role IN ('USER', 'ADMIN'))
 );
 ALTER TABLE member_account ADD COLUMN IF NOT EXISTS post_login_return_to TEXT;
+ALTER TABLE member_account ADD COLUMN IF NOT EXISTS initial_onboarding_pending BOOLEAN NOT NULL DEFAULT FALSE;
 
 -- 기존 TIMESTAMP WITHOUT TIME ZONE 값은 애플리케이션이 UTC LocalDateTime으로 기록했다.
 -- UTC로 명시해 같은 순간의 TIMESTAMPTZ로 바꾸며, 이미 전환된 DB에서는 실행하지 않아 재기동 시 이동을 막는다.
@@ -298,10 +300,10 @@ CREATE TABLE IF NOT EXISTS terms_agreement (
 
 INSERT INTO terms_definition (code, version, title, required, display_order, content_url)
 VALUES
-    ('SERVICE_USE', '1.0', '서비스 이용약관 동의', TRUE, 1, '/terms/service-use'),
-    ('PRIVACY', '1.0', '개인정보 수집 및 이용 동의', TRUE, 2, '/terms/privacy'),
-    ('LOCATION', '1.0', '위치기반 서비스 이용약관', FALSE, 3, '/terms/location'),
-    ('MARKETING', '1.0', '마케팅 정보 수신 동의 (카카오톡, 이메일 등)', FALSE, 4, '/terms/marketing')
+    ('SERVICE_USE', '1.0', '서비스 이용약관 동의', TRUE, 1, 'https://nonstop-platinum-949.notion.site/3e0a70bfeb5d804e8579ffe9e5cebc34?source=copy_link'),
+    ('PRIVACY', '1.0', '개인정보 수집 및 이용 동의', TRUE, 2, 'https://nonstop-platinum-949.notion.site/3e0a70bfeb5d806d9a9fe4e8e2b32788?source=copy_link'),
+    ('LOCATION', '1.0', '위치기반 서비스 이용약관', FALSE, 3, 'https://nonstop-platinum-949.notion.site/3e0a70bfeb5d80b5a0a6df4f9935eb8d?source=copy_link'),
+    ('MARKETING', '1.0', '마케팅 정보 수신 동의 (카카오톡, 이메일 등)', FALSE, 4, 'https://nonstop-platinum-949.notion.site/3e0a70bfeb5d80c2a6e0e1d92f443f57?source=copy_link')
 ON CONFLICT (code, version) DO UPDATE SET
     title = EXCLUDED.title,
     required = EXCLUDED.required,

@@ -2,6 +2,7 @@ package com.jeontongjuro.backend.map;
 
 import com.jeontongjuro.backend.brewery.Brewery;
 import com.jeontongjuro.backend.brewery.BreweryRepository;
+import com.jeontongjuro.backend.brewery.BreweryStaticImageUrls;
 import com.jeontongjuro.backend.brewery.BreweryVisibilityPolicy;
 import com.jeontongjuro.backend.brewery.ContactSupplementPolicy;
 import com.jeontongjuro.backend.course.CourseStopType;
@@ -12,6 +13,7 @@ import com.jeontongjuro.backend.tour.TourContentRepository;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
@@ -49,9 +51,12 @@ public class MapPlaceService {
 
         List<MapPlaceResponse> places = new ArrayList<>();
         if (category == MapPlaceCategory.BREWERY) {
-            breweryRepository.findWithinBounds(bounds.south(), bounds.north(), bounds.west(), bounds.east())
-                    .stream().filter(b -> BreweryVisibilityPolicy.isVisible(b.getBreweryId()))
-                    .map(this::fromBrewery).forEach(places::add);
+            List<Brewery> breweries = breweryRepository.findWithinBounds(
+                            bounds.south(), bounds.north(), bounds.west(), bounds.east()).stream()
+                    .filter(b -> BreweryVisibilityPolicy.isVisible(b.getBreweryId())).toList();
+            Map<String, String> imageByBrewery = breweryImageUrls(breweries);
+            breweries.stream().map(b -> fromBrewery(b, imageByBrewery.get(b.getBreweryId())))
+                    .forEach(places::add);
         } else {
             Set<String> breweryContentIds = breweryRepository.findWithinBounds(
                             bounds.south(), bounds.north(), bounds.west(), bounds.east()).stream()
@@ -79,9 +84,10 @@ public class MapPlaceService {
 
         List<MapPlaceResponse> places = new ArrayList<>();
         if (category == null || category == MapPlaceCategory.BREWERY) {
-            breweryRepository.searchMapPlaces(keyword).stream()
-                    .filter(b -> BreweryVisibilityPolicy.isVisible(b.getBreweryId()))
-                    .map(this::fromBrewery)
+            List<Brewery> breweries = breweryRepository.searchMapPlaces(keyword).stream()
+                    .filter(b -> BreweryVisibilityPolicy.isVisible(b.getBreweryId())).toList();
+            Map<String, String> imageByBrewery = breweryImageUrls(breweries);
+            breweries.stream().map(b -> fromBrewery(b, imageByBrewery.get(b.getBreweryId())))
                     .forEach(places::add);
         }
         if (category != MapPlaceCategory.BREWERY) {
@@ -130,11 +136,38 @@ public class MapPlaceService {
         };
     }
 
-    private MapPlaceResponse fromBrewery(Brewery b) {
+    private MapPlaceResponse fromBrewery(Brewery b, String imageUrl) {
         return new MapPlaceResponse(b.getBreweryId(), b.getBusinessName(), MapPlaceCategory.BREWERY,
                 MapPlaceCategory.BREWERY.displayName(), null,
                 b.getAddress(), ContactSupplementPolicy.phone(b.getBreweryId(), b.getPhone()),
-                b.getLatitude(), b.getLongitude(), null);
+                b.getLatitude(), b.getLongitude(), imageUrl);
+    }
+
+    /** 지도 양조장 목록의 이미지도 상세 API와 같은 우선순위(관광공사 원본 → 정적 사진)를 사용한다. */
+    private Map<String, String> breweryImageUrls(List<Brewery> breweries) {
+        if (breweries.isEmpty()) {
+            return Map.of();
+        }
+        List<String> contentIds = breweries.stream()
+                .map(Brewery::getContentId).filter(Objects::nonNull).toList();
+        Map<String, TourContent> tourByContentId = new HashMap<>();
+        if (!contentIds.isEmpty()) {
+            for (TourContent content : tourContentRepository.findByContentIdIn(contentIds)) {
+                tourByContentId.put(content.getContentId(), content);
+            }
+        }
+        Map<String, String> imageByBrewery = new HashMap<>();
+        for (Brewery brewery : breweries) {
+            TourContent content = tourByContentId.get(brewery.getContentId());
+            String tourImage = content == null ? null : blankToNull(content.getFirstImage());
+            imageByBrewery.put(brewery.getBreweryId(), tourImage != null
+                    ? tourImage : BreweryStaticImageUrls.url(brewery.getBreweryId()));
+        }
+        return imageByBrewery;
+    }
+
+    private String blankToNull(String value) {
+        return value == null || value.isBlank() ? null : value;
     }
 
     private MapPlaceResponse fromTour(TourContent t, MapPlaceCategory category) {

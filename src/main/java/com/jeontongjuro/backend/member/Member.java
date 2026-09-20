@@ -41,6 +41,9 @@ public class Member {
     @Column(name = "onboarding_completed", nullable = false)
     private boolean onboardingCompleted;
 
+    @Column(name = "initial_onboarding_pending", nullable = false)
+    private boolean initialOnboardingPending;
+
     @Column(name = "post_login_return_to", columnDefinition = "text")
     private String postLoginReturnTo;
 
@@ -57,6 +60,7 @@ public class Member {
         member.email = email;
         member.role = MemberRole.USER;
         member.onboardingCompleted = false;
+        member.initialOnboardingPending = true;
         return member;
     }
 
@@ -67,6 +71,15 @@ public class Member {
 
     public void completeOnboarding() {
         this.onboardingCompleted = true;
+        this.initialOnboardingPending = false;
+    }
+
+    public boolean consumeInitialOnboardingPending() {
+        if (!initialOnboardingPending) {
+            return false;
+        }
+        initialOnboardingPending = false;
+        return true;
     }
 
     public void rememberPostLoginReturnTo(String returnTo) {

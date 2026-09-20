@@ -120,10 +120,15 @@ class RecommendedCourseServiceTest {
         Brewery brewery = brewery();
         given(breweryRepository.findById("BRW-001")).willReturn(Optional.of(brewery));
         given(productQueryService.listProducts("BRW-001", 0, 100)).willReturn(PageResponse.of(List.of(
-                new ProductCardResponse(1, "탁주", null, null, null, List.of(LiquorType.탁주),
+                new ProductCardResponse(1, "탁주제품", null, null, null, List.of(LiquorType.탁주),
                         List.of(ProductFlavorTag.고소함, ProductFlavorTag.부드러움),
                         "파전과 잘 어울리는 술", null)), 0, 100, 1));
         given(productQueryService.pairingTexts("BRW-001")).willReturn(List.of("파전과 잘 어울리는 술"));
+        given(productQueryService.loadCourseData("BRW-001")).willReturn(new ProductQueryService.CourseProductData(
+                List.of(new ProductCardResponse(1, "탁주제품", null, null, null, List.of(LiquorType.탁주),
+                        List.of(), "파전과 잘 어울리는 술", null)),
+                List.of("파전과 잘 어울리는 술"),
+                List.of(new ProductQueryService.CoursePairingText("탁주제품", "파전과 잘 어울리는 술"))));
         given(nearbyRepository.findCourseCandidates("BRW-001")).willReturn(List.of(
                 nearby("CLOSE-NON-MATCH", 100), nearby("PAIRING-MATCH", 1_000)));
         given(tourContentRepository.findAllById(any())).willReturn(List.of(
@@ -133,7 +138,7 @@ class RecommendedCourseServiceTest {
         List<CourseStopResponse> stops = service.findByBreweryId("BRW-001").stops();
 
         assertThat(stops.get(1).contentId()).isEqualTo("PAIRING-MATCH");
-        assertThat(stops.get(1).pairingComment()).isEqualTo("갈기산의 탁주와 어울리는 한식 음식점");
+        assertThat(stops.get(1).pairingComment()).isEqualTo("탁주제품과 어울리는 한식 음식점");
         assertThat(stops.get(2).contentId()).isEqualTo("CLOSE-NON-MATCH");
         assertThat(stops.get(2).pairingComment()).isNull();
     }
@@ -176,9 +181,14 @@ class RecommendedCourseServiceTest {
         Brewery brewery = brewery();
         given(breweryRepository.findById("BRW-001")).willReturn(Optional.of(brewery));
         given(productQueryService.listProducts("BRW-001", 0, 100)).willReturn(PageResponse.of(List.of(
-                new ProductCardResponse(1, "탁주", null, null, null, List.of(LiquorType.탁주),
+                new ProductCardResponse(1, "탁주제품", null, null, null, List.of(LiquorType.탁주),
                         List.of(), "보쌈과 잘 어울리는 술", null)), 0, 100, 1));
         given(productQueryService.pairingTexts("BRW-001")).willReturn(List.of("보쌈과 잘 어울리는 술"));
+        given(productQueryService.loadCourseData("BRW-001")).willReturn(new ProductQueryService.CourseProductData(
+                List.of(new ProductCardResponse(1, "탁주제품", null, null, null, List.of(LiquorType.탁주),
+                        List.of(), "보쌈과 잘 어울리는 술", null)),
+                List.of("보쌈과 잘 어울리는 술"),
+                List.of(new ProductQueryService.CoursePairingText("탁주제품", "보쌈과 잘 어울리는 술"))));
         given(nearbyRepository.findCourseCandidates("BRW-001")).willReturn(List.of(
                 nearby("CLOSE", 100), nearby("PAIRING", 1_000)));
         TourContent close = content("CLOSE", "39", "A05020200", "가까운 식당");
@@ -192,7 +202,7 @@ class RecommendedCourseServiceTest {
         List<CourseStopResponse> stops = service.findByBreweryId("BRW-001").stops();
 
         assertThat(stops.get(1).contentId()).isEqualTo("PAIRING");
-        assertThat(stops.get(1).pairingComment()).isEqualTo("갈기산의 탁주와 어울리는 한식 음식점");
+        assertThat(stops.get(1).pairingComment()).isEqualTo("탁주제품과 어울리는 한식 음식점");
     }
 
     @Test

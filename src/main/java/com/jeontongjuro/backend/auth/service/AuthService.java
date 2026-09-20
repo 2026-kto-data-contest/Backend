@@ -58,7 +58,9 @@ public class AuthService {
         boolean termsAgreed = termsService.hasRequiredAgreements(member.getId());
         String sessionToken = sessionService.create(member);
         String nextPath = termsAgreed
-                ? (member.isOnboardingCompleted() ? appProperties.safeReturnTo(member.consumePostLoginReturnTo()) : "/onboarding")
+                ? (member.consumeInitialOnboardingPending()
+                        ? "/onboarding"
+                        : appProperties.safeReturnTo(member.consumePostLoginReturnTo()))
                 : "/terms";
         memberRepository.save(member);
         return new LoginResult(sessionToken, nextPath);
@@ -74,7 +76,7 @@ public class AuthService {
         if (!termsService.hasRequiredAgreements(memberId)) {
             return "/terms";
         }
-        if (!member.isOnboardingCompleted()) {
+        if (member.consumeInitialOnboardingPending()) {
             return "/onboarding";
         }
         String returnTo = appProperties.safeReturnTo(member.consumePostLoginReturnTo());

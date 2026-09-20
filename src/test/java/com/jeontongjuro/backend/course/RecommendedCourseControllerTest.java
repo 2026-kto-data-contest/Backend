@@ -41,7 +41,8 @@ class RecommendedCourseControllerTest {
                 .andExpect(jsonPath("$.courseId").value("BRW-001"))
                 .andExpect(jsonPath("$.centerBreweryId").value("BRW-001"))
                 .andExpect(jsonPath("$.stops[0].type").value("BREWERY"))
-                .andExpect(jsonPath("$.stops[0].distanceMeters").value(0));
+                .andExpect(jsonPath("$.stops[0].distanceMeters").value(0))
+                .andExpect(jsonPath("$.stops[0].pairingComment").doesNotExist());
     }
 
     @Test
