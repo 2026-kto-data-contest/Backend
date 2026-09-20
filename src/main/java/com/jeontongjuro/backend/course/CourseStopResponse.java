@@ -22,7 +22,8 @@ public record CourseStopResponse(
         @JsonInclude(JsonInclude.Include.NON_NULL)
         String pairingComment,
         List<String> featureTags,
-        List<String> liquorTypes
+        List<String> liquorTypes,
+        String phone
 ) {
     public CourseStopResponse {
         featureTags = featureTags == null ? List.of() : List.copyOf(featureTags);

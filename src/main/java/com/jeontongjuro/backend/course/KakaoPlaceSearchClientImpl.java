@@ -89,9 +89,10 @@ public class KakaoPlaceSearchClientImpl implements KakaoPlaceSearchClient {
             String url = text(selected, "place_url");
             if (url != null && url.startsWith("http://")) url = "https://" + url.substring(7);
             String category = leafCategory(text(selected, "category_name"));
+            String phone = text(selected, "phone");
             if (url == null && id != null) url = "https://place.map.kakao.com/" + id;
             if (id == null && url == null && category == null) return Optional.empty();
-            return Optional.of(new KakaoPlaceMatch(id, url, category));
+            return Optional.of(new KakaoPlaceMatch(id, url, category, phone));
         } catch (JsonProcessingException e) {
             throw new IllegalStateException("카카오 장소 검색 JSON 파싱 실패", e);
         }
