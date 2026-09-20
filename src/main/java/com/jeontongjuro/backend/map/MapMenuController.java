@@ -39,7 +39,7 @@ public class MapMenuController {
     @Operation(summary = "메뉴별 지도 장소 조회", description = "선택한 메뉴와 관련된 음식점 장소를 조회합니다.")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "메뉴 장소 조회 성공"),
-            @ApiResponse(responseCode = "400", description = "존재하지 않는 메뉴 또는 잘못된 사용자 좌표",
+            @ApiResponse(responseCode = "400", description = "존재하지 않는 메뉴",
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
             @ApiResponse(responseCode = "500", description = "서버 내부 오류",
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
@@ -47,12 +47,8 @@ public class MapMenuController {
     public PageResponse<MapPlaceResponse> places(
             @Parameter(description = "메뉴 코드. GET /api/v1/map/menus 응답의 menu 값", example = "PAJEON")
             @PathVariable String menu,
-            @Parameter(description = "사용자 위치 위도", example = "37.5665")
-            @RequestParam(required = false) BigDecimal userLatitude,
-            @Parameter(description = "사용자 위치 경도", example = "126.9780")
-            @RequestParam(required = false) BigDecimal userLongitude,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        return service.places(menu, userLatitude, userLongitude, page, size);
+        return service.places(menu, page, size);
     }
 }

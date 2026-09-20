@@ -52,21 +52,21 @@ class MapPlaceServiceTest {
                 .thenReturn(List.of(withImage, withoutImage));
 
         PageResponse<MapPlaceResponse> result = service.find(
-                bd("36"), bd("126"), bd("38"), bd("128"), "BREWERY", null, null, 0, 20);
+                bd("36"), bd("126"), bd("38"), bd("128"), "BREWERY", 0, 20);
 
         assertThat(result.content()).extracting(MapPlaceResponse::imageUrl)
                 .containsExactly("http://localhost/recommended-courses/BRW-001.png", null);
     }
 
     @Test
-    void 사용자좌표가있으면거리순으로반환한다() {
+    void 사용자좌표없이장소명순으로반환하고거리는null이다() {
         Brewery far = brewery("BRW-002", "가 양조장", "37.20", "127.00");
         Brewery near = brewery("BRW-001", "나 양조장", "37.01", "127.00");
         when(breweryRepository.findWithinBounds(any(), any(), any(), any())).thenReturn(List.of(far, near));
         PageResponse<MapPlaceResponse> result = service.find(
-                bd("36"), bd("126"), bd("38"), bd("128"), "BREWERY", bd("37"), bd("127"), 0, 20);
-        assertThat(result.content()).extracting(MapPlaceResponse::placeId).containsExactly("BRW-001", "BRW-002");
-        assertThat(result.content().get(0).distance()).isEqualTo(1.1);
+                bd("36"), bd("126"), bd("38"), bd("128"), "BREWERY", 0, 20);
+        assertThat(result.content()).extracting(MapPlaceResponse::placeId).containsExactly("BRW-002", "BRW-001");
+        assertThat(result.content()).allMatch(place -> place.distance() == null);
     }
 
     @Test
@@ -75,7 +75,7 @@ class MapPlaceServiceTest {
         Brewery first = brewery("BRW-001", "가 양조장", "37.01", "127.00");
         when(breweryRepository.findWithinBounds(any(), any(), any(), any())).thenReturn(List.of(second, first));
         PageResponse<MapPlaceResponse> result = service.find(
-                bd("36"), bd("126"), bd("38"), bd("128"), "BREWERY", null, null, 0, 999);
+                bd("36"), bd("126"), bd("38"), bd("128"), "BREWERY", 0, 999);
         assertThat(result.size()).isEqualTo(300);
         assertThat(result.content()).extracting(MapPlaceResponse::placeName).containsExactly("가 양조장", "나 양조장");
         assertThat(result.content()).allMatch(place -> place.distance() == null);
@@ -87,7 +87,7 @@ class MapPlaceServiceTest {
         when(breweryRepository.findWithinBounds(any(), any(), any(), any())).thenReturn(List.of(brewery));
 
         PageResponse<MapPlaceResponse> result = service.find(
-                bd("35"), bd("126"), bd("36"), bd("127"), "BREWERY", null, null, 0, 20);
+                bd("35"), bd("126"), bd("36"), bd("127"), "BREWERY", 0, 20);
 
         assertThat(result.content()).singleElement()
                 .extracting(MapPlaceResponse::phone).isEqualTo("061-393-4141");
@@ -96,11 +96,9 @@ class MapPlaceServiceTest {
     @Test
     void 잘못된영역과좌표쌍과카테고리를거부한다() {
         assertThatThrownBy(() -> service.find(bd("38"), bd("126"), bd("37"), bd("128"),
-                "BREWERY", null, null, 0, 20)).isInstanceOf(InvalidQueryParameterException.class);
+                "BREWERY", 0, 20)).isInstanceOf(InvalidQueryParameterException.class);
         assertThatThrownBy(() -> service.find(bd("36"), bd("126"), bd("38"), bd("128"),
-                "BREWERY", bd("37"), null, 0, 20)).isInstanceOf(InvalidQueryParameterException.class);
-        assertThatThrownBy(() -> service.find(bd("36"), bd("126"), bd("38"), bd("128"),
-                "MARKET", null, null, 0, 20)).isInstanceOf(InvalidQueryParameterException.class);
+                "MARKET", 0, 20)).isInstanceOf(InvalidQueryParameterException.class);
     }
 
     @Test
@@ -111,7 +109,7 @@ class MapPlaceServiceTest {
                 .thenReturn(List.of(restaurant));
 
         PageResponse<MapPlaceResponse> result = service.find(
-                bd("36"), bd("126"), bd("38"), bd("128"), "RESTAURANT", null, null, 0, 20);
+                bd("36"), bd("126"), bd("38"), bd("128"), "RESTAURANT", 0, 20);
 
         assertThat(result.totalElements()).isOne();
         assertThat(result.content().get(0).roadAddressName()).isEqualTo("상세주소");
@@ -144,7 +142,7 @@ class MapPlaceServiceTest {
         when(breweryRepository.findAll()).thenReturn(List.of(brewery));
         when(tourContentRepository.searchMapPlaces("안동")).thenReturn(List.of(restaurant));
 
-        PageResponse<MapPlaceResponse> result = service.search("  안동  ", null, null, null, 0, 20);
+        PageResponse<MapPlaceResponse> result = service.search("  안동  ", null, 0, 20);
 
         assertThat(result.content()).extracting(MapPlaceResponse::placeId)
                 .containsExactly("BRW-001", "restaurant");
@@ -161,19 +159,18 @@ class MapPlaceServiceTest {
         when(breweryRepository.findAll()).thenReturn(List.of(linked));
         when(tourContentRepository.searchMapPlaces("안동")).thenReturn(List.of(duplicate, cafe));
 
-        PageResponse<MapPlaceResponse> result = service.search("안동", "CAFE", null, null, 0, 20);
+        PageResponse<MapPlaceResponse> result = service.search("안동", "CAFE", 0, 20);
 
         assertThat(result.content()).extracting(MapPlaceResponse::placeId).containsExactly("cafe");
     }
 
     @Test
-    void 지도검색은사용자좌표가있으면거리순이고페이지크기를100으로제한한다() {
+    void 지도검색은장소명순이고페이지크기를100으로제한한다() {
         Brewery far = brewery("BRW-002", "안동 먼곳", "37.20", "127.00");
         Brewery near = brewery("BRW-001", "안동 가까운곳", "37.01", "127.00");
         when(breweryRepository.searchMapPlaces("안동")).thenReturn(List.of(far, near));
 
-        PageResponse<MapPlaceResponse> result = service.search(
-                "안동", "BREWERY", bd("37"), bd("127"), 0, 999);
+        PageResponse<MapPlaceResponse> result = service.search("안동", "BREWERY", 0, 999);
 
         assertThat(result.size()).isEqualTo(100);
         assertThat(result.content()).extracting(MapPlaceResponse::placeId).containsExactly("BRW-001", "BRW-002");
@@ -181,13 +178,11 @@ class MapPlaceServiceTest {
 
     @Test
     void 지도검색은잘못된검색어카테고리좌표를거부한다() {
-        assertThatThrownBy(() -> service.search("   ", null, null, null, 0, 20))
+        assertThatThrownBy(() -> service.search("   ", null, 0, 20))
                 .isInstanceOf(InvalidQueryParameterException.class);
-        assertThatThrownBy(() -> service.search("가".repeat(51), null, null, null, 0, 20))
+        assertThatThrownBy(() -> service.search("가".repeat(51), null, 0, 20))
                 .isInstanceOf(InvalidQueryParameterException.class);
-        assertThatThrownBy(() -> service.search("안동", "MARKET", null, null, 0, 20))
-                .isInstanceOf(InvalidQueryParameterException.class);
-        assertThatThrownBy(() -> service.search("안동", null, bd("37"), null, 0, 20))
+        assertThatThrownBy(() -> service.search("안동", "MARKET", 0, 20))
                 .isInstanceOf(InvalidQueryParameterException.class);
     }
 
@@ -203,7 +198,7 @@ class MapPlaceServiceTest {
 
     private List<String> findIds(String category) {
         return service.find(bd("36"), bd("126"), bd("38"), bd("128"), category,
-                        null, null, 0, 20).content().stream().map(MapPlaceResponse::placeId).toList();
+                        0, 20).content().stream().map(MapPlaceResponse::placeId).toList();
     }
 
     private TourContent tour(String id, String contentTypeId, String title,

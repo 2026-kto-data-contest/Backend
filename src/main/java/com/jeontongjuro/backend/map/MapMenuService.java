@@ -6,7 +6,6 @@ import com.jeontongjuro.backend.course.CourseStopType;
 import com.jeontongjuro.backend.global.web.PageResponse;
 import com.jeontongjuro.backend.tour.TourContent;
 import com.jeontongjuro.backend.tour.TourContentRepository;
-import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashSet;
@@ -38,12 +37,10 @@ public class MapMenuService {
                 .toList();
     }
 
-    public PageResponse<MapPlaceResponse> places(String menuValue, BigDecimal userLatitude,
-                                                  BigDecimal userLongitude, int requestedPage, int requestedSize) {
+    public PageResponse<MapPlaceResponse> places(String menuValue, int requestedPage, int requestedSize) {
         MapMenu menu = MapMenu.parse(menuValue);
         int page = Math.max(0, requestedPage);
         int size = requestedSize < 1 ? DEFAULT_SIZE : Math.min(requestedSize, MAX_SIZE);
-        validateCoordinatePair(userLatitude, userLongitude);
 
         Set<String> breweryContentIds = breweryRepository.findAll().stream()
                 .map(Brewery::getContentId).filter(Objects::nonNull).collect(HashSet::new, Set::add, Set::addAll);
@@ -55,14 +52,11 @@ public class MapMenuService {
                     || !containsMenu(content, menu)) {
                 continue;
             }
-            places.add(toResponse(content, userLatitude, userLongitude));
+            places.add(toResponse(content));
         }
-        Comparator<MapPlaceResponse> order = userLatitude == null
-                ? Comparator.comparing(MapPlaceResponse::placeName, Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER))
-                : Comparator.comparing(MapPlaceResponse::distance)
-                        .thenComparing(MapPlaceResponse::placeName,
-                                Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER));
-        places.sort(order.thenComparing(MapPlaceResponse::placeId));
+        places.sort(Comparator.comparing(MapPlaceResponse::placeName,
+                        Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER))
+                .thenComparing(MapPlaceResponse::placeId));
         int from = (int) Math.min((long) page * size, places.size());
         int to = Math.min(from + size, places.size());
         return PageResponse.of(places.subList(from, to), page, size, places.size());
@@ -85,29 +79,11 @@ public class MapMenuService {
         };
     }
 
-    private MapPlaceResponse toResponse(TourContent content, BigDecimal userLatitude, BigDecimal userLongitude) {
+    private MapPlaceResponse toResponse(TourContent content) {
         String address = String.join(" ", java.util.stream.Stream.of(content.getAddr1(), content.getAddr2())
                 .filter(v -> v != null && !v.isBlank()).toList());
         return new MapPlaceResponse(content.getContentId(), content.getTitle(), MapPlaceCategory.RESTAURANT,
-                "식당", distance(userLatitude, userLongitude, content.getLatitude(), content.getLongitude()),
+                "식당", null,
                 address, null, content.getLatitude(), content.getLongitude(), content.getFirstImage());
-    }
-
-    private void validateCoordinatePair(BigDecimal latitude, BigDecimal longitude) {
-        if ((latitude == null) != (longitude == null)) {
-            throw new com.jeontongjuro.backend.global.error.InvalidQueryParameterException(
-                    "userLatitude와 userLongitude는 함께 전달해야 합니다.");
-        }
-    }
-
-    private Double distance(BigDecimal fromLat, BigDecimal fromLng, BigDecimal toLat, BigDecimal toLng) {
-        if (fromLat == null) return null;
-        double lat1 = Math.toRadians(fromLat.doubleValue());
-        double lat2 = Math.toRadians(toLat.doubleValue());
-        double dLat = lat2 - lat1;
-        double dLng = Math.toRadians(toLng.doubleValue() - fromLng.doubleValue());
-        double a = Math.sin(dLat / 2) * Math.sin(dLat / 2)
-                + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) * Math.sin(dLng / 2);
-        return Math.round(6371.0088 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)) * 10.0) / 10.0;
     }
 }

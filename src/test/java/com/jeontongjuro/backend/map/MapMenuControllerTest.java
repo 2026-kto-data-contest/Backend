@@ -39,7 +39,7 @@ class MapMenuControllerTest {
     void returnsPlacesForMenu() throws Exception {
         MapPlaceResponse place = new MapPlaceResponse("C-1", "남도파전", MapPlaceCategory.RESTAURANT,
                 "식당", null, "서울", null, null, null, null);
-        given(service.places("PAJEON", null, null, 0, 20))
+        given(service.places("PAJEON", 0, 20))
                 .willReturn(PageResponse.of(List.of(place), 0, 20, 1));
 
         mockMvc.perform(get("/api/v1/map/menus/PAJEON/places"))
@@ -48,14 +48,11 @@ class MapMenuControllerTest {
     }
 
     @Test
-    void forwardsLocationAndPagingParameters() throws Exception {
-        given(service.places("SASHIMI", java.math.BigDecimal.valueOf(37.5),
-                java.math.BigDecimal.valueOf(127.0), 1, 5))
+    void forwardsPagingParametersWithoutLocation() throws Exception {
+        given(service.places("SASHIMI", 1, 5))
                 .willReturn(PageResponse.of(List.of(), 1, 5, 0));
 
         mockMvc.perform(get("/api/v1/map/menus/SASHIMI/places")
-                        .param("userLatitude", "37.5")
-                        .param("userLongitude", "127.0")
                         .param("page", "1").param("size", "5"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.page").value(1))

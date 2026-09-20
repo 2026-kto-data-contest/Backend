@@ -9,7 +9,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import java.math.BigDecimal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -29,12 +28,12 @@ public class MapPlaceSearchController {
     @Operation(summary = "지도 장소 검색", description = """
             장소명·주소로 양조장·식당·관광지·카페·숙소를 검색합니다.
             category를 생략하면 전체 카테고리를 검색합니다.
-            latitude와 longitude를 함께 보내면 거리순, 생략하면 정확도순·장소명순으로 반환합니다.
+            사용자 좌표는 받지 않으며 검색 정확도순·장소명순으로 반환합니다. 거리 계산은 클라이언트에서 수행합니다.
             검색 결과의 placeId·category·좌표로 지도 중심을 이동하고 동일 마커를 선택할 수 있습니다.
             """)
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "검색 성공(결과가 없으면 빈 content)"),
-            @ApiResponse(responseCode = "400", description = "잘못된 검색어·카테고리·사용자 좌표",
+            @ApiResponse(responseCode = "400", description = "잘못된 검색어·카테고리",
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
             @ApiResponse(responseCode = "500", description = "서버 내부 오류",
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
@@ -44,10 +43,8 @@ public class MapPlaceSearchController {
             @RequestParam(required = false) String keyword,
             @Parameter(description = "BREWERY, RESTAURANT, TOURIST_ATTRACTION, CAFE, ACCOMMODATION")
             @RequestParam(required = false) String category,
-            @RequestParam(required = false) BigDecimal latitude,
-            @RequestParam(required = false) BigDecimal longitude,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        return mapPlaceService.search(keyword, category, latitude, longitude, page, size);
+        return mapPlaceService.search(keyword, category, page, size);
     }
 }
