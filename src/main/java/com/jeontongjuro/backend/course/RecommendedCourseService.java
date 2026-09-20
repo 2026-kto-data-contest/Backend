@@ -323,7 +323,8 @@ public class RecommendedCourseService {
         return new CourseStopResponse(1, CourseStopType.BREWERY, brewery.getBreweryId(), brewery.getBusinessName(),
                 brewery.getAddress(), brewery.getLatitude(), brewery.getLongitude(), 0, image, "여행의 시작",
                 "양조장", null, ContactSupplementPolicy.kakaoPlaceUrl(
-                        brewery.getBreweryId(), brewery.getKakaoPlaceUrl()), null, featureTags, liquorTypes);
+                        brewery.getBreweryId(), brewery.getKakaoPlaceUrl()), null, featureTags, liquorTypes,
+                ContactSupplementPolicy.phone(brewery.getBreweryId(), brewery.getPhone()));
     }
 
     private CourseStopResponse toStop(int order, Candidate candidate) {
@@ -337,7 +338,7 @@ public class RecommendedCourseService {
                 joinAddress(content.getAddr1(), content.getAddr2()), content.getLatitude(), content.getLongitude(),
                 distance(candidate), firstNonBlank(content.getFirstImage(), content.getFirstImage2()),
                 reason(candidate.type()), categoryName(candidate.type()), subcategory,
-                placeUrl, candidate.pairingComment(), List.of(), List.of());
+                placeUrl, candidate.pairingComment(), List.of(), List.of(), kakao == null ? null : kakao.phone());
     }
 
     private static boolean isTourist(Candidate candidate) {

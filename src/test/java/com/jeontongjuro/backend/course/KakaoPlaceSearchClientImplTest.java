@@ -17,7 +17,7 @@ class KakaoPlaceSearchClientImplTest {
         String body = """
                 {"documents":[
                   {"id":"1","place_name":"메이비 제주점","category_name":"음식점 > 카페","place_url":"http://place.map.kakao.com/1"},
-                  {"id":"2","place_name":"메이비","category_name":"음식점 > 카페 > 테마카페","place_url":"http://place.map.kakao.com/2"}
+                  {"id":"2","place_name":"메이비","category_name":"음식점 > 카페 > 테마카페","phone":"02-1234-5678","place_url":"http://place.map.kakao.com/2"}
                 ]}
                 """;
 
@@ -25,6 +25,7 @@ class KakaoPlaceSearchClientImplTest {
 
         assertThat(match.placeId()).isEqualTo("2");
         assertThat(match.categoryName()).isEqualTo("테마카페");
+        assertThat(match.phone()).isEqualTo("02-1234-5678");
         assertThat(match.placeUrl()).isEqualTo("https://place.map.kakao.com/2");
     }
 

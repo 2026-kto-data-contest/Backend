@@ -4,6 +4,10 @@ package com.jeontongjuro.backend.course;
 public record KakaoPlaceMatch(
         String placeId,
         String placeUrl,
-        String categoryName
+        String categoryName,
+        String phone
 ) {
+    public KakaoPlaceMatch(String placeId, String placeUrl, String categoryName) {
+        this(placeId, placeUrl, categoryName, null);
+    }
 }

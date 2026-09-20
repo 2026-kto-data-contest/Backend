@@ -34,7 +34,7 @@ class RecommendedCourseControllerTest {
                 "BRW-001", "갈기산 양조장 코스", "충북 영동", "BRW-001",
                 List.of(new CourseStopResponse(1, CourseStopType.BREWERY, "BRW-001", "갈기산",
                         "충북 영동군", new BigDecimal("36.0"), new BigDecimal("127.0"),
-                        0, null, "여행의 시작", "양조장", null, null, null, List.of(), List.of()))));
+                        0, null, "여행의 시작", "양조장", null, null, null, List.of(), List.of(), null))));
 
         mockMvc.perform(get("/api/v1/breweries/BRW-001/recommended-course"))
                 .andExpect(status().isOk())
@@ -42,6 +42,7 @@ class RecommendedCourseControllerTest {
                 .andExpect(jsonPath("$.centerBreweryId").value("BRW-001"))
                 .andExpect(jsonPath("$.stops[0].type").value("BREWERY"))
                 .andExpect(jsonPath("$.stops[0].distanceMeters").value(0))
+                .andExpect(jsonPath("$.stops[0].phone").value((Object) null))
                 .andExpect(jsonPath("$.stops[0].pairingComment").doesNotExist());
     }
 

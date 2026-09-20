@@ -168,12 +168,13 @@ class RecommendedCourseServiceTest {
         given(tourContentRepository.findAllById(any()))
                 .willReturn(List.of(content("FOOD-1", "39", "A05020100", "한식당")));
         given(kakaoPlaceSearchClient.findPlace(any(), any(), any())).willReturn(Optional.of(
-                new KakaoPlaceMatch("12345", "http://place.map.kakao.com/12345", "육류,고기요리")));
+                new KakaoPlaceMatch("12345", "http://place.map.kakao.com/12345", "육류,고기요리", "02-1234-5678")));
 
         CourseStopResponse stop = service.findByBreweryId("BRW-001").stops().get(1);
 
         assertThat(stop.subcategoryName()).isEqualTo("한식");
         assertThat(stop.placeUrl()).isEqualTo("http://place.map.kakao.com/12345");
+        assertThat(stop.phone()).isEqualTo("02-1234-5678");
     }
 
     @Test
