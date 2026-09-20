@@ -133,7 +133,7 @@ class RecommendedCourseServiceTest {
         List<CourseStopResponse> stops = service.findByBreweryId("BRW-001").stops();
 
         assertThat(stops.get(1).contentId()).isEqualTo("PAIRING-MATCH");
-        assertThat(stops.get(1).pairingComment()).isEqualTo("갈기산의 탁주와 어울리는 한식 음식점");
+        assertThat(stops.get(1).pairingComment()).isEqualTo("탁주와 어울리는 한식 음식점");
         assertThat(stops.get(2).contentId()).isEqualTo("CLOSE-NON-MATCH");
         assertThat(stops.get(2).pairingComment()).isNull();
     }
@@ -192,7 +192,7 @@ class RecommendedCourseServiceTest {
         List<CourseStopResponse> stops = service.findByBreweryId("BRW-001").stops();
 
         assertThat(stops.get(1).contentId()).isEqualTo("PAIRING");
-        assertThat(stops.get(1).pairingComment()).isEqualTo("갈기산의 탁주와 어울리는 한식 음식점");
+        assertThat(stops.get(1).pairingComment()).isEqualTo("탁주와 어울리는 한식 음식점");
     }
 
     @Test
