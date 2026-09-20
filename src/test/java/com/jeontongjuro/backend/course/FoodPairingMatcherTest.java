@@ -45,12 +45,12 @@ class FoodPairingMatcherTest {
     }
 
     @Test
-    void pairingCommentUsesAllMatchingProductNames() {
+    void pairingCommentUsesOneBestMatchingProductName() {
         assertThat(FoodPairingMatcher.pairingCommentWithProducts(
                 List.of(new CoursePairingText("오미자술", "해물전과 잘 어울립니다"),
                         new CoursePairingText("사과와인", "김치전과 잘 어울립니다")),
                 koreanRestaurant(), "갈기산양조장", "탁주·과실주", null))
-                .get().asString().isEqualTo("갈기산양조장의 오미자술·사과와인과 어울리는 한식 음식점");
+                .get().asString().isEqualTo("갈기산양조장의 오미자술과 어울리는 한식 음식점");
     }
 
     private TourContent koreanRestaurant() {
