@@ -19,7 +19,11 @@ import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 
 class MapPlaceServiceTest {
     private BreweryRepository breweryRepository;
@@ -31,6 +35,27 @@ class MapPlaceServiceTest {
         breweryRepository = mock(BreweryRepository.class);
         tourContentRepository = mock(TourContentRepository.class);
         service = new MapPlaceService(breweryRepository, tourContentRepository);
+        RequestContextHolder.setRequestAttributes(
+                new ServletRequestAttributes(new MockHttpServletRequest()));
+    }
+
+    @AfterEach
+    void tearDown() {
+        RequestContextHolder.resetRequestAttributes();
+    }
+
+    @Test
+    void 지도양조장목록은정적사진이있으면절대이미지URL을내린다() {
+        Brewery withImage = brewery("BRW-001", "사진 양조장", "37.01", "127.00");
+        Brewery withoutImage = brewery("BRW-999", "사진 없는 양조장", "37.02", "127.00");
+        when(breweryRepository.findWithinBounds(any(), any(), any(), any()))
+                .thenReturn(List.of(withImage, withoutImage));
+
+        PageResponse<MapPlaceResponse> result = service.find(
+                bd("36"), bd("126"), bd("38"), bd("128"), "BREWERY", null, null, 0, 20);
+
+        assertThat(result.content()).extracting(MapPlaceResponse::imageUrl)
+                .containsExactly("http://localhost/recommended-courses/BRW-001.png", null);
     }
 
     @Test
