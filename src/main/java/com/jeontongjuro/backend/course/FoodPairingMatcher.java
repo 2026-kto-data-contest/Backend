@@ -1,6 +1,7 @@
 package com.jeontongjuro.backend.course;
 
 import com.jeontongjuro.backend.tour.TourContent;
+import com.jeontongjuro.backend.product.query.ProductQueryService.CoursePairingText;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -33,21 +34,37 @@ final class FoodPairingMatcher {
     static Optional<String> pairingComment(List<String> descriptions, TourContent restaurant,
                                            String breweryName, String liquorTypeLabel,
                                            String externalCategory) {
-        String source = String.join(" ", descriptions).toLowerCase(Locale.ROOT);
+        return pairingCommentWithProducts(descriptions.stream()
+                        .map(text -> new CoursePairingText(null, text)).toList(),
+                restaurant, breweryName, liquorTypeLabel, externalCategory);
+    }
+
+    static Optional<String> pairingCommentWithProducts(List<CoursePairingText> pairingTexts, TourContent restaurant,
+                                                       String breweryName, String liquorTypeLabel,
+                                                       String externalCategory) {
         String restaurantText = String.join(" ", nonNull(
                 restaurant.getTitle(), restaurant.getCat1(), restaurant.getCat2(), restaurant.getCat3(),
                 restaurant.getLclsSystm1(), restaurant.getLclsSystm2(), restaurant.getLclsSystm3(),
                 externalCategory))
                 .toLowerCase(Locale.ROOT);
-        for (Map.Entry<String, PairingRule> entry : RULES.entrySet()) {
-            if (!matchesSource(entry.getKey(), source)) continue;
-            PairingRule rule = entry.getValue();
-            if (rule.restaurantTokens().stream().anyMatch(restaurantText::contains)) {
-                return Optional.of(breweryName + "의 " + liquorTypeLabel
-                        + "와 어울리는 " + rule.label() + " 음식점");
+        Map<String, PairingRule> matchedProducts = new LinkedHashMap<>();
+        for (CoursePairingText pairingText : pairingTexts) {
+            String productSource = pairingText.text().toLowerCase(Locale.ROOT);
+            for (Map.Entry<String, PairingRule> entry : RULES.entrySet()) {
+                if (!matchesSource(entry.getKey(), productSource)) continue;
+                PairingRule rule = entry.getValue();
+                if (rule.restaurantTokens().stream().anyMatch(restaurantText::contains)) {
+                    matchedProducts.putIfAbsent(pairingText.productName(), rule);
+                    break;
+                }
             }
         }
-        return Optional.empty();
+        if (matchedProducts.isEmpty()) return Optional.empty();
+        PairingRule rule = matchedProducts.values().iterator().next();
+        String label = matchedProducts.keySet().stream().filter(name -> name != null && !name.isBlank())
+                .distinct().reduce((a, b) -> a + "·" + b).orElse(liquorTypeLabel);
+        return Optional.of(breweryName + "의 " + label + particle(label)
+                + " 어울리는 " + rule.label() + " 음식점");
     }
 
     private static Map<String, PairingRule> rules() {
@@ -71,6 +88,15 @@ final class FoodPairingMatcher {
 
     private static List<String> nonNull(String... values) {
         return java.util.Arrays.stream(values).filter(v -> v != null && !v.isBlank()).toList();
+    }
+
+    private static String particle(String value) {
+        if (value == null || value.isBlank()) return "와";
+        char last = value.charAt(value.length() - 1);
+        if (last >= '\uAC00' && last <= '\uD7A3') {
+            return (last - '\uAC00') % 28 == 0 ? "와" : "과";
+        }
+        return "와";
     }
 
     private record PairingRule(String label, List<String> restaurantTokens) {
