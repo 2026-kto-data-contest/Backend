@@ -13,6 +13,7 @@ import com.jeontongjuro.backend.security.session.SessionService;
 import com.jeontongjuro.backend.terms.TermsService;
 import java.security.SecureRandom;
 import java.util.Base64;
+import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.http.HttpStatus;
@@ -52,13 +53,16 @@ public class AuthService {
     @Transactional
     public LoginResult completeLogin(String authorizationCode, String returnTo) {
         KakaoUserResponse kakaoUser = kakaoClient.getUser(authorizationCode);
-        Member member = upsertMember(kakaoUser);
+        UpsertedMember upsertedMember = upsertMember(kakaoUser);
+        Member member = upsertedMember.member();
         member.rememberPostLoginReturnTo(appProperties.safeReturnTo(returnTo));
         memberRepository.save(member);
         boolean termsAgreed = termsService.hasRequiredAgreements(member.getId());
         String sessionToken = sessionService.create(member);
         String nextPath = termsAgreed
-                ? (member.isOnboardingCompleted() ? appProperties.safeReturnTo(member.consumePostLoginReturnTo()) : "/onboarding")
+                ? (upsertedMember.created()
+                        ? "/onboarding"
+                        : appProperties.safeReturnTo(member.consumePostLoginReturnTo()))
                 : "/terms";
         memberRepository.save(member);
         return new LoginResult(sessionToken, nextPath);
@@ -100,13 +104,22 @@ public class AuthService {
     }
 
     @Transactional
-    protected Member upsertMember(KakaoUserResponse kakaoUser) {
+    protected UpsertedMember upsertMember(KakaoUserResponse kakaoUser) {
         String nickname = kakaoUser.nickname() == null || kakaoUser.nickname().isBlank()
                 ? "카카오 사용자" : kakaoUser.nickname();
-        Member member = memberRepository.findByKakaoUserId(kakaoUser.id())
-                .orElseGet(() -> Member.createKakao(kakaoUser.id(), nickname, kakaoUser.email()));
+        OptionalMember existing = memberRepository.findByKakaoUserId(kakaoUser.id())
+                .map(member -> new OptionalMember(member, false))
+                .orElseGet(() -> new OptionalMember(
+                        Member.createKakao(kakaoUser.id(), nickname, kakaoUser.email()), true));
+        Member member = existing.member();
         member.updateKakaoProfile(nickname, kakaoUser.email());
-        return memberRepository.save(member);
+        return new UpsertedMember(memberRepository.save(member), existing.created());
+    }
+
+    private record OptionalMember(Member member, boolean created) {
+    }
+
+    record UpsertedMember(Member member, boolean created) {
     }
 
     public record LoginStart(String state, String authorizationUrl) {

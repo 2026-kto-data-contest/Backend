@@ -58,8 +58,8 @@ public class AuthController {
 
                     로그인 성공 후 이동:
                     필수 약관 미동의 회원은 /terms로 이동합니다.
-                    온보딩 미완료 회원은 /onboarding으로 이동합니다.
-                    모두 완료한 회원은 returnTo로 전달한 서비스 내부 경로로 이동합니다.
+                    방금 가입한 신규 회원은 /onboarding으로 이동합니다.
+                    기존 회원은 온보딩 완료 여부와 관계없이 returnTo로 전달한 서비스 내부 경로로 이동합니다.
                     """
     )
     @ApiResponses({

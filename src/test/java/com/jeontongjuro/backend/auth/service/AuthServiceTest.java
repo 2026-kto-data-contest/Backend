@@ -88,6 +88,41 @@ class AuthServiceTest {
     }
 
     @Test
+    void existingIncompleteMemberReturnsToOriginalPathInsteadOfOnboarding() {
+        KakaoUserResponse user = new KakaoUserResponse(123L,
+                new KakaoUserResponse.KakaoAccount(new KakaoUserResponse.Profile("재로그인 사용자"), null));
+        Member member = mock(Member.class);
+        when(member.getId()).thenReturn(10L);
+        when(member.isOnboardingCompleted()).thenReturn(false);
+        when(kakaoClient.getUser("code")).thenReturn(user);
+        when(memberRepository.findByKakaoUserId(123L)).thenReturn(Optional.of(member));
+        when(memberRepository.save(member)).thenReturn(member);
+        when(termsService.hasRequiredAgreements(10L)).thenReturn(true);
+        when(member.consumePostLoginReturnTo()).thenReturn("/mypage");
+
+        var result = authService.completeLogin("code", "/mypage");
+
+        assertThat(result.nextPath()).isEqualTo("/mypage");
+    }
+
+    @Test
+    void newlyCreatedMemberWithTermsMovesToOnboarding() {
+        KakaoUserResponse user = new KakaoUserResponse(123L,
+                new KakaoUserResponse.KakaoAccount(new KakaoUserResponse.Profile("신규 사용자"), null));
+        Member member = mock(Member.class);
+        when(kakaoClient.getUser("code")).thenReturn(user);
+        when(memberRepository.findByKakaoUserId(123L)).thenReturn(Optional.empty());
+        when(memberRepository.save(any(Member.class))).thenReturn(member);
+        when(member.getId()).thenReturn(10L);
+        when(termsService.hasRequiredAgreements(10L)).thenReturn(true);
+        when(sessionService.create(member)).thenReturn("session-token");
+
+        var result = authService.completeLogin("code", "/");
+
+        assertThat(result.nextPath()).isEqualTo("/onboarding");
+    }
+
+    @Test
     void continueLoginKeepsOriginalPathUntilAllStepsAreComplete() {
         Member member = mock(Member.class);
         when(memberRepository.findById(10L)).thenReturn(Optional.of(member));
