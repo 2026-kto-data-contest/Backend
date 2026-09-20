@@ -104,18 +104,24 @@ public class ProductQueryService {
     public CourseProductData loadCourseData(String breweryId) {
         List<RawProduct> kept = loadKeptProducts(breweryId);
         if (kept.isEmpty()) return new CourseProductData(List.of(), List.of());
-        return new CourseProductData(buildCardsFromKept(kept), pairingTextsFrom(kept));
+        List<CoursePairingText> pairingTexts = pairingTextsWithProductsFrom(kept);
+        return new CourseProductData(buildCardsFromKept(kept),
+                pairingTexts.stream().map(CoursePairingText::text).distinct().toList(), pairingTexts);
     }
 
     private List<String> pairingTextsFrom(List<RawProduct> kept) {
+        return pairingTextsWithProductsFrom(kept).stream().map(CoursePairingText::text).distinct().toList();
+    }
 
+    private List<CoursePairingText> pairingTextsWithProductsFrom(List<RawProduct> kept) {
         // 제품 목록과 동일하게 제품명 공백 정규화로 중복 제품을 먼저 병합한다.
         return groupByNormalizedName(kept).values().stream()
                 .map(ProductQueryService::representativeOf)
                 .flatMap(product -> java.util.stream.Stream.of(
                         DescriptionTruncationPolicy.apply(product.raw().getDescription()),
-                        product.raw().getCharacteristics()))
-                .filter(value -> value != null && !value.isBlank())
+                        product.raw().getCharacteristics())
+                        .filter(value -> value != null && !value.isBlank())
+                        .map(value -> new CoursePairingText(product.raw().getProductName(), value)))
                 .distinct()
                 .toList();
     }
@@ -482,10 +488,25 @@ public class ProductQueryService {
     private record GroupOrderKey(boolean hasAwardBadge, RawProduct representative) {
     }
 
-    public record CourseProductData(List<ProductCardResponse> products, List<String> pairingTexts) {
-        public CourseProductData {
-            products = products == null ? List.of() : List.copyOf(products);
-            pairingTexts = pairingTexts == null ? List.of() : List.copyOf(pairingTexts);
+    public record CourseProductData(List<ProductCardResponse> products, List<String> pairingTexts,
+                                    List<CoursePairingText> pairingTextsWithProducts) {
+        public CourseProductData(List<ProductCardResponse> products, List<String> pairingTexts) {
+            this(products, pairingTexts, List.of());
         }
+
+        public CourseProductData(List<ProductCardResponse> products, List<String> pairingTexts,
+                                 List<CoursePairingText> pairingTextsWithProducts) {
+            this.products = products == null ? List.of() : List.copyOf(products);
+            this.pairingTexts = pairingTexts == null ? List.of() : List.copyOf(pairingTexts);
+            this.pairingTextsWithProducts = pairingTextsWithProducts == null
+                    ? List.of() : List.copyOf(pairingTextsWithProducts);
+        }
+
+        /* canonical constructor body is explicit to keep the two-argument compatibility constructor. */
+        /* fields are normalized in the three-argument constructor above. */
+        /* no additional accessors are needed; record accessors are generated. */
+    }
+
+    public record CoursePairingText(String productName, String text) {
     }
 }
