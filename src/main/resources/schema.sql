@@ -181,6 +181,7 @@ CREATE TABLE IF NOT EXISTS member_account (
     email         TEXT,
     role          TEXT      NOT NULL DEFAULT 'USER',
     onboarding_completed BOOLEAN NOT NULL DEFAULT FALSE,
+    initial_onboarding_pending BOOLEAN NOT NULL DEFAULT FALSE,
     post_login_return_to TEXT,
     created_at    TIMESTAMPTZ NOT NULL,
     updated_at    TIMESTAMPTZ NOT NULL,
@@ -188,6 +189,7 @@ CREATE TABLE IF NOT EXISTS member_account (
     CONSTRAINT ck_member_account_role CHECK (role IN ('USER', 'ADMIN'))
 );
 ALTER TABLE member_account ADD COLUMN IF NOT EXISTS post_login_return_to TEXT;
+ALTER TABLE member_account ADD COLUMN IF NOT EXISTS initial_onboarding_pending BOOLEAN NOT NULL DEFAULT FALSE;
 
 -- 기존 TIMESTAMP WITHOUT TIME ZONE 값은 애플리케이션이 UTC LocalDateTime으로 기록했다.
 -- UTC로 명시해 같은 순간의 TIMESTAMPTZ로 바꾸며, 이미 전환된 DB에서는 실행하지 않아 재기동 시 이동을 막는다.
