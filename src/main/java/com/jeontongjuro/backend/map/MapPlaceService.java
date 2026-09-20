@@ -41,11 +41,9 @@ public class MapPlaceService {
     }
 
     public PageResponse<MapPlaceResponse> find(BigDecimal south, BigDecimal west, BigDecimal north, BigDecimal east,
-                                                String categoryValue, BigDecimal userLatitude,
-                                                BigDecimal userLongitude, int requestedPage, int requestedSize) {
+                                                String categoryValue, int requestedPage, int requestedSize) {
         MapBounds bounds = MapBounds.of(south, west, north, east);
         MapPlaceCategory category = MapPlaceCategory.parse(categoryValue);
-        validateUserCoordinatePair(userLatitude, userLongitude);
         int page = Math.max(0, requestedPage);
         int size = requestedSize < 1 ? DEFAULT_SIZE : Math.min(requestedSize, MAX_SIZE);
 
@@ -53,7 +51,7 @@ public class MapPlaceService {
         if (category == MapPlaceCategory.BREWERY) {
             breweryRepository.findWithinBounds(bounds.south(), bounds.north(), bounds.west(), bounds.east())
                     .stream().filter(b -> BreweryVisibilityPolicy.isVisible(b.getBreweryId()))
-                    .map(b -> fromBrewery(b, userLatitude, userLongitude)).forEach(places::add);
+                    .map(this::fromBrewery).forEach(places::add);
         } else {
             Set<String> breweryContentIds = breweryRepository.findWithinBounds(
                             bounds.south(), bounds.north(), bounds.west(), bounds.east()).stream()
@@ -63,24 +61,19 @@ public class MapPlaceService {
                                     List.of("12", "14", "15", "28", "32", "38", "39")))
                     .stream().filter(t -> !breweryContentIds.contains(t.getContentId()))
                     .filter(t -> categoryOf(t) == category)
-                    .map(t -> fromTour(t, category, userLatitude, userLongitude)).forEach(places::add);
+                    .map(t -> fromTour(t, category)).forEach(places::add);
         }
-        Comparator<MapPlaceResponse> comparator = userLatitude == null
-                ? Comparator.comparing(MapPlaceResponse::placeName, Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER))
-                : Comparator.comparing(MapPlaceResponse::distance).thenComparing(MapPlaceResponse::placeName,
-                        Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER));
-        places.sort(comparator);
+        places.sort(Comparator.comparing(MapPlaceResponse::placeName, Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER))
+                .thenComparing(MapPlaceResponse::placeId, Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER)));
         int from = (int) Math.min((long) page * size, places.size());
         int to = (int) Math.min((long) from + size, places.size());
         return PageResponse.of(places.subList(from, to), page, size, places.size());
     }
 
     public PageResponse<MapPlaceResponse> search(String keywordValue, String categoryValue,
-                                                  BigDecimal userLatitude, BigDecimal userLongitude,
                                                   int requestedPage, int requestedSize) {
         String keyword = validateKeyword(keywordValue);
         MapPlaceCategory category = categoryValue == null ? null : MapPlaceCategory.parse(categoryValue);
-        validateUserCoordinatePair(userLatitude, userLongitude);
         int page = Math.max(0, requestedPage);
         int size = requestedSize < 1 ? DEFAULT_SIZE : Math.min(requestedSize, SEARCH_MAX_SIZE);
 
@@ -88,7 +81,7 @@ public class MapPlaceService {
         if (category == null || category == MapPlaceCategory.BREWERY) {
             breweryRepository.searchMapPlaces(keyword).stream()
                     .filter(b -> BreweryVisibilityPolicy.isVisible(b.getBreweryId()))
-                    .map(b -> fromBrewery(b, userLatitude, userLongitude))
+                    .map(this::fromBrewery)
                     .forEach(places::add);
         }
         if (category != MapPlaceCategory.BREWERY) {
@@ -98,18 +91,13 @@ public class MapPlaceService {
                     .filter(t -> !breweryContentIds.contains(t.getContentId()))
                     .filter(t -> categoryOf(t) != null)
                     .filter(t -> category == null || categoryOf(t) == category)
-                    .map(t -> fromTour(t, categoryOf(t), userLatitude, userLongitude))
+                    .map(t -> fromTour(t, categoryOf(t)))
                     .forEach(places::add);
         }
 
-        Comparator<MapPlaceResponse> comparator = userLatitude == null
-                ? Comparator.comparingInt((MapPlaceResponse place) -> relevance(place, keyword))
-                        .thenComparing(MapPlaceResponse::placeName,
-                                Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER))
-                : Comparator.comparing(MapPlaceResponse::distance)
-                        .thenComparing(MapPlaceResponse::placeName,
-                                Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER));
-        places.sort(comparator);
+        places.sort(Comparator.comparingInt((MapPlaceResponse place) -> relevance(place, keyword))
+                .thenComparing(MapPlaceResponse::placeName, Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER))
+                .thenComparing(MapPlaceResponse::placeId, Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER)));
         int from = (int) Math.min((long) page * size, places.size());
         int to = (int) Math.min((long) from + size, places.size());
         return PageResponse.of(places.subList(from, to), page, size, places.size());
@@ -132,18 +120,6 @@ public class MapPlaceService {
         return address.contains(keyword) ? 3 : 4;
     }
 
-    private void validateUserCoordinatePair(BigDecimal latitude, BigDecimal longitude) {
-        if ((latitude == null) != (longitude == null)) {
-            throw new InvalidQueryParameterException("userLatitude와 userLongitude는 함께 전달해야 합니다.");
-        }
-        if (latitude != null && (latitude.compareTo(new BigDecimal("-90")) < 0
-                || latitude.compareTo(new BigDecimal("90")) > 0
-                || longitude.compareTo(new BigDecimal("-180")) < 0
-                || longitude.compareTo(new BigDecimal("180")) > 0)) {
-            throw new InvalidQueryParameterException("사용자 좌표가 올바르지 않습니다.");
-        }
-    }
-
     private MapPlaceCategory categoryOf(TourContent content) {
         return switch (CourseStopType.from(content)) {
             case RESTAURANT -> MapPlaceCategory.RESTAURANT;
@@ -154,32 +130,21 @@ public class MapPlaceService {
         };
     }
 
-    private MapPlaceResponse fromBrewery(Brewery b, BigDecimal userLat, BigDecimal userLng) {
+    private MapPlaceResponse fromBrewery(Brewery b) {
         return new MapPlaceResponse(b.getBreweryId(), b.getBusinessName(), MapPlaceCategory.BREWERY,
-                MapPlaceCategory.BREWERY.displayName(), distance(userLat, userLng, b.getLatitude(), b.getLongitude()),
+                MapPlaceCategory.BREWERY.displayName(), null,
                 b.getAddress(), ContactSupplementPolicy.phone(b.getBreweryId(), b.getPhone()),
                 b.getLatitude(), b.getLongitude(), null);
     }
 
-    private MapPlaceResponse fromTour(TourContent t, MapPlaceCategory category,
-                                      BigDecimal userLat, BigDecimal userLng) {
+    private MapPlaceResponse fromTour(TourContent t, MapPlaceCategory category) {
         String address = String.join(" ", java.util.stream.Stream.of(t.getAddr1(), t.getAddr2())
                 .filter(v -> v != null && !v.isBlank()).toList());
         String categoryName = CourseStopType.subcategoryOf(t);
         if (categoryName == null || categoryName.isBlank()) categoryName = category.displayName();
         return new MapPlaceResponse(t.getContentId(), t.getTitle(), category, categoryName,
-                distance(userLat, userLng, t.getLatitude(), t.getLongitude()), address, null,
+                null, address, null,
                 t.getLatitude(), t.getLongitude(), t.getFirstImage());
     }
 
-    private Double distance(BigDecimal fromLat, BigDecimal fromLng, BigDecimal toLat, BigDecimal toLng) {
-        if (fromLat == null) return null;
-        double lat1 = Math.toRadians(fromLat.doubleValue());
-        double lat2 = Math.toRadians(toLat.doubleValue());
-        double dLat = lat2 - lat1;
-        double dLng = Math.toRadians(toLng.doubleValue() - fromLng.doubleValue());
-        double a = Math.sin(dLat / 2) * Math.sin(dLat / 2)
-                + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) * Math.sin(dLng / 2);
-        return Math.round(6371.0088 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)) * 10.0) / 10.0;
-    }
 }

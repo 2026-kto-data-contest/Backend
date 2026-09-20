@@ -28,13 +28,13 @@ public class MapPlaceController {
     @GetMapping
     @Operation(summary = "지도 영역의 카테고리별 장소 조회", description = """
             현재 지도 영역 안의 양조장·식당·관광지·카페·숙소를 조회합니다.
-            사용자 좌표를 함께 보내면 거리순, 보내지 않으면 장소명순으로 반환합니다.
+            사용자 좌표는 받지 않으며 장소명순으로 반환합니다. 거리 계산은 클라이언트에서 수행합니다.
             전통시장은 관광지에 포함되며, 좌표가 없는 장소는 노출하지 않습니다.
             page는 0부터 시작하고 size는 최대 300으로 보정됩니다.
             """)
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "장소 조회 성공"),
-            @ApiResponse(responseCode = "400", description = "잘못된 지도 영역·카테고리·사용자 좌표",
+            @ApiResponse(responseCode = "400", description = "잘못된 지도 영역·카테고리",
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
             @ApiResponse(responseCode = "500", description = "서버 내부 오류",
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
@@ -46,11 +46,8 @@ public class MapPlaceController {
             @Parameter(description = "BREWERY, RESTAURANT, TOURIST_ATTRACTION, CAFE, ACCOMMODATION",
                     example = "BREWERY")
             @RequestParam String category,
-            @RequestParam(required = false) BigDecimal userLatitude,
-            @RequestParam(required = false) BigDecimal userLongitude,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        return mapPlaceService.find(south, west, north, east, category,
-                userLatitude, userLongitude, page, size);
+        return mapPlaceService.find(south, west, north, east, category, page, size);
     }
 }
