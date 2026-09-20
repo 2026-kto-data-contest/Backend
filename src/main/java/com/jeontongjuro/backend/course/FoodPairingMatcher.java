@@ -64,9 +64,8 @@ final class FoodPairingMatcher {
             }
             if (selectedProductName != null) break;
         }
-        if (selectedRule == null) return Optional.empty();
-        String label = selectedProductName == null ? liquorTypeLabel : selectedProductName;
-        return Optional.of(label + particle(label)
+        if (selectedRule == null || selectedProductName == null) return Optional.empty();
+        return Optional.of(selectedProductName + particle(selectedProductName)
                 + " 어울리는 " + selectedRule.label() + " 음식점");
     }
 
