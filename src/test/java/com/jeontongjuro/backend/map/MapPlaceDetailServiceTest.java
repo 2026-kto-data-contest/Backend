@@ -17,9 +17,13 @@ import com.jeontongjuro.backend.tour.TourContentRow;
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.util.Optional;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 
 /**
  * 지도 장소 상세 조회 서비스 계약 검증(단위). 분류는 실제 공통 규칙({@code CourseStopType})이 돌고
@@ -38,6 +42,14 @@ class MapPlaceDetailServiceTest {
         breweryRepository = mock(BreweryRepository.class);
         tourContentRepository = mock(TourContentRepository.class);
         service = new MapPlaceDetailService(breweryRepository, tourContentRepository);
+        // 정적 사진 fallback이 현재 origin을 읽으므로 요청 컨텍스트를 묶는다(프로덕션은 컨트롤러 경유).
+        RequestContextHolder.setRequestAttributes(
+                new ServletRequestAttributes(new MockHttpServletRequest()));
+    }
+
+    @AfterEach
+    void unbindRequest() {
+        RequestContextHolder.resetRequestAttributes();
     }
 
     // ── 양조장 ────────────────────────────────────────────────────────────────
@@ -125,6 +137,29 @@ class MapPlaceDetailServiceTest {
                 tour("745329", "39", "매칭 콘텐츠", "주소", null, "A05020100", "   ")));
 
         assertThat(service.findDetail("BRW-104", "BREWERY").imageUrl()).isNull();
+    }
+
+    @Test
+    @DisplayName("양조장: 관광공사 사진이 없으면 정적 사진을 fallback으로 쓴다(상세 API와 같은 우선순위)")
+    void breweryImageFallsBackToStaticPng() {
+        // ★합성 ID가 아니라 실제 png가 있는 ID를 쓴다 — 파일이 있어야 fallback 경로가 실제로 돈다.
+        Brewery brewery = brewery("BRW-001", "갈기산", "36.5", "127.5");
+        when(breweryRepository.findById("BRW-001")).thenReturn(Optional.of(brewery));
+
+        assertThat(service.findDetail("BRW-001", "BREWERY").imageUrl())
+                .isEqualTo("http://localhost/recommended-courses/BRW-001.png");
+    }
+
+    @Test
+    @DisplayName("양조장: 관광공사 사진이 있으면 정적 사진보다 우선한다")
+    void breweryTourImageBeatsStaticPng() {
+        Brewery brewery = brewery("BRW-001", "갈기산", "36.5", "127.5");
+        brewery.applyContentMatch("745330", OffsetDateTime.now());
+        when(breweryRepository.findById("BRW-001")).thenReturn(Optional.of(brewery));
+        when(tourContentRepository.findById("745330")).thenReturn(Optional.of(
+                tour("745330", "39", "매칭 콘텐츠", "주소", null, "A05020100", "http://img/tour.jpg")));
+
+        assertThat(service.findDetail("BRW-001", "BREWERY").imageUrl()).isEqualTo("http://img/tour.jpg");
     }
 
     @Test

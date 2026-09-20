@@ -2,6 +2,7 @@ package com.jeontongjuro.backend.map;
 
 import com.jeontongjuro.backend.brewery.Brewery;
 import com.jeontongjuro.backend.brewery.BreweryRepository;
+import com.jeontongjuro.backend.brewery.BreweryStaticImageUrls;
 import com.jeontongjuro.backend.brewery.BreweryVisibilityPolicy;
 import com.jeontongjuro.backend.brewery.ContactSupplementPolicy;
 import com.jeontongjuro.backend.course.CourseStopType;
@@ -125,8 +126,19 @@ public class MapPlaceDetailService {
         };
     }
 
+    /**
+     * 지도 상세 대표 사진. 상세 API({@code /api/v1/breweries/{id}}의 mainImage.url)와 <b>같은 값</b>이어야 해서
+     * 우선순위도 같다 — 관광공사 원본 우선, 없을 때만 정적 사진 fallback({@link BreweryStaticImageUrls}).
+     * <p>
+     * ★2026-09-17에 상세 API에만 fallback이 들어가 지도 상세가 계속 null이던 것을 여기서 맞춘다.
+     * 우선순위를 바꾸거나 fallback을 빼면 두 API 값이 다시 갈린다.
+     */
     private String breweryImageUrl(Brewery brewery) {
-        String contentId = brewery.getContentId();
+        String tourImageUrl = tourImageUrl(brewery.getContentId());
+        return tourImageUrl != null ? tourImageUrl : BreweryStaticImageUrls.url(brewery.getBreweryId());
+    }
+
+    private String tourImageUrl(String contentId) {
         if (contentId == null || contentId.isBlank()) {
             return null;
         }
