@@ -88,17 +88,19 @@ class AuthServiceTest {
     }
 
     @Test
-    void existingIncompleteMemberReturnsToOriginalPathInsteadOfOnboarding() {
+    void existingMemberWhoSkippedOnboardingReturnsToOriginalPath() {
         KakaoUserResponse user = new KakaoUserResponse(123L,
-                new KakaoUserResponse.KakaoAccount(new KakaoUserResponse.Profile("재로그인 사용자"), null));
+                new KakaoUserResponse.KakaoAccount(new KakaoUserResponse.Profile("전통주러버"), null));
         Member member = mock(Member.class);
         when(member.getId()).thenReturn(10L);
+        when(member.isInitialOnboardingPending()).thenReturn(false);
         when(member.isOnboardingCompleted()).thenReturn(false);
+        when(member.consumePostLoginReturnTo()).thenReturn("/mypage");
         when(kakaoClient.getUser("code")).thenReturn(user);
         when(memberRepository.findByKakaoUserId(123L)).thenReturn(Optional.of(member));
         when(memberRepository.save(member)).thenReturn(member);
         when(termsService.hasRequiredAgreements(10L)).thenReturn(true);
-        when(member.consumePostLoginReturnTo()).thenReturn("/mypage");
+        when(sessionService.create(member)).thenReturn("session-token");
 
         var result = authService.completeLogin("code", "/mypage");
 
@@ -106,20 +108,24 @@ class AuthServiceTest {
     }
 
     @Test
-    void newlyCreatedMemberWithTermsMovesToOnboarding() {
+    void newMemberWithRequiredTermsMovesToOnboardingOnce() {
         KakaoUserResponse user = new KakaoUserResponse(123L,
-                new KakaoUserResponse.KakaoAccount(new KakaoUserResponse.Profile("신규 사용자"), null));
+                new KakaoUserResponse.KakaoAccount(new KakaoUserResponse.Profile("전통주러버"), null));
         Member member = mock(Member.class);
-        when(kakaoClient.getUser("code")).thenReturn(user);
-        when(memberRepository.findByKakaoUserId(123L)).thenReturn(Optional.empty());
-        when(memberRepository.save(any(Member.class))).thenReturn(member);
         when(member.getId()).thenReturn(10L);
+        when(member.consumeInitialOnboardingPending()).thenReturn(true, false);
+        when(member.consumePostLoginReturnTo()).thenReturn("/mypage");
+        when(kakaoClient.getUser("code")).thenReturn(user);
+        when(memberRepository.findByKakaoUserId(123L)).thenReturn(Optional.of(member));
+        when(memberRepository.save(member)).thenReturn(member);
         when(termsService.hasRequiredAgreements(10L)).thenReturn(true);
         when(sessionService.create(member)).thenReturn("session-token");
 
-        var result = authService.completeLogin("code", "/");
+        var firstLogin = authService.completeLogin("code", "/mypage");
+        var secondLogin = authService.completeLogin("code", "/mypage");
 
-        assertThat(result.nextPath()).isEqualTo("/onboarding");
+        assertThat(firstLogin.nextPath()).isEqualTo("/onboarding");
+        assertThat(secondLogin.nextPath()).isEqualTo("/mypage");
     }
 
     @Test
@@ -127,11 +133,9 @@ class AuthServiceTest {
         Member member = mock(Member.class);
         when(memberRepository.findById(10L)).thenReturn(Optional.of(member));
         when(termsService.hasRequiredAgreements(10L)).thenReturn(true);
-        when(member.isOnboardingCompleted()).thenReturn(false);
+        when(member.consumeInitialOnboardingPending()).thenReturn(true, false);
 
         assertThat(authService.continueLogin(10L)).isEqualTo("/onboarding");
-
-        when(member.isOnboardingCompleted()).thenReturn(true);
         when(member.consumePostLoginReturnTo()).thenReturn("/breweries/BRW-001");
 
         assertThat(authService.continueLogin(10L)).isEqualTo("/breweries/BRW-001");

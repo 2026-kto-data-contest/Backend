@@ -58,7 +58,7 @@ public class AuthController {
 
                     로그인 성공 후 이동:
                     필수 약관 미동의 회원은 /terms로 이동합니다.
-                    방금 가입한 신규 회원은 /onboarding으로 이동합니다.
+                    최초 가입 회원은 /onboarding으로 이동합니다.
                     기존 회원은 온보딩 완료 여부와 관계없이 returnTo로 전달한 서비스 내부 경로로 이동합니다.
                     """
     )
@@ -192,8 +192,9 @@ public class AuthController {
             summary = "로그인 후 다음 화면 결정",
             description = """
                     약관 저장 또는 온보딩 완료 후 호출하면 다음 이동 경로를 반환합니다.
-                    필수 약관이 남아 있으면 /terms, 온보딩이 남아 있으면 /onboarding을 반환합니다.
-                    모두 완료되면 로그인 직전의 안전한 서비스 내부 경로를 한 번 반환하고 삭제합니다.
+                    필수 약관이 남아 있으면 /terms, 신규 가입자의 최초 온보딩 진입이 남아 있으면
+                    /onboarding을 반환합니다. 기존 회원은 온보딩 완료 여부와 관계없이 로그인 직전의
+                    안전한 서비스 내부 경로를 한 번 반환하고 삭제합니다.
                     """)
     @SecurityRequirement(name = "sessionCookie")
     @Parameter(name = "X-XSRF-TOKEN", in = ParameterIn.HEADER, required = true,

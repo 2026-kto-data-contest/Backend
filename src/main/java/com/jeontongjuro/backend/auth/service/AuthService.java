@@ -13,7 +13,6 @@ import com.jeontongjuro.backend.security.session.SessionService;
 import com.jeontongjuro.backend.terms.TermsService;
 import java.security.SecureRandom;
 import java.util.Base64;
-import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.http.HttpStatus;
@@ -53,14 +52,13 @@ public class AuthService {
     @Transactional
     public LoginResult completeLogin(String authorizationCode, String returnTo) {
         KakaoUserResponse kakaoUser = kakaoClient.getUser(authorizationCode);
-        UpsertedMember upsertedMember = upsertMember(kakaoUser);
-        Member member = upsertedMember.member();
+        Member member = upsertMember(kakaoUser);
         member.rememberPostLoginReturnTo(appProperties.safeReturnTo(returnTo));
         memberRepository.save(member);
         boolean termsAgreed = termsService.hasRequiredAgreements(member.getId());
         String sessionToken = sessionService.create(member);
         String nextPath = termsAgreed
-                ? (upsertedMember.created()
+                ? (member.consumeInitialOnboardingPending()
                         ? "/onboarding"
                         : appProperties.safeReturnTo(member.consumePostLoginReturnTo()))
                 : "/terms";
@@ -78,7 +76,7 @@ public class AuthService {
         if (!termsService.hasRequiredAgreements(memberId)) {
             return "/terms";
         }
-        if (!member.isOnboardingCompleted()) {
+        if (member.consumeInitialOnboardingPending()) {
             return "/onboarding";
         }
         String returnTo = appProperties.safeReturnTo(member.consumePostLoginReturnTo());
@@ -104,22 +102,13 @@ public class AuthService {
     }
 
     @Transactional
-    protected UpsertedMember upsertMember(KakaoUserResponse kakaoUser) {
+    protected Member upsertMember(KakaoUserResponse kakaoUser) {
         String nickname = kakaoUser.nickname() == null || kakaoUser.nickname().isBlank()
                 ? "카카오 사용자" : kakaoUser.nickname();
-        OptionalMember existing = memberRepository.findByKakaoUserId(kakaoUser.id())
-                .map(member -> new OptionalMember(member, false))
-                .orElseGet(() -> new OptionalMember(
-                        Member.createKakao(kakaoUser.id(), nickname, kakaoUser.email()), true));
-        Member member = existing.member();
+        Member member = memberRepository.findByKakaoUserId(kakaoUser.id())
+                .orElseGet(() -> Member.createKakao(kakaoUser.id(), nickname, kakaoUser.email()));
         member.updateKakaoProfile(nickname, kakaoUser.email());
-        return new UpsertedMember(memberRepository.save(member), existing.created());
-    }
-
-    private record OptionalMember(Member member, boolean created) {
-    }
-
-    record UpsertedMember(Member member, boolean created) {
+        return memberRepository.save(member);
     }
 
     public record LoginStart(String state, String authorizationUrl) {
