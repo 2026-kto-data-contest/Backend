@@ -47,24 +47,27 @@ final class FoodPairingMatcher {
                 restaurant.getLclsSystm1(), restaurant.getLclsSystm2(), restaurant.getLclsSystm3(),
                 externalCategory))
                 .toLowerCase(Locale.ROOT);
-        Map<String, PairingRule> matchedProducts = new LinkedHashMap<>();
+        String selectedProductName = null;
+        PairingRule selectedRule = null;
         for (CoursePairingText pairingText : pairingTexts) {
             String productSource = pairingText.text().toLowerCase(Locale.ROOT);
             for (Map.Entry<String, PairingRule> entry : RULES.entrySet()) {
                 if (!matchesSource(entry.getKey(), productSource)) continue;
                 PairingRule rule = entry.getValue();
                 if (rule.restaurantTokens().stream().anyMatch(restaurantText::contains)) {
-                    matchedProducts.putIfAbsent(pairingText.productName(), rule);
-                    break;
+                    if (selectedRule == null) selectedRule = rule;
+                    if (pairingText.productName() != null && !pairingText.productName().isBlank()) {
+                        selectedProductName = pairingText.productName();
+                        break;
+                    }
                 }
             }
+            if (selectedProductName != null) break;
         }
-        if (matchedProducts.isEmpty()) return Optional.empty();
-        PairingRule rule = matchedProducts.values().iterator().next();
-        String label = matchedProducts.keySet().stream().filter(name -> name != null && !name.isBlank())
-                .distinct().reduce((a, b) -> a + "·" + b).orElse(liquorTypeLabel);
+        if (selectedRule == null) return Optional.empty();
+        String label = selectedProductName == null ? liquorTypeLabel : selectedProductName;
         return Optional.of(breweryName + "의 " + label + particle(label)
-                + " 어울리는 " + rule.label() + " 음식점");
+                + " 어울리는 " + selectedRule.label() + " 음식점");
     }
 
     private static Map<String, PairingRule> rules() {
